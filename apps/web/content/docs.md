@@ -21,4 +21,4 @@ description: Protocol guides, schema references, and API links.
 
 ## Contributing
 
-See the repository [Contributing guide](https://github.com/mmap-team/marine-mammal-assessment/blob/main/CONTRIBUTING.md) for local setup, tests, and pull request expectations.
+See the repository [Contributing guide](https://github.com/SaveMarineMammals/marine-mammal-assessment-platform/blob/main/CONTRIBUTING.md) for local setup, tests, and pull request expectations.

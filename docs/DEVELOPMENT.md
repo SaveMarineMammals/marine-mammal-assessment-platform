@@ -20,7 +20,7 @@ corepack prepare pnpm@9.15.4 --activate
 ## Clone and install
 
 ```bash
-git clone https://github.com/mmap-team/marine-mammal-assessment.git
+git clone https://github.com/SaveMarineMammals/marine-mammal-assessment-platform.git
 cd marine-mammal-assessment
 pnpm install
 ```

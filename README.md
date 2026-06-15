@@ -1,6 +1,6 @@
 # Marine Mammal Assessment Platform (MMAP)
 
-[![CI](https://github.com/mmap-team/marine-mammal-assessment/actions/workflows/ci.yml/badge.svg)](https://github.com/mmap-team/marine-mammal-assessment/actions/workflows/ci.yml)
+[![CI](https://github.com/SaveMarineMammals/marine-mammal-assessment-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/SaveMarineMammals/marine-mammal-assessment-platform/actions/workflows/ci.yml)
 
 Open-source, offline-first platform for marine mammal field assessments. First implementation: **manatee assessments** supporting the CMARI Belize workflow.
 
@@ -79,7 +79,7 @@ Frontends proxy `/v1` (and `/openapi` on web) to the API inside Docker, so brows
 ### Full stack (Docker)
 
 ```bash
-git clone https://github.com/mmap-team/marine-mammal-assessment.git
+git clone https://github.com/SaveMarineMammals/marine-mammal-assessment-platform.git
 cd marine-mammal-assessment
 docker compose up -d --build
 ```
