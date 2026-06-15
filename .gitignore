@@ -8,6 +8,7 @@ coverage
 .DS_Store
 Thumbs.db
 *.log
+.pnpm-store
 apps/field/dev-dist
 apps/field/src/generated
 apps/field/public/version.json
