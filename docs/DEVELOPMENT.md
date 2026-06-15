@@ -162,7 +162,7 @@ pnpm --filter @mmap/field test:integration -- --database-url postgresql://mmap:m
 
 ### What CI runs on every PR
 
-See [.github/workflows/ci.yml](../.github/workflows/ci.yml):
+See [.github/workflows/ci.yml](../.github/workflows/ci.yml). Full style and testing policy: [CODING_STANDARDS.md](CODING_STANDARDS.md).
 
 1. **Quality** — Prettier, ESLint, unit tests
 2. **Build** — Full monorepo production build

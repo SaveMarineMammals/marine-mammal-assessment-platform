@@ -38,10 +38,17 @@ See [.github/workflows/ci.yml](.github/workflows/ci.yml) for the full pipeline.
 
 ## Code style
 
+See **[docs/CODING_STANDARDS.md](docs/CODING_STANDARDS.md)** for the full style guide, naming conventions, and automated testing requirements.
+
+Summary:
+
 - TypeScript for application and package code.
 - ESLint and Prettier configs at the repository root.
 - Use workspace protocol (`workspace:*`) for internal package dependencies.
 - Keep changes focused; prefer small, reviewable pull requests.
+- Add or update tests when behavior, validation, sync, or API contracts change.
+
+AI agents should read [AGENTS.md](AGENTS.md) before making substantive changes.
 
 ## Commit messages
 

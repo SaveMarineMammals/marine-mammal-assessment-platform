@@ -159,14 +159,16 @@ marine-mammal-assessment/
 
 ## Documentation
 
-| Document                                                | Description                                   |
-| ------------------------------------------------------- | --------------------------------------------- |
-| [Developer guide](docs/DEVELOPMENT.md)                  | **Start here** — setup, testing, contributing |
-| [Documentation index](docs/README.md)                   | All project docs                              |
-| [Requirements](docs/REQUIREMENTS.md)                    | Functional and non-functional requirements    |
-| [Project Plan](docs/PROJECT_PLAN.md)                    | Milestones M0–M5                              |
-| [Field UAT checklist](docs/uat/manatee-v1-checklist.md) | Field acceptance test scenarios               |
-| [Contributing](CONTRIBUTING.md)                         | How to contribute                             |
+| Document                                                | Description                                    |
+| ------------------------------------------------------- | ---------------------------------------------- |
+| [Developer guide](docs/DEVELOPMENT.md)                  | **Start here** — setup, testing, contributing  |
+| [Coding standards](docs/CODING_STANDARDS.md)            | Style guide and automated testing requirements |
+| [AGENTS.md](AGENTS.md)                                  | Guide for AI coding agents                     |
+| [Documentation index](docs/README.md)                   | All project docs                               |
+| [Requirements](docs/REQUIREMENTS.md)                    | Functional and non-functional requirements     |
+| [Project Plan](docs/PROJECT_PLAN.md)                    | Milestones M0–M5                               |
+| [Field UAT checklist](docs/uat/manatee-v1-checklist.md) | Field acceptance test scenarios                |
+| [Contributing](CONTRIBUTING.md)                         | How to contribute                              |
 
 ## Environment variables
 
