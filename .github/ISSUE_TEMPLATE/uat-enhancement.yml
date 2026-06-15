@@ -1,0 +1,23 @@
+---
+name: UAT enhancement
+about: Field UX improvement from UAT
+title: "[UAT enhancement] "
+labels: uat, enhancement
+assignees: ''
+---
+
+## Observation
+
+What did advisors struggle with or suggest?
+
+## Proposed improvement
+
+## Checklist reference
+
+Link to `docs/uat/manatee-v1-checklist.md` scenario if applicable.
+
+## Priority
+
+- [ ] P0
+- [ ] P1
+- [ ] P2

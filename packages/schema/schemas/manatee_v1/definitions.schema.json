@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mmap.dev/schemas/manatee_v1/definitions.schema.json",
+  "title": "MMAP Manatee v1 Shared Definitions",
+  "$defs": {
+    "uuid": {
+      "type": "string",
+      "format": "uuid",
+      "description": "RFC 4122 UUID"
+    },
+    "utcDateTime": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^(?:\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,3})?(?:Z|[+-]00:00))$",
+      "description": "ISO 8601 datetime stored in UTC (Z suffix or +00:00 offset)"
+    },
+    "semver": {
+      "type": "string",
+      "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$",
+      "description": "Semantic version string"
+    },
+    "assessmentType": {
+      "type": "string",
+      "const": "manatee_v1"
+    },
+    "syncStatus": {
+      "type": "string",
+      "enum": ["local-only", "pending", "synced", "error"]
+    },
+    "location": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["latitude", "longitude"],
+      "properties": {
+        "latitude": {
+          "type": "number",
+          "minimum": -90,
+          "maximum": 90,
+          "description": "WGS84 latitude in decimal degrees"
+        },
+        "longitude": {
+          "type": "number",
+          "minimum": -180,
+          "maximum": 180,
+          "description": "WGS84 longitude in decimal degrees"
+        },
+        "accuracy_meters": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "GPS accuracy estimate in meters"
+        },
+        "altitude": {
+          "type": "number",
+          "description": "Altitude in meters above sea level"
+        },
+        "capture_method_note": {
+          "type": "string",
+          "description": "Optional note about capture method or conditions"
+        }
+      }
+    },
+    "measurementType": {
+      "type": "string",
+      "enum": [
+        "length",
+        "weight",
+        "internal_temperature",
+        "external_temperature",
+        "blood_pressure",
+        "heart_rate",
+        "respiratory_rate"
+      ]
+    },
+    "bloodPressureValue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["systolic", "diastolic"],
+      "properties": {
+        "systolic": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "diastolic": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      }
+    }
+  }
+}

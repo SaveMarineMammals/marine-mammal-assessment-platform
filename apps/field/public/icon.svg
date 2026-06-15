@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="MMAP Field">
+  <rect width="512" height="512" rx="96" fill="#0b1f2a"/>
+  <path
+    fill="#5ec4e6"
+    d="M128 320c0-88 64-160 128-160s128 72 128 160c0 26-21 48-48 48H176c-27 0-48-22-48-48z"
+  />
+  <circle cx="208" cy="208" r="24" fill="#e8f4f8"/>
+  <circle cx="304" cy="208" r="24" fill="#e8f4f8"/>
+  <path fill="#e8f4f8" d="M256 256c-32 0-56 24-56 56h112c0-32-24-56-56-56z"/>
+</svg>

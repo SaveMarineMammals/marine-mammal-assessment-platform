@@ -1,0 +1,12 @@
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "assessment_type": "manatee_v1",
+  "protocol_version": "1.0.0",
+  "name": "Belize-2026-014",
+  "assessment_started_at": "2026-03-15T14:22:00-05:00",
+  "location": {
+    "latitude": 17.5043,
+    "longitude": -88.1962
+  },
+  "collector_id": "770e8400-e29b-41d4-a716-446655440000"
+}

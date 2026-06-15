@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "protocols": [
+    {
+      "assessment_type": "manatee_v1",
+      "protocol_version": "1.0.0",
+      "label": "Manatee Health Assessment v1",
+      "syncable": true,
+      "default": true,
+      "assessment_schema": "./schemas/manatee_v1/assessment.schema.json",
+      "measurement_schema": "./schemas/manatee_v1/measurement.schema.json",
+      "definitions_schema": "./schemas/manatee_v1/definitions.schema.json",
+      "form_definition": "./form-definitions/manatee_v1.json"
+    },
+    {
+      "assessment_type": "dolphin_v1",
+      "protocol_version": "0.1.0",
+      "label": "Dolphin Assessment (stub)",
+      "syncable": false,
+      "default": false,
+      "assessment_schema": "./schemas/dolphin_v1/assessment.schema.json",
+      "measurement_schema": "./schemas/dolphin_v1/measurement.schema.json",
+      "form_definition": "./form-definitions/dolphin_v1.json"
+    }
+  ]
+}

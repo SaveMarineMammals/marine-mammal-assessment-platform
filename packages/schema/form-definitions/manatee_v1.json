@@ -1,0 +1,154 @@
+{
+  "assessment_type": "manatee_v1",
+  "protocol_version": "1.0.0",
+  "label": "Manatee Health Assessment v1",
+  "assessment": {
+    "sections": [
+      {
+        "id": "core",
+        "fields": [
+          {
+            "name": "name",
+            "label": "Name / ID",
+            "widget": "text",
+            "required": true,
+            "placeholder": "Belize-2026-014",
+            "autoComplete": "off"
+          },
+          {
+            "name": "assessment_started_at",
+            "label": "Assessment started",
+            "widget": "datetime",
+            "required": true
+          },
+          {
+            "name": "assessment_ended_at",
+            "label": "Assessment ended (optional until complete)",
+            "widget": "datetime",
+            "required": false
+          }
+        ]
+      },
+      {
+        "id": "location",
+        "title": "Location (WGS84)",
+        "widget": "fieldset",
+        "fields": [
+          {
+            "name": "location",
+            "widget": "geo",
+            "required": true
+          }
+        ]
+      },
+      {
+        "id": "metadata",
+        "fields": [
+          {
+            "name": "organization",
+            "label": "Organization",
+            "widget": "text",
+            "required": false
+          },
+          {
+            "name": "campaign",
+            "label": "Campaign",
+            "widget": "text",
+            "required": false,
+            "placeholder": "Belize Manatee Assessment 2026"
+          },
+          {
+            "name": "notes",
+            "label": "Notes",
+            "widget": "textarea",
+            "required": false,
+            "rows": 3
+          }
+        ]
+      }
+    ],
+    "defaults": {
+      "location": {
+        "latitude": "17.5043",
+        "longitude": "-88.1962"
+      },
+      "organization": "CMARI"
+    }
+  },
+  "measurements": {
+    "common_fields": [
+      {
+        "name": "recorded_at",
+        "label": "Recorded at",
+        "widget": "datetime",
+        "required": true
+      },
+      {
+        "name": "method",
+        "label": "Method (optional)",
+        "widget": "text",
+        "required": false
+      },
+      {
+        "name": "notes",
+        "label": "Notes (optional)",
+        "widget": "textarea",
+        "required": false,
+        "rows": 2
+      }
+    ],
+    "sections": [
+      {
+        "type": "length",
+        "label": "Length",
+        "widget": "number",
+        "unit": "cm",
+        "step": "0.1"
+      },
+      {
+        "type": "weight",
+        "label": "Weight",
+        "widget": "number",
+        "unit": "kg",
+        "step": "0.1"
+      },
+      {
+        "type": "internal_temperature",
+        "label": "Internal Temperature",
+        "widget": "number",
+        "unit": "°C",
+        "step": "0.1"
+      },
+      {
+        "type": "external_temperature",
+        "label": "External Temperature",
+        "widget": "number",
+        "unit": "°C",
+        "step": "0.1"
+      },
+      {
+        "type": "blood_pressure",
+        "label": "Blood Pressure",
+        "widget": "blood_pressure",
+        "unit": "mmHg"
+      },
+      {
+        "type": "heart_rate",
+        "label": "Heart Rate",
+        "widget": "number",
+        "unit": "bpm",
+        "step": "1",
+        "integer": true,
+        "method_placeholder": "Doppler"
+      },
+      {
+        "type": "respiratory_rate",
+        "label": "Respiratory Rate",
+        "widget": "number",
+        "unit": "breaths/min",
+        "step": "1",
+        "integer": true
+      }
+    ]
+  }
+}

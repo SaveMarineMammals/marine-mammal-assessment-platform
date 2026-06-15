@@ -1,0 +1,83 @@
+{
+  "assessment_type": "dolphin_v1",
+  "protocol_version": "0.1.0",
+  "label": "Dolphin Assessment (stub)",
+  "assessment": {
+    "sections": [
+      {
+        "id": "core",
+        "fields": [
+          {
+            "name": "name",
+            "label": "Individual ID",
+            "widget": "text",
+            "required": true,
+            "placeholder": "Dolphin-042"
+          },
+          {
+            "name": "assessment_started_at",
+            "label": "Observation started",
+            "widget": "datetime",
+            "required": true
+          },
+          {
+            "name": "location",
+            "label": "Location",
+            "widget": "geo",
+            "required": true
+          },
+          {
+            "name": "notes",
+            "label": "Field notes",
+            "widget": "textarea",
+            "required": false,
+            "rows": 3
+          }
+        ]
+      }
+    ],
+    "defaults": {
+      "location": {
+        "latitude": "17.5043",
+        "longitude": "-88.1962"
+      }
+    }
+  },
+  "measurements": {
+    "common_fields": [
+      {
+        "name": "recorded_at",
+        "label": "Recorded at",
+        "widget": "datetime",
+        "required": true
+      },
+      {
+        "name": "notes",
+        "label": "Notes (optional)",
+        "widget": "textarea",
+        "required": false,
+        "rows": 2
+      }
+    ],
+    "sections": [
+      {
+        "type": "body_condition",
+        "label": "Body Condition Score",
+        "widget": "number",
+        "unit": "1–5",
+        "step": "1",
+        "integer": true,
+        "min": 1,
+        "max": 5
+      },
+      {
+        "type": "respiratory_rate",
+        "label": "Respiratory Rate",
+        "widget": "number",
+        "unit": "breaths/min",
+        "step": "1",
+        "integer": true
+      }
+    ]
+  }
+}

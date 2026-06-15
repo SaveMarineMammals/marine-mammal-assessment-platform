@@ -1,0 +1,38 @@
+---
+name: UAT bug
+about: Field user acceptance testing defect
+title: "[UAT] "
+labels: uat, field-app
+assignees: ''
+---
+
+## Scenario
+
+Which checklist scenario failed?
+
+## Steps to reproduce
+
+1.
+2.
+3.
+
+## Expected behavior
+
+## Actual behavior
+
+## Device / environment
+
+- Device:
+- Browser / PWA:
+- Online or offline:
+- Protocol (manatee_v1 / dolphin_v1):
+
+## Severity
+
+- [ ] P0 — blocks capture or data loss
+- [ ] P1 — major workflow friction
+- [ ] P2 — polish / nice to have
+
+## Feedback export (optional)
+
+Attach `mmap-feedback-YYYY-MM-DD.json` from Settings if available.

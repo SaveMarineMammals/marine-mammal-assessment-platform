@@ -1,0 +1,122 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mmap.dev/schemas/manatee_v1/measurement.schema.json",
+  "title": "MMAP Manatee v1 Measurement",
+  "description": "A single timestamped measurement reading during an assessment",
+  "type": "object",
+  "required": ["id", "assessment_id", "measurement_type", "recorded_at", "value", "unit"],
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "definitions.schema.json#/$defs/uuid" },
+        "assessment_id": { "$ref": "definitions.schema.json#/$defs/uuid" },
+        "measurement_type": { "const": "length" },
+        "recorded_at": { "$ref": "definitions.schema.json#/$defs/utcDateTime" },
+        "value": { "type": "number", "exclusiveMinimum": 0 },
+        "unit": { "const": "cm" },
+        "method": { "type": "string" },
+        "notes": { "type": ["string", "null"] },
+        "sequence": { "type": "integer", "minimum": 1 }
+      },
+      "required": ["id", "assessment_id", "measurement_type", "recorded_at", "value", "unit"]
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "definitions.schema.json#/$defs/uuid" },
+        "assessment_id": { "$ref": "definitions.schema.json#/$defs/uuid" },
+        "measurement_type": { "const": "weight" },
+        "recorded_at": { "$ref": "definitions.schema.json#/$defs/utcDateTime" },
+        "value": { "type": "number", "exclusiveMinimum": 0 },
+        "unit": { "const": "kg" },
+        "method": { "type": "string" },
+        "notes": { "type": ["string", "null"] },
+        "sequence": { "type": "integer", "minimum": 1 }
+      },
+      "required": ["id", "assessment_id", "measurement_type", "recorded_at", "value", "unit"]
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "definitions.schema.json#/$defs/uuid" },
+        "assessment_id": { "$ref": "definitions.schema.json#/$defs/uuid" },
+        "measurement_type": { "const": "internal_temperature" },
+        "recorded_at": { "$ref": "definitions.schema.json#/$defs/utcDateTime" },
+        "value": { "type": "number" },
+        "unit": { "const": "°C" },
+        "method": { "type": "string" },
+        "notes": { "type": ["string", "null"] },
+        "sequence": { "type": "integer", "minimum": 1 }
+      },
+      "required": ["id", "assessment_id", "measurement_type", "recorded_at", "value", "unit"]
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "definitions.schema.json#/$defs/uuid" },
+        "assessment_id": { "$ref": "definitions.schema.json#/$defs/uuid" },
+        "measurement_type": { "const": "external_temperature" },
+        "recorded_at": { "$ref": "definitions.schema.json#/$defs/utcDateTime" },
+        "value": { "type": "number" },
+        "unit": { "const": "°C" },
+        "method": { "type": "string" },
+        "notes": { "type": ["string", "null"] },
+        "sequence": { "type": "integer", "minimum": 1 }
+      },
+      "required": ["id", "assessment_id", "measurement_type", "recorded_at", "value", "unit"]
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "definitions.schema.json#/$defs/uuid" },
+        "assessment_id": { "$ref": "definitions.schema.json#/$defs/uuid" },
+        "measurement_type": { "const": "blood_pressure" },
+        "recorded_at": { "$ref": "definitions.schema.json#/$defs/utcDateTime" },
+        "value": { "$ref": "definitions.schema.json#/$defs/bloodPressureValue" },
+        "unit": { "const": "mmHg" },
+        "method": { "type": "string" },
+        "notes": { "type": ["string", "null"] },
+        "sequence": { "type": "integer", "minimum": 1 }
+      },
+      "required": ["id", "assessment_id", "measurement_type", "recorded_at", "value", "unit"]
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "definitions.schema.json#/$defs/uuid" },
+        "assessment_id": { "$ref": "definitions.schema.json#/$defs/uuid" },
+        "measurement_type": { "const": "heart_rate" },
+        "recorded_at": { "$ref": "definitions.schema.json#/$defs/utcDateTime" },
+        "value": { "type": "integer", "minimum": 1 },
+        "unit": { "const": "bpm" },
+        "method": { "type": "string" },
+        "notes": { "type": ["string", "null"] },
+        "sequence": { "type": "integer", "minimum": 1 }
+      },
+      "required": ["id", "assessment_id", "measurement_type", "recorded_at", "value", "unit"]
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "definitions.schema.json#/$defs/uuid" },
+        "assessment_id": { "$ref": "definitions.schema.json#/$defs/uuid" },
+        "measurement_type": { "const": "respiratory_rate" },
+        "recorded_at": { "$ref": "definitions.schema.json#/$defs/utcDateTime" },
+        "value": { "type": "integer", "minimum": 1 },
+        "unit": { "const": "breaths/min" },
+        "method": { "type": "string" },
+        "notes": { "type": ["string", "null"] },
+        "sequence": { "type": "integer", "minimum": 1 }
+      },
+      "required": ["id", "assessment_id", "measurement_type", "recorded_at", "value", "unit"]
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+node_modules
+dist
+.turbo
+*.tsbuildinfo
+coverage
+.env
+.env.local
+.DS_Store
+Thumbs.db
+*.log
+apps/field/dev-dist
+apps/field/src/generated
+apps/field/public/version.json

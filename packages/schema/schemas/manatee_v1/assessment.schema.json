@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mmap.dev/schemas/manatee_v1/assessment.schema.json",
+  "title": "MMAP Manatee v1 Assessment",
+  "description": "Header record for a single manatee field assessment",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "name",
+    "assessment_started_at",
+    "location",
+    "assessment_type",
+    "protocol_version",
+    "collector_id"
+  ],
+  "properties": {
+    "id": {
+      "$ref": "definitions.schema.json#/$defs/uuid"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Individual identifier (tag, scar ID, provisional name, or unknown)"
+    },
+    "assessment_started_at": {
+      "$ref": "definitions.schema.json#/$defs/utcDateTime"
+    },
+    "assessment_ended_at": {
+      "$ref": "definitions.schema.json#/$defs/utcDateTime"
+    },
+    "location": {
+      "$ref": "definitions.schema.json#/$defs/location"
+    },
+    "assessment_type": {
+      "$ref": "definitions.schema.json#/$defs/assessmentType"
+    },
+    "protocol_version": {
+      "$ref": "definitions.schema.json#/$defs/semver"
+    },
+    "collector_id": {
+      "$ref": "definitions.schema.json#/$defs/uuid"
+    },
+    "organization": {
+      "type": "string",
+      "minLength": 1
+    },
+    "campaign": {
+      "type": "string",
+      "minLength": 1
+    },
+    "notes": {
+      "type": "string"
+    },
+    "created_at": {
+      "$ref": "definitions.schema.json#/$defs/utcDateTime"
+    },
+    "updated_at": {
+      "$ref": "definitions.schema.json#/$defs/utcDateTime"
+    },
+    "sync_status": {
+      "$ref": "definitions.schema.json#/$defs/syncStatus"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "required": ["assessment_ended_at"]
+      },
+      "then": {
+        "description": "When ended_at is present it must be on or after started_at"
+      }
+    }
+  ]
+}

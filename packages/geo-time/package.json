@@ -1,0 +1,29 @@
+{
+  "name": "@mmap/geo-time",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "UTC storage and local-time display helpers for MMAP field data",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsc -p tsconfig.json --watch",
+    "test": "vitest run --config vitest.config.ts",
+    "test:coverage": "vitest run --config vitest.config.ts --coverage",
+    "lint": "eslint src"
+  },
+  "dependencies": {
+    "tz-lookup": "^6.1.25"
+  },
+  "devDependencies": {
+    "@types/tz-lookup": "^6.1.2",
+    "@vitest/coverage-v8": "^3.0.4",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.4"
+  }
+}

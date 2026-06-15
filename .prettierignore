@@ -1,0 +1,8 @@
+node_modules
+dist
+.turbo
+coverage
+.github/ISSUE_TEMPLATE
+apps/field/dev-dist
+doc
+package-lock.json

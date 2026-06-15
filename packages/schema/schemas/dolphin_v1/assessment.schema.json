@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mmap.example/schemas/dolphin_v1/assessment.schema.json",
+  "title": "Dolphin Assessment (stub)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "name",
+    "assessment_started_at",
+    "location",
+    "assessment_type",
+    "protocol_version",
+    "collector_id"
+  ],
+  "properties": {
+    "id": { "type": "string", "format": "uuid" },
+    "name": { "type": "string", "minLength": 1 },
+    "assessment_started_at": { "type": "string", "format": "date-time" },
+    "assessment_ended_at": { "type": "string", "format": "date-time" },
+    "location": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["latitude", "longitude"],
+      "properties": {
+        "latitude": { "type": "number", "minimum": -90, "maximum": 90 },
+        "longitude": { "type": "number", "minimum": -180, "maximum": 180 },
+        "accuracy_meters": { "type": "number", "exclusiveMinimum": 0 }
+      }
+    },
+    "assessment_type": { "const": "dolphin_v1" },
+    "protocol_version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+    "collector_id": { "type": "string", "format": "uuid" },
+    "notes": { "type": "string" },
+    "sync_status": {
+      "type": "string",
+      "enum": ["local-only", "pending", "synced", "error"]
+    },
+    "created_at": { "type": "string", "format": "date-time" },
+    "updated_at": { "type": "string", "format": "date-time" }
+  }
+}

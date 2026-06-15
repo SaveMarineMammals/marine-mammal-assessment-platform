@@ -1,0 +1,10 @@
+{
+  "id": "660e8400-e29b-41d4-a716-446655440001",
+  "assessment_id": "550e8400-e29b-41d4-a716-446655440000",
+  "measurement_type": "heart_rate",
+  "recorded_at": "2026-03-15T14:35:00.000Z",
+  "value": 52,
+  "unit": "bpm",
+  "method": "Doppler",
+  "notes": null
+}
