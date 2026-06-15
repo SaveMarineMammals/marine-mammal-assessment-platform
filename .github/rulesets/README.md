@@ -4,17 +4,17 @@ This folder contains a **repository ruleset** you can import to protect the defa
 
 ## What the ruleset enforces
 
-| Requirement | How |
-|-------------|-----|
-| Changes land on `main` only via pull request | `update` + `pull_request` rules block direct pushes and require a PR to merge |
-| All review conversations resolved | `required_review_thread_resolution: true` |
-| At least one approval from someone other than the last pusher | `required_approving_review_count: 1` + `require_last_push_approval: true` |
-| CI must pass before merge | Required status checks for all three CI jobs |
-| Branch up to date with `main` before merge | `strict_required_status_checks_policy: true` |
-| No force-push or branch deletion | `non_fast_forward` + `deletion` rules |
-| Linear commit history on `main` | `required_linear_history` (merge commits disallowed; use squash or rebase) |
-| Copilot code review on new PRs and pushes | `copilot_code_review` (auto-request; re-review on each push) |
-| `jefftindall` can bypass all rules | Bypass actor (user id `10339968`, mode `always`) |
+| Requirement                                                   | How                                                                           |
+| ------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| Changes land on `main` only via pull request                  | `update` + `pull_request` rules block direct pushes and require a PR to merge |
+| All review conversations resolved                             | `required_review_thread_resolution: true`                                     |
+| At least one approval from someone other than the last pusher | `required_approving_review_count: 1` + `require_last_push_approval: true`     |
+| CI must pass before merge                                     | Required status checks for all three CI jobs                                  |
+| Branch up to date with `main` before merge                    | `strict_required_status_checks_policy: true`                                  |
+| No force-push or branch deletion                              | `non_fast_forward` + `deletion` rules                                         |
+| Linear commit history on `main`                               | `required_linear_history` (merge commits disallowed; use squash or rebase)    |
+| Copilot code review on new PRs and pushes                     | `copilot_code_review` (auto-request; re-review on each push)                  |
+| `jefftindall` can bypass all rules                            | Bypass actor (user id `10339968`, mode `always`)                              |
 
 ### Author self-approval
 
