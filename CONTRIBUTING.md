@@ -58,6 +58,7 @@ Use clear, descriptive commit messages. Conventional prefixes are encouraged:
 - Ensure all CI jobs pass (format, lint, unit tests, build, integration).
 - Update documentation when behavior or setup changes.
 - Link related issues when applicable.
+- `main` is protected by a [repository ruleset](.github/rulesets/README.md): PR required, one non-pusher approval, resolved threads, and green CI. Enable **Allow auto-merge** and **Automatically delete head branches** in repository settings for the full workflow.
 
 ## Community
 
