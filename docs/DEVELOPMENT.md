@@ -109,6 +109,7 @@ Run from the repository root:
 | `pnpm build`        | Production build for all packages                    |
 | `pnpm format`       | Auto-format with Prettier                            |
 | `pnpm format:check` | Verify formatting (CI gate)                          |
+| `pnpm validate`     | All CI quality + build checks in one command         |
 
 Filter to a single package:
 
@@ -171,11 +172,28 @@ See [.github/workflows/ci.yml](../.github/workflows/ci.yml). Full style and test
 Run the same checks locally before opening a PR:
 
 ```bash
-pnpm format:check
-pnpm lint
-pnpm test
-pnpm build
+pnpm validate
+docker compose up -d postgres
 pnpm test:integration -- --database-url postgresql://mmap:mmap@localhost:5432/mmap
+```
+
+Or run `pnpm validate:integration` after Postgres is running (with `--database-url` if `DATABASE_URL` is unset).
+
+### Windows (PowerShell)
+
+All checks run through **pnpm** — no bash, Git Bash, or `.sh` scripts are required. Use PowerShell from the repository root:
+
+```powershell
+pnpm validate
+pnpm test:integration -- --database-url postgresql://mmap:mmap@localhost:5432/mmap
+```
+
+Copy env examples (instead of `cp`):
+
+```powershell
+Copy-Item apps/api/.env.example apps/api/.env
+Copy-Item apps/field/.env.example apps/field/.env
+Copy-Item apps/web/.env.example apps/web/.env
 ```
 
 ## Contributing workflow

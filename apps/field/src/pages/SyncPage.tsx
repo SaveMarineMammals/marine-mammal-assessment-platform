@@ -32,7 +32,7 @@ export function SyncPage() {
 
       <dl className="detail-grid storage-summary">
         <div>
-          <dt>Connection</dt>
+          <dt>Server connection</dt>
           <dd>{online ? 'Online' : 'Offline'}</dd>
         </div>
         <div>
@@ -52,14 +52,15 @@ export function SyncPage() {
       </dl>
 
       <p className="hint">
-        Sync runs automatically when online, every minute, and when connectivity returns.
+        Status reflects reachability of the sync API, not just device Wi‑Fi or cellular. Sync runs
+        automatically when the server is reachable, every minute, and when connection is restored.
       </p>
 
       <div className="settings-actions">
         <button
           type="button"
           className="button button--primary"
-          disabled={!online || isSyncing}
+          disabled={isSyncing}
           onClick={() => {
             syncNow()
               .then(() => bumpRefresh())
@@ -72,7 +73,7 @@ export function SyncPage() {
           <button
             type="button"
             className="button button--secondary"
-            disabled={!online || isSyncing}
+            disabled={isSyncing}
             onClick={() => {
               retryFailed()
                 .then(() => bumpRefresh())

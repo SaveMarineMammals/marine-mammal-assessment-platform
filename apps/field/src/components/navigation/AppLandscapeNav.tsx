@@ -59,7 +59,7 @@ export function AppLandscapeNav() {
         <Link
           to="/sync"
           className={`status-pill ${online ? 'status-pill--online' : 'status-pill--offline'}`}
-          aria-label={online ? 'Online — open sync' : 'Offline — open sync'}
+          aria-label={online ? 'Server reachable — open sync' : 'Server unreachable — open sync'}
         >
           {online ? 'Online' : 'Offline'}
         </Link>

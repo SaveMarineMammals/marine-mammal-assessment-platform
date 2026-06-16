@@ -21,11 +21,10 @@ Thank you for your interest in the Marine Mammal Assessment Platform!
 CI must pass on every pull request. Run these locally from the repository root:
 
 ```bash
-pnpm format:check
-pnpm lint
-pnpm test
-pnpm build
+pnpm validate
 ```
+
+On Windows PowerShell, the same command works — this repo uses pnpm/Node.js only (no `.sh` scripts or bash hooks).
 
 If you changed sync, API, or schema behavior, also run integration tests (requires PostgreSQL):
 

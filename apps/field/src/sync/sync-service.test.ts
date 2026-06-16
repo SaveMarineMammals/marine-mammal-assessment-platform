@@ -2,6 +2,7 @@ import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createTestDatabase, type FieldDatabase } from '../db/database.js';
 import { createAssessment, addMeasurement } from '../data/repository.js';
+import { getApiReachable, resetApiConnectivityForTests } from './api-connectivity.js';
 import { getSyncableEntries, runSync } from './sync-service.js';
 
 const COLLECTOR_ID_KEY = 'mmap-collector-id';
@@ -15,10 +16,12 @@ describe('sync service', () => {
     localStorage.setItem(COLLECTOR_ID_KEY, '770e8400-e29b-41d4-a716-446655440000');
     await database.open();
     vi.stubGlobal('navigator', { onLine: true });
+    resetApiConnectivityForTests();
   });
 
   afterEach(async () => {
     vi.unstubAllGlobals();
+    resetApiConnectivityForTests();
     await database.delete();
   });
 
@@ -158,6 +161,7 @@ describe('sync service', () => {
 
   it('returns early when offline', async () => {
     vi.stubGlobal('navigator', { onLine: false });
+    resetApiConnectivityForTests();
     await createAssessment(
       { name: 'Offline', location: { latitude: 17.5, longitude: -88.2 } },
       database,
@@ -166,5 +170,18 @@ describe('sync service', () => {
     const result = await runSync(database, { force: true });
     expect(result.attempted).toBe(0);
     expect(result.error).toBe('Device is offline');
+  });
+
+  it('marks API unreachable on network error', async () => {
+    await createAssessment(
+      { name: 'Network', location: { latitude: 17.5, longitude: -88.2 } },
+      database,
+    );
+
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('Failed to fetch')));
+
+    await runSync(database, { force: true });
+
+    expect(getApiReachable()).toBe(false);
   });
 });

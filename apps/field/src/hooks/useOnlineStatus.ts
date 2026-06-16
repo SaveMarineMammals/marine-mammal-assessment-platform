@@ -1,19 +1,17 @@
 import { useEffect, useState } from 'react';
+import {
+  checkApiReachability,
+  getApiReachable,
+  subscribeApiConnectivity,
+} from '../sync/api-connectivity.js';
 
+/** Whether the sync API is reachable — not just general device connectivity. */
 export function useOnlineStatus(): boolean {
-  const [online, setOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true);
+  const [online, setOnline] = useState(() => getApiReachable());
 
   useEffect(() => {
-    const handleOnline = () => setOnline(true);
-    const handleOffline = () => setOnline(false);
-
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
+    checkApiReachability().catch(() => undefined);
+    return subscribeApiConnectivity(setOnline);
   }, []);
 
   return online;

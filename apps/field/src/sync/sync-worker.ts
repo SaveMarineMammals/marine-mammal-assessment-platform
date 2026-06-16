@@ -1,4 +1,9 @@
 import { SYNC_INTERVAL_MS } from '../config.js';
+import {
+  checkApiReachability,
+  getApiReachable,
+  startApiConnectivityMonitor,
+} from './api-connectivity.js';
 import { runSync, retryFailedSyncEntries } from './sync-service.js';
 import type { SyncRunResult } from './types.js';
 
@@ -46,22 +51,31 @@ export async function triggerRetryFailed(): Promise<SyncRunResult> {
 }
 
 export function startSyncWorker(): () => void {
+  const stopConnectivityMonitor = startApiConnectivityMonitor();
+
   const handleOnline = () => {
-    triggerSync().catch(() => undefined);
+    checkApiReachability()
+      .then((reachable) => {
+        if (reachable) {
+          triggerSync().catch(() => undefined);
+        }
+      })
+      .catch(() => undefined);
   };
 
   window.addEventListener('online', handleOnline);
   intervalId = setInterval(() => {
-    if (navigator.onLine) {
+    if (getApiReachable()) {
       triggerSync().catch(() => undefined);
     }
   }, SYNC_INTERVAL_MS);
 
-  if (navigator.onLine) {
+  if (getApiReachable()) {
     triggerSync().catch(() => undefined);
   }
 
   return () => {
+    stopConnectivityMonitor();
     window.removeEventListener('online', handleOnline);
     if (intervalId) {
       clearInterval(intervalId);
