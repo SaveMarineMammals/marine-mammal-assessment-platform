@@ -3,6 +3,7 @@ import type { FieldDatabase } from '../db/database.js';
 import { db as defaultDb } from '../db/database.js';
 import type { StoredAssessment, StoredMeasurement, SyncQueueEntry } from '../db/types.js';
 import { getSyncApiUrl } from '../config.js';
+import { markApiReachable } from './api-connectivity.js';
 import { hasExceededMaxAttempts, isReadyForRetry } from './backoff.js';
 import type { SyncBatchResponse, SyncRunResult } from './types.js';
 
@@ -178,6 +179,7 @@ export async function runSync(
   options: { force?: boolean } = {},
 ): Promise<SyncRunResult> {
   if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    markApiReachable(false);
     return { attempted: 0, synced: 0, failed: 0, skipped: 0, error: 'Device is offline' };
   }
 
@@ -195,8 +197,10 @@ export async function runSync(
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
+    markApiReachable(true);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Network request failed';
+    markApiReachable(false);
     const timestamp = nowUtc();
     for (const entry of entries) {
       const attempts = entry.attempts + 1;

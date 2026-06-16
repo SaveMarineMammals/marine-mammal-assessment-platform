@@ -160,8 +160,9 @@ export function SettingsPage({ onChanged }: SettingsPageProps) {
       <div className="settings-section">
         <h3>Sync</h3>
         <p className="hint">
-          API endpoint: <code>{getApiBaseUrlDisplay()}</code>. Sync runs automatically when online,
-          every minute, and when connectivity returns.
+          API endpoint: <code>{getApiBaseUrlDisplay()}</code>. Sync runs automatically when the
+          server is reachable (not just device Wi‑Fi or cellular), every minute, and when connection
+          is restored.
         </p>
         <div className="settings-actions">
           <button

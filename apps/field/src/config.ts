@@ -19,6 +19,8 @@ export function getSyncApiUrl(path: string): string {
 }
 
 export const SYNC_INTERVAL_MS = 60_000;
+export const API_HEALTH_CHECK_MS = 30_000;
+export const API_HEALTH_CHECK_TIMEOUT_MS = 8_000;
 export const MAX_SYNC_ATTEMPTS = 5;
 export const SYNC_BACKOFF_BASE_MS = 1_000;
 

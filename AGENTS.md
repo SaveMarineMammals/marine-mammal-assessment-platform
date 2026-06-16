@@ -16,7 +16,7 @@ This file orients automated agents (Cursor, Copilot, CI bots, etc.) working in t
 
 **Data flow:** Field app captures assessments offline → queues sync → POST `/v1/sync/batch` when online → API validates with `@mmap/schema` → PostgreSQL. Public web reads anonymized data via `/v1/public/*`.
 
-**Monorepo:** pnpm workspaces + Turborepo. Root scripts: `pnpm dev`, `pnpm test`, `pnpm lint`, `pnpm build`.
+**Monorepo:** pnpm workspaces + Turborepo. Root scripts: `pnpm dev`, `pnpm test`, `pnpm lint`, `pnpm build`, `pnpm validate`.
 
 ## Before you change code
 
@@ -40,19 +40,32 @@ Full rules: [docs/CODING_STANDARDS.md](docs/CODING_STANDARDS.md).
 | Comments       | Only for non-obvious logic; no narrating obvious code           |
 | Schema changes | Update JSON Schema, Zod, fixtures, and tests together           |
 
-Run before finishing:
+Run before finishing (cross-platform — works in PowerShell, cmd, and bash):
 
-```bash
-pnpm format:check
-pnpm lint
-pnpm test
-pnpm build
+```text
+pnpm validate
 ```
+
+Or run each step separately: `pnpm format:check`, `pnpm lint`, `pnpm test`, `pnpm build`.
 
 If you touch sync, API persistence, or schema ingestion, also run integration tests (PostgreSQL required):
 
-```bash
+```text
 docker compose up -d postgres
+pnpm test:integration -- --database-url postgresql://mmap:mmap@localhost:5432/mmap
+```
+
+Or `pnpm validate:integration` after Postgres is up (pass `--database-url` as above if needed).
+
+### Windows (PowerShell)
+
+This repo has **no `.sh` files** and no bash-based git hooks. **Do not** create shell scripts or run bash-only syntax (`./script.sh`, `cp`, heredoc commits, `cat <<EOF`) for validation or tooling.
+
+Use **pnpm scripts only** — they invoke Node.js and work natively on Windows:
+
+```powershell
+pnpm validate
+pnpm --filter @mmap/field test
 pnpm test:integration -- --database-url postgresql://mmap:mmap@localhost:5432/mmap
 ```
 
@@ -116,6 +129,7 @@ CI **must pass** before merge. Agents must add or update tests when behavior cha
 - Over-engineer abstractions for one-off logic
 - Run web dev server on port 5173 while Docker web is up (cache conflicts)
 - Commit `.env`, credentials, or `node_modules/`
+- Create or invoke `.sh` / bash scripts for validation — use `pnpm validate` instead
 
 ## Key documentation
 

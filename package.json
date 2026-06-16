@@ -14,7 +14,9 @@
     "test:integration": "tsx scripts/run-integration-tests.ts",
     "lint": "turbo lint",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "validate": "pnpm format:check && pnpm lint && pnpm test && pnpm build",
+    "validate:integration": "pnpm validate && pnpm test:integration"
   },
   "devDependencies": {
     "@eslint/js": "^9.18.0",

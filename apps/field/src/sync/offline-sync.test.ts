@@ -4,6 +4,7 @@ import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
 import { createTestDatabase, type FieldDatabase } from '../db/database.js';
 import { addMeasurement, createAssessment, getPendingSyncCount } from '../data/repository.js';
+import { resetApiConnectivityForTests } from './api-connectivity.js';
 import { runSync } from './sync-service.js';
 import { getSyncApiUrl } from '../config.js';
 
@@ -21,12 +22,14 @@ describe('offline sync flow', () => {
     localStorage.setItem(COLLECTOR_ID_KEY, '770e8400-e29b-41d4-a716-446655440000');
     await database.open();
     vi.stubGlobal('navigator', { onLine: false });
+    resetApiConnectivityForTests();
   });
 
   afterEach(async () => {
     server.resetHandlers();
     server.close();
     vi.unstubAllGlobals();
+    resetApiConnectivityForTests();
     await database.delete();
   });
 

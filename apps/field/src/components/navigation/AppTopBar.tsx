@@ -35,7 +35,7 @@ export function AppTopBar() {
         <Link
           to="/sync"
           className="app-top-bar__connectivity connectivity-indicator"
-          aria-label={online ? 'Online — open sync' : 'Offline — open sync'}
+          aria-label={online ? 'Server reachable — open sync' : 'Server unreachable — open sync'}
         >
           <span
             className={`connectivity-indicator__dot ${online ? 'connectivity-indicator__dot--online' : 'connectivity-indicator__dot--offline'}`}
