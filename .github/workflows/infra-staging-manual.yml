@@ -1,0 +1,42 @@
+# Manual Terraform apply to staging from any branch (does not touch production).
+
+name: Infra staging (manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      git_ref:
+        description: Branch, tag, or SHA to deploy from
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  staging-apply:
+    name: Terraform apply (staging)
+    runs-on: ubuntu-latest
+    environment: staging
+    if: vars.TF_INFRA_ENABLED == 'true'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.git_ref || github.ref }}
+
+      - name: Terraform apply staging
+        uses: ./.github/actions/terraform
+        with:
+          working-directory: infra/terraform/environments/staging
+          command: apply
+          aws-role-arn: ${{ secrets.AWS_TERRAFORM_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION || 'us-east-1' }}
+          state-bucket: ${{ secrets.TF_STATE_BUCKET }}
+          state-key: staging/terraform.tfstate
+          lock-table: ${{ secrets.TF_LOCK_TABLE }}
+
+      - name: Smoke test staging
+        shell: pwsh
+        run: pnpm exec tsx scripts/terraform-smoke-test.ts staging

@@ -57,9 +57,20 @@ pnpm test:integration -- --database-url postgresql://mmap:mmap@localhost:5432/mm
 
 Or `pnpm validate:integration` after Postgres is up (pass `--database-url` as above if needed).
 
-### Windows (PowerShell)
+### Windows (PowerShell and Git Bash)
 
-This repo has **no `.sh` files** and no bash-based git hooks. **Do not** create shell scripts or run bash-only syntax (`./script.sh`, `cp`, heredoc commits, `cat <<EOF`) for validation or tooling.
+This repo has **no `.sh` files** and no bash-based git hooks. **Do not** create shell scripts or run bash-only syntax (`./script.sh`, `cp`, heredoc commits, `cat <<EOF`) for validation or tooling. Infrastructure helpers live in `scripts/terraform-*.ts` and run via `pnpm exec tsx` on PowerShell, Git Bash, or CI.
+
+**Git Bash is supported** for all `pnpm` commands. Set non-interactive installs when automating:
+
+```bash
+CI=true pnpm install --frozen-lockfile
+pnpm validate
+```
+
+Root `.npmrc` sets `confirm-modules-purge=false` so `pnpm install` does not block on "Proceed? (Y/n)".
+
+**Never invoke Cursor plugin bash hooks** (for example AWS Deployments `validate-drawio.sh`). That script is external to this repo and can leave Git Bash terminals open on Windows. Use **Mermaid** in markdown for architecture diagrams — do not add `.drawio` files to this repository.
 
 Use **pnpm scripts only** — they invoke Node.js and work natively on Windows:
 
@@ -129,7 +140,9 @@ CI **must pass** before merge. Agents must add or update tests when behavior cha
 - Over-engineer abstractions for one-off logic
 - Run web dev server on port 5173 while Docker web is up (cache conflicts)
 - Commit `.env`, credentials, or `node_modules/`
-- Create or invoke `.sh` / bash scripts for validation — use `pnpm validate` instead
+- Create or invoke `.sh` / bash scripts — use `pnpm validate` and `pnpm exec tsx scripts/...` instead
+- Add `.drawio` files or run plugin hooks like `validate-drawio.sh` — use Mermaid in markdown
+- Run long-lived background processes in agent terminals without explicit user request
 
 ## Key documentation
 
@@ -137,6 +150,7 @@ CI **must pass** before merge. Agents must add or update tests when behavior cha
 | ---------------------------------------------------- | ----------------------------------- |
 | [docs/CODING_STANDARDS.md](docs/CODING_STANDARDS.md) | Full style guide and testing policy |
 | [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)           | Clone, build, test, troubleshoot    |
+| [docs/ops/FAILURE_MODES.md](docs/ops/FAILURE_MODES.md) | Incident triage and runbooks (FM-01–FM-05) |
 | [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md)         | Functional requirements             |
 | [CONTRIBUTING.md](CONTRIBUTING.md)                   | Human contributor workflow          |
 | [README.md](README.md)                               | Overview and architecture diagram   |

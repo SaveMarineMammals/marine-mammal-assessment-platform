@@ -1,0 +1,80 @@
+# One-time AWS bootstrap: Terraform remote state bucket, lock table, and GitHub OIDC role.
+#
+# Protection:
+# - workflow_dispatch only (never runs automatically)
+# - GitHub Environment "bootstrap" should require admin reviewers (configure in repo Settings)
+# - Job verifies the actor has repository admin permission
+
+name: Infra bootstrap
+
+on:
+  workflow_dispatch:
+    inputs:
+      aws_region:
+        description: AWS region for bootstrap resources
+        required: false
+        default: us-east-1
+      github_repository:
+        description: GitHub repo slug (owner/name) for Terraform OIDC trust
+        required: false
+        default: SaveMarineMammals/marine-mammal-assessment-platform
+
+permissions:
+  contents: read
+
+jobs:
+  bootstrap:
+    name: Bootstrap Terraform backend
+    runs-on: ubuntu-latest
+    environment: bootstrap
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Assert repository admin
+        uses: ./.github/actions/assert-repo-admin
+
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.8
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_BOOTSTRAP_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_BOOTSTRAP_SECRET_ACCESS_KEY }}
+          aws-region: ${{ inputs.aws_region }}
+
+      - name: Terraform init
+        working-directory: infra/bootstrap
+        run: terraform init -input=false
+
+      - name: Terraform apply
+        working-directory: infra/bootstrap
+        run: |
+          terraform apply -input=false -auto-approve \
+            -var="aws_region=${{ inputs.aws_region }}" \
+            -var="github_repository=${{ inputs.github_repository }}"
+
+      - name: Publish bootstrap outputs
+        working-directory: infra/bootstrap
+        run: |
+          {
+            echo "### Bootstrap complete"
+            echo ""
+            echo "Add these **repository secrets** (Settings → Secrets → Actions):"
+            echo ""
+            echo "| Secret | Value |"
+            echo "| --- | --- |"
+            echo "| \`AWS_TERRAFORM_ROLE_ARN\` | \`$(terraform output -raw terraform_ci_role_arn)\` |"
+            echo "| \`TF_STATE_BUCKET\` | \`$(terraform output -raw terraform_state_bucket)\` |"
+            echo "| \`TF_LOCK_TABLE\` | \`$(terraform output -raw terraform_lock_table)\` |"
+            echo ""
+            echo "Set repository variable \`TF_INFRA_ENABLED\` to \`true\` to activate Terraform CI jobs."
+            echo ""
+            echo "Copy \`infra/terraform/environments/*/terraform.tfvars.example\` to \`terraform.tfvars\` in each environment (not committed)."
+          } >> "$GITHUB_STEP_SUMMARY"

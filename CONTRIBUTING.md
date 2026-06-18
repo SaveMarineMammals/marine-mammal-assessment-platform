@@ -24,7 +24,7 @@ CI must pass on every pull request. Run these locally from the repository root:
 pnpm validate
 ```
 
-On Windows PowerShell, the same command works — this repo uses pnpm/Node.js only (no `.sh` scripts or bash hooks).
+On Windows, **Git Bash** and **PowerShell** both work — this repo uses pnpm/Node.js only (no `.sh` scripts in the repo). Avoid plugin bash hooks such as AWS Deployments `validate-drawio.sh`; they are not part of MMAP and can leave terminals open on Windows.
 
 If you changed sync, API, or schema behavior, also run integration tests (requires PostgreSQL):
 

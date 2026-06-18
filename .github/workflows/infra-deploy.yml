@@ -1,0 +1,160 @@
+# Progressive infrastructure deployment: staging apply → verify → production apply (main only).
+
+name: Infra deploy
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'infra/**'
+      - '.github/workflows/infra-deploy.yml'
+      - '.github/actions/terraform/**'
+      - 'scripts/terraform-*.ts'
+  workflow_dispatch:
+
+concurrency:
+  group: infra-deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  staging-apply:
+    name: Terraform apply (staging)
+    runs-on: ubuntu-latest
+    environment: staging
+    if: vars.TF_INFRA_ENABLED == 'true'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Terraform apply staging
+        uses: ./.github/actions/terraform
+        with:
+          working-directory: infra/terraform/environments/staging
+          command: apply
+          aws-role-arn: ${{ secrets.AWS_TERRAFORM_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION || 'us-east-1' }}
+          state-bucket: ${{ secrets.TF_STATE_BUCKET }}
+          state-key: staging/terraform.tfstate
+          lock-table: ${{ secrets.TF_LOCK_TABLE }}
+
+  verify-staging:
+    name: Verify staging
+    runs-on: ubuntu-latest
+    needs: staging-apply
+    if: vars.TF_INFRA_ENABLED == 'true'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        shell: pwsh
+        run: pnpm install --frozen-lockfile
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.8
+          terraform_wrapper: false
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_TERRAFORM_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION || 'us-east-1' }}
+
+      - name: Init staging state
+        shell: pwsh
+        run: |
+          pnpm exec tsx scripts/terraform-init.ts `
+            infra/terraform/environments/staging `
+            "${{ secrets.TF_STATE_BUCKET }}" `
+            staging/terraform.tfstate `
+            "${{ vars.AWS_REGION || 'us-east-1' }}" `
+            "${{ secrets.TF_LOCK_TABLE }}"
+
+      - name: Smoke test staging
+        shell: pwsh
+        run: pnpm exec tsx scripts/terraform-smoke-test.ts staging
+
+  production-apply:
+    name: Terraform apply (production)
+    runs-on: ubuntu-latest
+    needs: verify-staging
+    environment: production
+    if: github.ref == 'refs/heads/main' && vars.TF_INFRA_ENABLED == 'true'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Terraform apply production
+        uses: ./.github/actions/terraform
+        with:
+          working-directory: infra/terraform/environments/production
+          command: apply
+          aws-role-arn: ${{ secrets.AWS_TERRAFORM_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION || 'us-east-1' }}
+          state-bucket: ${{ secrets.TF_STATE_BUCKET }}
+          state-key: production/terraform.tfstate
+          lock-table: ${{ secrets.TF_LOCK_TABLE }}
+
+  verify-production:
+    name: Verify production
+    runs-on: ubuntu-latest
+    needs: production-apply
+    if: github.ref == 'refs/heads/main' && vars.TF_INFRA_ENABLED == 'true'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        shell: pwsh
+        run: pnpm install --frozen-lockfile
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.8
+          terraform_wrapper: false
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_TERRAFORM_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION || 'us-east-1' }}
+
+      - name: Init production state
+        shell: pwsh
+        run: |
+          pnpm exec tsx scripts/terraform-init.ts `
+            infra/terraform/environments/production `
+            "${{ secrets.TF_STATE_BUCKET }}" `
+            production/terraform.tfstate `
+            "${{ vars.AWS_REGION || 'us-east-1' }}" `
+            "${{ secrets.TF_LOCK_TABLE }}"
+
+      - name: Smoke test production
+        shell: pwsh
+        run: pnpm exec tsx scripts/terraform-smoke-test.ts production
