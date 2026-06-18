@@ -36,14 +36,14 @@ Required GitHub **environment** secrets (from Terraform outputs — see [INFRA_P
 
 ## Detection
 
-| Signal | Where |
-| ------ | ----- |
-| Red **Deploy AWS** workflow | GitHub Actions → Deploy AWS |
-| Static site new `version.json` but API old | Field update banner vs sync errors |
-| ECR push / docker build errors | Job log **Build and push API image** |
-| Migration stderr | Job log **Run database migrations** |
-| `TODO: wire App Runner` only message | API never rolled out after image push |
-| CloudFront 404 on new routes | Missing invalidation or wrong bucket |
+| Signal                                     | Where                                 |
+| ------------------------------------------ | ------------------------------------- |
+| Red **Deploy AWS** workflow                | GitHub Actions → Deploy AWS           |
+| Static site new `version.json` but API old | Field update banner vs sync errors    |
+| ECR push / docker build errors             | Job log **Build and push API image**  |
+| Migration stderr                           | Job log **Run database migrations**   |
+| `TODO: wire App Runner` only message       | API never rolled out after image push |
+| CloudFront 404 on new routes               | Missing invalidation or wrong bucket  |
 
 ## Prerequisites
 
@@ -191,13 +191,13 @@ Follow [DEPLOYMENT.md](../DEPLOYMENT.md) post-deploy checks:
 
 ## References
 
-| Resource | Path |
-| -------- | ---- |
-| Deploy workflow | `.github/workflows/deploy-aws.yml` |
-| GitHub OIDC module | `infra/terraform/modules/github-oidc/` |
-| Staging outputs (secrets mapping) | `infra/terraform/environments/staging/outputs.tf` |
-| Promotion checklist | [DEPLOYMENT.md](../DEPLOYMENT.md) |
-| Infra prerequisites | [INFRA_PIPELINES.md](../INFRA_PIPELINES.md) |
-| Rollback table | [DEPLOYMENT.md](../DEPLOYMENT.md#rollback) |
-| App Runner module | `infra/terraform/modules/api/main.tf` |
-| External | [GitHub Actions OIDC with AWS](https://docs.github.com/en/actions/security-for-github-actions/security-hardening-your-deployments/configuring-openid-connect-in-amazon-web-services) |
+| Resource                          | Path                                                                                                                                                                                 |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Deploy workflow                   | `.github/workflows/deploy-aws.yml`                                                                                                                                                   |
+| GitHub OIDC module                | `infra/terraform/modules/github-oidc/`                                                                                                                                               |
+| Staging outputs (secrets mapping) | `infra/terraform/environments/staging/outputs.tf`                                                                                                                                    |
+| Promotion checklist               | [DEPLOYMENT.md](../DEPLOYMENT.md)                                                                                                                                                    |
+| Infra prerequisites               | [INFRA_PIPELINES.md](../INFRA_PIPELINES.md)                                                                                                                                          |
+| Rollback table                    | [DEPLOYMENT.md](../DEPLOYMENT.md#rollback)                                                                                                                                           |
+| App Runner module                 | `infra/terraform/modules/api/main.tf`                                                                                                                                                |
+| External                          | [GitHub Actions OIDC with AWS](https://docs.github.com/en/actions/security-for-github-actions/security-hardening-your-deployments/configuring-openid-connect-in-amazon-web-services) |

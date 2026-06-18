@@ -24,14 +24,14 @@ The API persists sync batches and serves public dataset endpoints through a **Po
 
 ## Detection
 
-| Signal | Where |
-| ------ | ----- |
-| `503 Database unavailable` | `GET /v1/public/stats`, `/v1/public/assessments` |
-| Sync batch persistence errors | API logs, `sync_audit` with `status: error` |
-| App Runner service unhealthy | AWS Console → App Runner → health check failures |
-| Deploy job fails at **Run database migrations** | `.github/workflows/deploy-aws.yml` |
-| CloudWatch alarms | `mmap-api-5xx`, RDS storage/CPU ([AWS_INFRA.md](../AWS_INFRA.md)) |
-| Local: integration tests skip | Missing `DATABASE_URL` or Postgres not running |
+| Signal                                          | Where                                                             |
+| ----------------------------------------------- | ----------------------------------------------------------------- |
+| `503 Database unavailable`                      | `GET /v1/public/stats`, `/v1/public/assessments`                  |
+| Sync batch persistence errors                   | API logs, `sync_audit` with `status: error`                       |
+| App Runner service unhealthy                    | AWS Console → App Runner → health check failures                  |
+| Deploy job fails at **Run database migrations** | `.github/workflows/deploy-aws.yml`                                |
+| CloudWatch alarms                               | `mmap-api-5xx`, RDS storage/CPU ([AWS_INFRA.md](../AWS_INFRA.md)) |
+| Local: integration tests skip                   | Missing `DATABASE_URL` or Postgres not running                    |
 
 ## Prerequisites
 
@@ -199,13 +199,13 @@ The API persists sync batches and serves public dataset endpoints through a **Po
 
 ## References
 
-| Resource | Path |
-| -------- | ---- |
-| Connection pool | `apps/api/src/db/pool.ts` |
-| URL normalization | `apps/api/src/cli/database-url.ts` |
-| RDS module | `infra/terraform/modules/database/main.tf` |
-| App Runner secrets | `infra/terraform/modules/api/main.tf` |
-| Deploy migrations step | `.github/workflows/deploy-aws.yml` |
-| Env example | `apps/api/.env.example` |
-| Deployment / restore | [DEPLOYMENT.md](../DEPLOYMENT.md) |
-| Secrets architecture | [AWS_INFRA.md](../AWS_INFRA.md) |
+| Resource               | Path                                       |
+| ---------------------- | ------------------------------------------ |
+| Connection pool        | `apps/api/src/db/pool.ts`                  |
+| URL normalization      | `apps/api/src/cli/database-url.ts`         |
+| RDS module             | `infra/terraform/modules/database/main.tf` |
+| App Runner secrets     | `infra/terraform/modules/api/main.tf`      |
+| Deploy migrations step | `.github/workflows/deploy-aws.yml`         |
+| Env example            | `apps/api/.env.example`                    |
+| Deployment / restore   | [DEPLOYMENT.md](../DEPLOYMENT.md)          |
+| Secrets architecture   | [AWS_INFRA.md](../AWS_INFRA.md)            |

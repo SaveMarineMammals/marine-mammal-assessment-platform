@@ -12,17 +12,17 @@ S3 buckets for static frontends and dataset/attachment object storage.
 
 ## Inputs
 
-| Name | Type |
-| ---- | ---- |
-| `name_prefix` | string |
-| `tags` | map(string) |
+| Name          | Type        |
+| ------------- | ----------- |
+| `name_prefix` | string      |
+| `tags`        | map(string) |
 
 ## Outputs
 
-| Name | Description |
-| ---- | ----------- |
-| `web_bucket_id` | Web static bucket name |
-| `web_bucket_arn` | Web bucket ARN |
-| `field_bucket_id` | Field static bucket name |
-| `field_bucket_arn` | Field bucket ARN |
-| `data_bucket_arn` | Private data bucket ARN |
+| Name               | Description              |
+| ------------------ | ------------------------ |
+| `web_bucket_id`    | Web static bucket name   |
+| `web_bucket_arn`   | Web bucket ARN           |
+| `field_bucket_id`  | Field static bucket name |
+| `field_bucket_arn` | Field bucket ARN         |
+| `data_bucket_arn`  | Private data bucket ARN  |

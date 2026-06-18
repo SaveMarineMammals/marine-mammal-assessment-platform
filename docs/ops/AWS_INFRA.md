@@ -74,15 +74,15 @@ flowchart TB
 
 ### Design choices
 
-| Decision | v1 (this sketch) | Upgrade path |
-| -------- | ---------------- | ------------ |
-| API compute | **App Runner** — low ops, health-checked rolling deploy | **ECS Fargate + CodeDeploy** for native canary traffic shifting |
-| Database | **RDS PostgreSQL** (`db.t4g.micro` staging, `db.t4g.small` prod) with PostGIS | Aurora Serverless v2 if sync volume grows |
-| Frontends | **S3 + CloudFront** (build artifacts from CI) | Same; invalidate cache on deploy |
-| Object storage | **S3** (dataset exports, future attachments) | Lifecycle rules to Glacier for old snapshots |
-| Same-origin `/v1` | CloudFront **path behavior** proxies API | Keeps field PWA working without `VITE_API_BASE_URL` |
-| Secrets | **Secrets Manager** | Rotation for DB password via RDS integration |
-| IaC | **Terraform** modules under `infra/terraform/` | Remote state in S3 + DynamoDB lock table |
+| Decision          | v1 (this sketch)                                                              | Upgrade path                                                    |
+| ----------------- | ----------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| API compute       | **App Runner** — low ops, health-checked rolling deploy                       | **ECS Fargate + CodeDeploy** for native canary traffic shifting |
+| Database          | **RDS PostgreSQL** (`db.t4g.micro` staging, `db.t4g.small` prod) with PostGIS | Aurora Serverless v2 if sync volume grows                       |
+| Frontends         | **S3 + CloudFront** (build artifacts from CI)                                 | Same; invalidate cache on deploy                                |
+| Object storage    | **S3** (dataset exports, future attachments)                                  | Lifecycle rules to Glacier for old snapshots                    |
+| Same-origin `/v1` | CloudFront **path behavior** proxies API                                      | Keeps field PWA working without `VITE_API_BASE_URL`             |
+| Secrets           | **Secrets Manager**                                                           | Rotation for DB password via RDS integration                    |
+| IaC               | **Terraform** modules under `infra/terraform/`                                | Remote state in S3 + DynamoDB lock table                        |
 
 ### Why CloudFront path routing for `/v1`
 
@@ -107,14 +107,14 @@ RDS is not publicly accessible. App Runner reaches it through the VPC connector.
 
 ## Environments
 
-| | Staging | Production |
-| --- | --- | --- |
-| Terraform workspace | `staging` | `production` |
-| API service | `mmap-api-staging` | `mmap-api` |
-| RDS instance | `db.t4g.micro`, single-AZ | `db.t4g.small`, multi-AZ optional |
-| CloudFront | `field-staging.*`, `staging.*` | `field.*`, `www.*` |
-| Deletion protection | off | on |
-| Backup retention | 7 days | 30 days |
+|                     | Staging                        | Production                        |
+| ------------------- | ------------------------------ | --------------------------------- |
+| Terraform workspace | `staging`                      | `production`                      |
+| API service         | `mmap-api-staging`             | `mmap-api`                        |
+| RDS instance        | `db.t4g.micro`, single-AZ      | `db.t4g.small`, multi-AZ optional |
+| CloudFront          | `field-staging.*`, `staging.*` | `field.*`, `www.*`                |
+| Deletion protection | off                            | on                                |
+| Backup retention    | 7 days                         | 30 days                           |
 
 ## Repository layout
 
@@ -260,13 +260,13 @@ Static frontends already support safe rollback: redeploy previous S3 object vers
 
 ## Cost estimate (us-east-1, no credits)
 
-| Resource | Staging | Production |
-| -------- | ------- | ---------- |
-| RDS | ~$15/mo | ~$25–35/mo |
-| App Runner | ~$5–10/mo | ~$10–20/mo |
-| S3 + CloudFront | ~$2/mo | ~$5/mo |
-| NAT (if added) | ~$32/mo | ~$32/mo |
-| **Total** | **~$25–60/mo** | **~$45–90/mo** |
+| Resource        | Staging        | Production     |
+| --------------- | -------------- | -------------- |
+| RDS             | ~$15/mo        | ~$25–35/mo     |
+| App Runner      | ~$5–10/mo      | ~$10–20/mo     |
+| S3 + CloudFront | ~$2/mo         | ~$5/mo         |
+| NAT (if added)  | ~$32/mo        | ~$32/mo        |
+| **Total**       | **~$25–60/mo** | **~$45–90/mo** |
 
 Skip NAT in v1 if App Runner VPC connector + public RDS access is not required (RDS stays private; connector handles API→DB).
 

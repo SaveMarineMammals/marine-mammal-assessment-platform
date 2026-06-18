@@ -4,12 +4,12 @@ GitHub Actions workflows for AWS Terraform bootstrap, plan, and progressive depl
 
 ## Workflows
 
-| Workflow | Trigger | Purpose |
-| -------- | ------- | ------- |
-| [infra-bootstrap.yml](../../.github/workflows/infra-bootstrap.yml) | Manual (`workflow_dispatch`) | One-time S3 state bucket, DynamoDB lock table, Terraform OIDC role |
-| [ci.yml](../../.github/workflows/ci.yml) → `terraform-plan` | PR + push to `main` | Plan staging & production; PR comment if destroys detected |
-| [infra-deploy.yml](../../.github/workflows/infra-deploy.yml) | Push to `main` (infra paths) + manual | Apply staging → verify → apply production (main only) |
-| [infra-staging-manual.yml](../../.github/workflows/infra-staging-manual.yml) | Manual | Apply **staging only** from any branch/ref |
+| Workflow                                                                     | Trigger                               | Purpose                                                            |
+| ---------------------------------------------------------------------------- | ------------------------------------- | ------------------------------------------------------------------ |
+| [infra-bootstrap.yml](../../.github/workflows/infra-bootstrap.yml)           | Manual (`workflow_dispatch`)          | One-time S3 state bucket, DynamoDB lock table, Terraform OIDC role |
+| [ci.yml](../../.github/workflows/ci.yml) → `terraform-plan`                  | PR + push to `main`                   | Plan staging & production; PR comment if destroys detected         |
+| [infra-deploy.yml](../../.github/workflows/infra-deploy.yml)                 | Push to `main` (infra paths) + manual | Apply staging → verify → apply production (main only)              |
+| [infra-staging-manual.yml](../../.github/workflows/infra-staging-manual.yml) | Manual                                | Apply **staging only** from any branch/ref                         |
 
 ## One-time setup
 
@@ -17,39 +17,39 @@ GitHub Actions workflows for AWS Terraform bootstrap, plan, and progressive depl
 
 Create environments in **Settings → Environments**:
 
-| Environment | Protection |
-| ----------- | ---------- |
-| `bootstrap` | Required reviewers: repository **admins only** |
-| `staging` | Optional reviewers; deploy secrets (see below) |
+| Environment  | Protection                                             |
+| ------------ | ------------------------------------------------------ |
+| `bootstrap`  | Required reviewers: repository **admins only**         |
+| `staging`    | Optional reviewers; deploy secrets (see below)         |
 | `production` | Required reviewers recommended before production apply |
 
 After the first Terraform apply per environment, add GitHub secrets from `terraform output`:
 
-| Secret | Terraform output |
-| ------ | ---------------- |
-| `DATABASE_SECRET_ARN` | `database_secret_arn` |
-| `AWS_DEPLOY_ROLE_ARN` | `github_deploy_role_arn` |
-| `WEB_STATIC_BUCKET` | `web_static_bucket` |
-| `FIELD_STATIC_BUCKET` | `field_static_bucket` |
-| `WEB_CLOUDFRONT_ID` | `web_cloudfront_distribution_id` |
+| Secret                | Terraform output                   |
+| --------------------- | ---------------------------------- |
+| `DATABASE_SECRET_ARN` | `database_secret_arn`              |
+| `AWS_DEPLOY_ROLE_ARN` | `github_deploy_role_arn`           |
+| `WEB_STATIC_BUCKET`   | `web_static_bucket`                |
+| `FIELD_STATIC_BUCKET` | `field_static_bucket`              |
+| `WEB_CLOUDFRONT_ID`   | `web_cloudfront_distribution_id`   |
 | `FIELD_CLOUDFRONT_ID` | `field_cloudfront_distribution_id` |
 
 Do **not** store a plaintext `DATABASE_URL` in GitHub.
 
 ### 2. Bootstrap secrets (environment: `bootstrap`)
 
-| Secret | Description |
-| ------ | ----------- |
-| `AWS_BOOTSTRAP_ACCESS_KEY_ID` | IAM user/role access key with permission to create S3, DynamoDB, IAM |
-| `AWS_BOOTSTRAP_SECRET_ACCESS_KEY` | Matching secret key |
+| Secret                            | Description                                                          |
+| --------------------------------- | -------------------------------------------------------------------- |
+| `AWS_BOOTSTRAP_ACCESS_KEY_ID`     | IAM user/role access key with permission to create S3, DynamoDB, IAM |
+| `AWS_BOOTSTRAP_SECRET_ACCESS_KEY` | Matching secret key                                                  |
 
 Run **Infra bootstrap** from Actions (admin only). Copy outputs into repository secrets:
 
-| Secret | From bootstrap output |
-| ------ | --------------------- |
-| `AWS_TERRAFORM_ROLE_ARN` | `terraform_ci_role_arn` |
-| `TF_STATE_BUCKET` | `terraform_state_bucket` |
-| `TF_LOCK_TABLE` | `terraform_lock_table` |
+| Secret                   | From bootstrap output    |
+| ------------------------ | ------------------------ |
+| `AWS_TERRAFORM_ROLE_ARN` | `terraform_ci_role_arn`  |
+| `TF_STATE_BUCKET`        | `terraform_state_bucket` |
+| `TF_LOCK_TABLE`          | `terraform_lock_table`   |
 
 ### 3. Enable Terraform CI jobs
 

@@ -35,11 +35,11 @@ Enabled in application migrations (`CREATE EXTENSION IF NOT EXISTS postgis`), no
 
 ## Outputs
 
-| Name | Description |
-| ---- | ----------- |
-| `db_instance_id` | RDS instance identifier |
-| `database_url_secret_arn` | RDS-managed Secrets Manager ARN |
-| `database_secret_kms_key_arn` | KMS key for the master secret |
+| Name                          | Description                     |
+| ----------------------------- | ------------------------------- |
+| `db_instance_id`              | RDS instance identifier         |
+| `database_url_secret_arn`     | RDS-managed Secrets Manager ARN |
+| `database_secret_kms_key_arn` | KMS key for the master secret   |
 
 ## Migration from Terraform-managed passwords
 

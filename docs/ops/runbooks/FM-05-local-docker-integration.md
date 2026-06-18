@@ -8,11 +8,11 @@
 
 Local full stack and integration tests depend on **Docker Compose** (`docker-compose.yml`) and/or the CI **postgres service** (`.github/workflows/ci.yml`).
 
-| Mode | Services | Purpose |
-| ---- | -------- | ------- |
-| Full stack | postgres, minio, api, web, field | End-to-end local demo |
-| Dev hybrid | postgres, minio, api only | Hot-reload frontends via `pnpm dev` |
-| Integration tests | postgres (local or CI service) | `pnpm test:integration` |
+| Mode              | Services                         | Purpose                             |
+| ----------------- | -------------------------------- | ----------------------------------- |
+| Full stack        | postgres, minio, api, web, field | End-to-end local demo               |
+| Dev hybrid        | postgres, minio, api only        | Hot-reload frontends via `pnpm dev` |
+| Integration tests | postgres (local or CI service)   | `pnpm test:integration`             |
 
 Compose uses **healthchecks** — `api` waits for healthy postgres/minio; `web`/`field` wait for healthy api. Postgres image: `postgis/postgis:16-3.4` on port **5432**.
 
@@ -30,13 +30,13 @@ CI integration job sets `DATABASE_URL=postgresql://mmap:mmap@localhost:5432/mmap
 
 ## Detection
 
-| Signal | Where |
-| ------ | ----- |
-| `docker compose ps` shows `unhealthy` or `Exit` | Local terminal |
-| `connection refused` on 5432 | migrate / integration tests |
-| CI job **API & field sync integration** failed | GitHub Actions |
-| Tests log: skipped / `SYNC_INTEGRATION_READY=false` | Vitest output |
-| `pnpm validate:integration` exits non-zero | Local pre-PR check |
+| Signal                                              | Where                       |
+| --------------------------------------------------- | --------------------------- |
+| `docker compose ps` shows `unhealthy` or `Exit`     | Local terminal              |
+| `connection refused` on 5432                        | migrate / integration tests |
+| CI job **API & field sync integration** failed      | GitHub Actions              |
+| Tests log: skipped / `SYNC_INTEGRATION_READY=false` | Vitest output               |
+| `pnpm validate:integration` exits non-zero          | Local pre-PR check          |
 
 ## Prerequisites
 
@@ -191,14 +191,14 @@ CI integration job sets `DATABASE_URL=postgresql://mmap:mmap@localhost:5432/mmap
 
 ## References
 
-| Resource | Path |
-| -------- | ---- |
-| Compose file | `docker-compose.yml` |
-| CI integration job | `.github/workflows/ci.yml` (`integration`) |
-| Developer guide | [DEVELOPMENT.md](../../DEVELOPMENT.md) |
-| Docker full stack | [DEVELOPMENT.md](../../DEVELOPMENT.md#option-a--full-stack-in-docker-fastest-first-run) |
-| Integration testing | [DEVELOPMENT.md](../../DEVELOPMENT.md#integration-tests) |
-| Field sync troubleshooting | [DEVELOPMENT.md](../../DEVELOPMENT.md#field-sync-not-reaching-api) |
-| AGENTS.md validation commands | [AGENTS.md](../../../AGENTS.md) |
-| Field nginx proxy | `apps/field/nginx.conf` |
-| API Dockerfile | `apps/api/Dockerfile` |
+| Resource                      | Path                                                                                    |
+| ----------------------------- | --------------------------------------------------------------------------------------- |
+| Compose file                  | `docker-compose.yml`                                                                    |
+| CI integration job            | `.github/workflows/ci.yml` (`integration`)                                              |
+| Developer guide               | [DEVELOPMENT.md](../../DEVELOPMENT.md)                                                  |
+| Docker full stack             | [DEVELOPMENT.md](../../DEVELOPMENT.md#option-a--full-stack-in-docker-fastest-first-run) |
+| Integration testing           | [DEVELOPMENT.md](../../DEVELOPMENT.md#integration-tests)                                |
+| Field sync troubleshooting    | [DEVELOPMENT.md](../../DEVELOPMENT.md#field-sync-not-reaching-api)                      |
+| AGENTS.md validation commands | [AGENTS.md](../../../AGENTS.md)                                                         |
+| Field nginx proxy             | `apps/field/nginx.conf`                                                                 |
+| API Dockerfile                | `apps/api/Dockerfile`                                                                   |

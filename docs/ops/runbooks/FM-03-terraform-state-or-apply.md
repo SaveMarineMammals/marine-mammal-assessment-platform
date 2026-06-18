@@ -8,11 +8,11 @@
 
 MMAP infrastructure is managed with Terraform under `infra/terraform/`. Remote state lives in **S3** with locking via **DynamoDB** (`scripts/terraform-init.ts`). CI runs:
 
-| Workflow | Behavior |
-| -------- | -------- |
+| Workflow                    | Behavior                                                                     |
+| --------------------------- | ---------------------------------------------------------------------------- |
 | `ci.yml` → `terraform-plan` | Plans staging + production on PR/push to `main` when `TF_INFRA_ENABLED=true` |
-| `infra-deploy.yml` | Applies staging → smoke test → production (main only) |
-| `infra-staging-manual.yml` | Staging apply from any branch |
+| `infra-deploy.yml`          | Applies staging → smoke test → production (main only)                        |
+| `infra-staging-manual.yml`  | Staging apply from any branch                                                |
 
 Applies use `-auto-approve` via `scripts/terraform-apply.ts`. State keys are isolated: `staging/terraform.tfstate` and `production/terraform.tfstate`.
 
@@ -20,20 +20,20 @@ Applies use `-auto-approve` via `scripts/terraform-apply.ts`. State keys are iso
 
 **What breaks:**
 
-- **State lock** — concurrent apply/plan or crashed runner leaves DynamoDB lock; subsequent runs fail with *Error acquiring the state lock*.
+- **State lock** — concurrent apply/plan or crashed runner leaves DynamoDB lock; subsequent runs fail with _Error acquiring the state lock_.
 - **Plan/apply errors** — invalid tfvars, AWS API limits, dependency drift, or missing bootstrap secrets.
 - **Destroy in plan** — CI posts PR warning; merging without review can delete resources.
 - **`TF_INFRA_ENABLED` not true** — Terraform jobs skipped silently.
 
 ## Detection
 
-| Signal | Where |
-| ------ | ----- |
-| Red **Terraform plan** or **Infra deploy** job | GitHub Actions |
-| Log: `Error acquiring the state lock` | Plan/apply logs |
-| PR comment: ⚠️ **Terraform destroy detected** | `ci.yml` github-script step |
-| `terraform-smoke-test.ts` exit 1 after apply | `infra-deploy.yml` verify jobs |
-| Local: `terraform plan` non-zero exit | Operator workstation |
+| Signal                                         | Where                          |
+| ---------------------------------------------- | ------------------------------ |
+| Red **Terraform plan** or **Infra deploy** job | GitHub Actions                 |
+| Log: `Error acquiring the state lock`          | Plan/apply logs                |
+| PR comment: ⚠️ **Terraform destroy detected**  | `ci.yml` github-script step    |
+| `terraform-smoke-test.ts` exit 1 after apply   | `infra-deploy.yml` verify jobs |
+| Local: `terraform plan` non-zero exit          | Operator workstation           |
 
 ## Prerequisites
 
@@ -56,12 +56,12 @@ Applies use `-auto-approve` via `scripts/terraform-apply.ts`. State keys are iso
 
 3. **Read the error class**
 
-   | Error pattern | Likely cause |
-   | ------------- | ------------ |
-   | `Error acquiring the state lock` | Stale lock from parallel/crashed job |
+   | Error pattern                     | Likely cause                         |
+   | --------------------------------- | ------------------------------------ |
+   | `Error acquiring the state lock`  | Stale lock from parallel/crashed job |
    | `AccessDenied` on S3/DynamoDB/IAM | OIDC role or bootstrap secrets wrong |
-   | `InvalidParameterCombination` | RDS/App Runner module input drift |
-   | Destroy actions in plan | Resource rename or removed block |
+   | `InvalidParameterCombination`     | RDS/App Runner module input drift    |
+   | Destroy actions in plan           | Resource rename or removed block     |
 
 4. **Inspect lock table (AWS)**
 
@@ -175,14 +175,14 @@ Applies use `-auto-approve` via `scripts/terraform-apply.ts`. State keys are iso
 
 ## References
 
-| Resource | Path |
-| -------- | ---- |
-| Infra pipelines doc | [INFRA_PIPELINES.md](../INFRA_PIPELINES.md) |
-| Terraform composite action | `.github/actions/terraform/action.yml` |
+| Resource                    | Path                                                                                   |
+| --------------------------- | -------------------------------------------------------------------------------------- |
+| Infra pipelines doc         | [INFRA_PIPELINES.md](../INFRA_PIPELINES.md)                                            |
+| Terraform composite action  | `.github/actions/terraform/action.yml`                                                 |
 | Init / plan / apply scripts | `scripts/terraform-init.ts`, `scripts/terraform-plan.ts`, `scripts/terraform-apply.ts` |
-| Progressive deploy workflow | `.github/workflows/infra-deploy.yml` |
-| Manual staging workflow | `.github/workflows/infra-staging-manual.yml` |
-| CI plan job | `.github/workflows/ci.yml` (`terraform-plan`) |
-| Bootstrap | `infra/bootstrap/`, `.github/workflows/infra-bootstrap.yml` |
-| Operator quick start | [infra/README.md](../../../infra/README.md) |
-| Architecture | [AWS_INFRA.md](../AWS_INFRA.md) |
+| Progressive deploy workflow | `.github/workflows/infra-deploy.yml`                                                   |
+| Manual staging workflow     | `.github/workflows/infra-staging-manual.yml`                                           |
+| CI plan job                 | `.github/workflows/ci.yml` (`terraform-plan`)                                          |
+| Bootstrap                   | `infra/bootstrap/`, `.github/workflows/infra-bootstrap.yml`                            |
+| Operator quick start        | [infra/README.md](../../../infra/README.md)                                            |
+| Architecture                | [AWS_INFRA.md](../AWS_INFRA.md)                                                        |

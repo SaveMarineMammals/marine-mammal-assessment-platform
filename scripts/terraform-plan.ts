@@ -12,7 +12,13 @@ interface PlanJson {
 const workingDirectory = requireArg(2, 'working directory');
 const varFile = process.argv[3];
 
-const planArgs = ['plan', '-input=false', '-out=tfplan', '-no-color', ...resolveVarFile(workingDirectory, varFile)];
+const planArgs = [
+  'plan',
+  '-input=false',
+  '-out=tfplan',
+  '-no-color',
+  ...resolveVarFile(workingDirectory, varFile),
+];
 runTerraform(planArgs, { cwd: workingDirectory });
 
 const planJson = captureTerraform(['show', '-json', 'tfplan'], { cwd: workingDirectory });

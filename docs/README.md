@@ -9,12 +9,12 @@
 | [MILESTONE_PROMPTS.md](MILESTONE_PROMPTS.md)                               | Implementers          | Cursor/agent prompts per milestone                       |
 | [protocols/manatee-v1-field-guide.md](protocols/manatee-v1-field-guide.md) | Field biologists      | CMARI-style manatee workflow (also bundled in field app) |
 | [uat/manatee-v1-checklist.md](uat/manatee-v1-checklist.md)                 | QA / field advisors   | User acceptance test scenarios                           |
-| [ops/SECURITY_REMEDIATION.md](ops/SECURITY_REMEDIATION.md)                 | Operators             | Tracked security findings and remediation status           |
-| [ops/INFRA_PIPELINES.md](ops/INFRA_PIPELINES.md)                           | Operators             | Terraform bootstrap, CI plan, progressive deploy           |
-| [ops/AWS_INFRA.md](ops/AWS_INFRA.md)                                       | Operators             | AWS architecture sketch and Terraform layout               |
-| [ops/DEPLOYMENT.md](ops/DEPLOYMENT.md)                                     | Operators             | Staging/production promotion and rollback runbook          |
-| [ops/FAILURE_MODES.md](ops/FAILURE_MODES.md)                               | Operators             | Top failure modes and links to runbooks                    |
-| [ops/runbooks/](ops/runbooks/)                                             | Operators             | Step-by-step incident runbooks (FM-01–FM-05)               |
+| [ops/SECURITY_REMEDIATION.md](ops/SECURITY_REMEDIATION.md)                 | Operators             | Tracked security findings and remediation status         |
+| [ops/INFRA_PIPELINES.md](ops/INFRA_PIPELINES.md)                           | Operators             | Terraform bootstrap, CI plan, progressive deploy         |
+| [ops/AWS_INFRA.md](ops/AWS_INFRA.md)                                       | Operators             | AWS architecture sketch and Terraform layout             |
+| [ops/DEPLOYMENT.md](ops/DEPLOYMENT.md)                                     | Operators             | Staging/production promotion and rollback runbook        |
+| [ops/FAILURE_MODES.md](ops/FAILURE_MODES.md)                               | Operators             | Top failure modes and links to runbooks                  |
+| [ops/runbooks/](ops/runbooks/)                                             | Operators             | Step-by-step incident runbooks (FM-01–FM-05)             |
 
 Repository entry points:
 

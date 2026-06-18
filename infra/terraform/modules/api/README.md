@@ -16,27 +16,27 @@ ECR repository and App Runner service for the Fastify sync API.
 
 ## Inputs
 
-| Name | Type |
-| ---- | ---- |
-| `name_prefix` | string |
-| `vpc_connector_arn` | string |
-| `private_subnet_ids` | list(string) |
-| `api_connector_sg_id` | string |
-| `database_secret_arn` | string |
-| `data_bucket_arn` | string |
-| `cpu` | string |
-| `memory` | string |
-| `cors_origins` | list(string) |
-| `auto_deployments` | bool |
-| `tags` | map(string) |
+| Name                  | Type         |
+| --------------------- | ------------ |
+| `name_prefix`         | string       |
+| `vpc_connector_arn`   | string       |
+| `private_subnet_ids`  | list(string) |
+| `api_connector_sg_id` | string       |
+| `database_secret_arn` | string       |
+| `data_bucket_arn`     | string       |
+| `cpu`                 | string       |
+| `memory`              | string       |
+| `cors_origins`        | list(string) |
+| `auto_deployments`    | bool         |
+| `tags`                | map(string)  |
 
 ## Outputs
 
-| Name | Description |
-| ---- | ----------- |
-| `ecr_repository_arn` | ECR repo ARN |
-| `service_arn` | App Runner service ARN |
-| `service_url` | HTTPS URL (CloudFront origin) |
+| Name                 | Description                   |
+| -------------------- | ----------------------------- |
+| `ecr_repository_arn` | ECR repo ARN                  |
+| `service_arn`        | App Runner service ARN        |
+| `service_url`        | HTTPS URL (CloudFront origin) |
 
 ## Phase 2 (canary)
 

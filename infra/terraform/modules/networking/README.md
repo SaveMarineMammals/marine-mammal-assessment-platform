@@ -12,16 +12,16 @@ VPC and security groups for RDS and App Runner VPC connector.
 
 ## Inputs
 
-| Name | Type |
-| ---- | ---- |
-| `name_prefix` | string |
-| `tags` | map(string) |
+| Name          | Type        |
+| ------------- | ----------- |
+| `name_prefix` | string      |
+| `tags`        | map(string) |
 
 ## Outputs
 
-| Name | Description |
-| ---- | ----------- |
-| `vpc_id` | VPC ID |
-| `private_subnet_ids` | Private subnet IDs for RDS |
+| Name                              | Description                      |
+| --------------------------------- | -------------------------------- |
+| `vpc_id`                          | VPC ID                           |
+| `private_subnet_ids`              | Private subnet IDs for RDS       |
 | `api_connector_security_group_id` | SG for App Runner connector ENIs |
-| `app_runner_vpc_connector_arn` | VPC connector ARN |
+| `app_runner_vpc_connector_arn`    | VPC connector ARN                |

@@ -12,11 +12,11 @@ Full architecture: [docs/ops/AWS_INFRA.md](../docs/ops/AWS_INFRA.md).
 
 ### Local plan (after bootstrap)
 
-   ```powershell
-   terraform init
-   terraform plan
-   terraform apply
-   ```
+```powershell
+terraform init
+terraform plan
+terraform apply
+```
 
 4. **First deploy:** after infrastructure exists, run the GitHub Actions `deploy-aws` workflow (or push a tag for production).
 

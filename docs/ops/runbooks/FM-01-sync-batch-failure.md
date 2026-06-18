@@ -20,13 +20,13 @@ Production and Docker use **same-origin** `/v1` (nginx or CloudFront path behavi
 
 ## Detection
 
-| Signal | Where |
-| ------ | ----- |
-| Assessment badge `pending` or `error` | Field app list/detail |
-| Sync / Settings page lists failed queue entries with `last_error` | `apps/field/src/pages/SyncPage.tsx`, `SettingsPage.tsx` |
-| API connectivity indicator offline | `apps/field/src/sync/api-connectivity.ts` (polls `/v1/health` every 30s) |
-| CloudWatch 4xx/5xx on App Runner or ALB | AWS console (when deployed) |
-| API logs show validation errors | `sync_audit` table / App Runner logs |
+| Signal                                                            | Where                                                                    |
+| ----------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| Assessment badge `pending` or `error`                             | Field app list/detail                                                    |
+| Sync / Settings page lists failed queue entries with `last_error` | `apps/field/src/pages/SyncPage.tsx`, `SettingsPage.tsx`                  |
+| API connectivity indicator offline                                | `apps/field/src/sync/api-connectivity.ts` (polls `/v1/health` every 30s) |
+| CloudWatch 4xx/5xx on App Runner or ALB                           | AWS console (when deployed)                                              |
+| API logs show validation errors                                   | `sync_audit` table / App Runner logs                                     |
 
 ## Prerequisites
 
@@ -142,14 +142,14 @@ Production and Docker use **same-origin** `/v1` (nginx or CloudFront path behavi
 
 ## References
 
-| Resource | Path |
-| -------- | ---- |
-| Sync service | `apps/field/src/sync/sync-service.ts` |
-| Sync worker & intervals | `apps/field/src/sync/sync-worker.ts`, `apps/field/src/config.ts` |
-| API connectivity monitor | `apps/field/src/sync/api-connectivity.ts` |
-| Batch ingestion | `apps/api/src/services/sync-batch.ts` |
-| Sync route | `apps/api/src/app.ts` (`POST /v1/sync/batch`) |
-| Field nginx `/v1` proxy | `apps/field/nginx.conf` |
-| Dev troubleshooting | [DEVELOPMENT.md](../../DEVELOPMENT.md#field-sync-not-reaching-api) |
-| Architecture (CloudFront `/v1`) | [AWS_INFRA.md](../AWS_INFRA.md) |
-| Security note (unauthenticated sync) | [SECURITY_REMEDIATION.md](../SECURITY_REMEDIATION.md) (APP-01) |
+| Resource                             | Path                                                               |
+| ------------------------------------ | ------------------------------------------------------------------ |
+| Sync service                         | `apps/field/src/sync/sync-service.ts`                              |
+| Sync worker & intervals              | `apps/field/src/sync/sync-worker.ts`, `apps/field/src/config.ts`   |
+| API connectivity monitor             | `apps/field/src/sync/api-connectivity.ts`                          |
+| Batch ingestion                      | `apps/api/src/services/sync-batch.ts`                              |
+| Sync route                           | `apps/api/src/app.ts` (`POST /v1/sync/batch`)                      |
+| Field nginx `/v1` proxy              | `apps/field/nginx.conf`                                            |
+| Dev troubleshooting                  | [DEVELOPMENT.md](../../DEVELOPMENT.md#field-sync-not-reaching-api) |
+| Architecture (CloudFront `/v1`)      | [AWS_INFRA.md](../AWS_INFRA.md)                                    |
+| Security note (unauthenticated sync) | [SECURITY_REMEDIATION.md](../SECURITY_REMEDIATION.md) (APP-01)     |

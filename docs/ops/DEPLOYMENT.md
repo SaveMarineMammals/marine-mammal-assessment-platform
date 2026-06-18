@@ -31,12 +31,12 @@ Operator checklist for promoting MMAP to staging and production on AWS. See [AWS
 
 ## Rollback
 
-| Component | Rollback action |
-| --------- | --------------- |
-| API (App Runner) | Redeploy previous ECR image tag via `StartDeployment` |
-| API (ECS phase 2) | CodeDeploy rollback or shift traffic to previous target group |
-| Web / field static | Restore previous S3 version; CloudFront invalidation `/*` |
-| Database | Restore RDS snapshot (see below) — **last resort** |
+| Component          | Rollback action                                               |
+| ------------------ | ------------------------------------------------------------- |
+| API (App Runner)   | Redeploy previous ECR image tag via `StartDeployment`         |
+| API (ECS phase 2)  | CodeDeploy rollback or shift traffic to previous target group |
+| Web / field static | Restore previous S3 version; CloudFront invalidation `/*`     |
+| Database           | Restore RDS snapshot (see below) — **last resort**            |
 
 ## Database backup & restore drill
 
@@ -60,10 +60,10 @@ Operator checklist for promoting MMAP to staging and production on AWS. See [AWS
 
 ## Secrets rotation
 
-| Secret | Location | Rotation |
-| ------ | -------- | -------- |
-| RDS master user | Secrets Manager (RDS-managed ARN → `DATABASE_SECRET_ARN` in GitHub) | Enable RDS secret rotation in AWS; redeploy API after rotation if needed |
-| `API_ADMIN_TOKEN` | Secrets Manager | Generate new token; update secret; redeploy API |
+| Secret            | Location                                                            | Rotation                                                                 |
+| ----------------- | ------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| RDS master user   | Secrets Manager (RDS-managed ARN → `DATABASE_SECRET_ARN` in GitHub) | Enable RDS secret rotation in AWS; redeploy API after rotation if needed |
+| `API_ADMIN_TOKEN` | Secrets Manager                                                     | Generate new token; update secret; redeploy API                          |
 
 The database password is **not** stored in Terraform state or GitHub as a plain connection string. CI migrations fetch the RDS JSON secret at runtime; the API normalizes it to a PostgreSQL URL.
 

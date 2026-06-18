@@ -11,9 +11,9 @@ Environment-specific roots live under `environments/`. Shared modules under `mod
 
 Use separate state keys per environment:
 
-| Environment | S3 state key |
-| ----------- | ------------ |
-| staging | `staging/terraform.tfstate` |
-| production | `production/terraform.tfstate` |
+| Environment | S3 state key                   |
+| ----------- | ------------------------------ |
+| staging     | `staging/terraform.tfstate`    |
+| production  | `production/terraform.tfstate` |
 
 Copy `backend.tf.example` to `backend.tf` and fill in your state bucket name.

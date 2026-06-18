@@ -17,19 +17,19 @@ Output `deploy_role_arn` → GitHub secret `AWS_DEPLOY_ROLE_ARN`.
 
 ## Inputs
 
-| Name | Type |
-| ---- | ---- |
-| `name_prefix` | string |
-| `github_repository` | string |
-| `ecr_repository_arn` | string |
-| `app_runner_arn` | string |
-| `web_bucket_arn` | string |
-| `field_bucket_arn` | string |
+| Name                          | Type         |
+| ----------------------------- | ------------ |
+| `name_prefix`                 | string       |
+| `github_repository`           | string       |
+| `ecr_repository_arn`          | string       |
+| `app_runner_arn`              | string       |
+| `web_bucket_arn`              | string       |
+| `field_bucket_arn`            | string       |
 | `cloudfront_distribution_ids` | list(string) |
-| `tags` | map(string) |
+| `tags`                        | map(string)  |
 
 ## Outputs
 
-| Name | Description |
-| ---- | ----------- |
+| Name              | Description                                              |
+| ----------------- | -------------------------------------------------------- |
 | `deploy_role_arn` | IAM role ARN for `aws-actions/configure-aws-credentials` |

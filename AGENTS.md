@@ -40,13 +40,25 @@ Full rules: [docs/CODING_STANDARDS.md](docs/CODING_STANDARDS.md).
 | Comments       | Only for non-obvious logic; no narrating obvious code           |
 | Schema changes | Update JSON Schema, Zod, fixtures, and tests together           |
 
+### Formatting (required on every change)
+
+CI runs `pnpm format:check` first in the quality job. **Any edited file must pass Prettier before you finish** — including markdown, YAML, JSON, and TypeScript.
+
+1. After editing, run **`pnpm format`** on the repo (or on paths you touched) to apply fixes.
+2. Confirm with **`pnpm format:check`** (must exit 0).
+3. Do not leave formatting fixes for the user or CI — unformatted docs and workflows are a common CI failure.
+
 Run before finishing (cross-platform — works in PowerShell, cmd, and bash):
 
 ```text
-pnpm validate
+pnpm format
+pnpm format:check
+pnpm lint
+pnpm test
+pnpm build
 ```
 
-Or run each step separately: `pnpm format:check`, `pnpm lint`, `pnpm test`, `pnpm build`.
+Or run the full gate: `pnpm validate` (includes `format:check`, lint, test, build).
 
 If you touch sync, API persistence, or schema ingestion, also run integration tests (PostgreSQL required):
 
@@ -143,16 +155,17 @@ CI **must pass** before merge. Agents must add or update tests when behavior cha
 - Create or invoke `.sh` / bash scripts — use `pnpm validate` and `pnpm exec tsx scripts/...` instead
 - Add `.drawio` files or run plugin hooks like `validate-drawio.sh` — use Mermaid in markdown
 - Run long-lived background processes in agent terminals without explicit user request
+- Finish a task without running `pnpm format` then `pnpm format:check` on touched files (CI fails on Prettier drift)
 
 ## Key documentation
 
-| Document                                             | Purpose                             |
-| ---------------------------------------------------- | ----------------------------------- |
-| [docs/CODING_STANDARDS.md](docs/CODING_STANDARDS.md) | Full style guide and testing policy |
-| [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)           | Clone, build, test, troubleshoot    |
+| Document                                               | Purpose                                    |
+| ------------------------------------------------------ | ------------------------------------------ |
+| [docs/CODING_STANDARDS.md](docs/CODING_STANDARDS.md)   | Full style guide and testing policy        |
+| [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)             | Clone, build, test, troubleshoot           |
 | [docs/ops/FAILURE_MODES.md](docs/ops/FAILURE_MODES.md) | Incident triage and runbooks (FM-01–FM-05) |
-| [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md)         | Functional requirements             |
-| [CONTRIBUTING.md](CONTRIBUTING.md)                   | Human contributor workflow          |
-| [README.md](README.md)                               | Overview and architecture diagram   |
+| [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md)           | Functional requirements                    |
+| [CONTRIBUTING.md](CONTRIBUTING.md)                     | Human contributor workflow                 |
+| [README.md](README.md)                                 | Overview and architecture diagram          |
 
 When instructions conflict, **user request** > **this file** > **CODING_STANDARDS.md** > general defaults — but never skip required tests or CI checks for behavioral changes unless the user explicitly accepts that tradeoff.

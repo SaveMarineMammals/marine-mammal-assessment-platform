@@ -20,21 +20,21 @@ Preserve same-origin `/v1` routing so field PWA needs no `VITE_API_BASE_URL`.
 
 ## Inputs
 
-| Name | Type |
-| ---- | ---- |
-| `name_prefix` | string |
-| `domain_name` | string |
-| `web_subdomain` | string |
-| `field_subdomain` | string |
-| `web_bucket_id` | string |
-| `field_bucket_id` | string |
-| `api_service_url` | string |
-| `tags` | map(string) |
+| Name              | Type        |
+| ----------------- | ----------- |
+| `name_prefix`     | string      |
+| `domain_name`     | string      |
+| `web_subdomain`   | string      |
+| `field_subdomain` | string      |
+| `web_bucket_id`   | string      |
+| `field_bucket_id` | string      |
+| `api_service_url` | string      |
+| `tags`            | map(string) |
 
 ## Outputs
 
-| Name | Description |
-| ---- | ----------- |
-| `web_fqdn` | e.g. `staging.example.org` |
-| `field_fqdn` | e.g. `field-staging.example.org` |
+| Name               | Description                                          |
+| ------------------ | ---------------------------------------------------- |
+| `web_fqdn`         | e.g. `staging.example.org`                           |
+| `field_fqdn`       | e.g. `field-staging.example.org`                     |
 | `distribution_ids` | list of CloudFront distribution IDs for invalidation |

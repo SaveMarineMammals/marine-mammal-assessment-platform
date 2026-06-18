@@ -15,16 +15,16 @@ Custom metric (future): parse API logs for sync batch success/failure counts.
 
 ## Inputs
 
-| Name | Type |
-| ---- | ---- |
-| `name_prefix` | string |
-| `api_service_arn` | string |
-| `db_instance_id` | string |
-| `health_check_url` | string |
-| `tags` | map(string) |
+| Name               | Type        |
+| ------------------ | ----------- |
+| `name_prefix`      | string      |
+| `api_service_arn`  | string      |
+| `db_instance_id`   | string      |
+| `health_check_url` | string      |
+| `tags`             | map(string) |
 
 ## Outputs
 
-| Name | Description |
-| ---- | ----------- |
+| Name             | Description               |
+| ---------------- | ------------------------- |
 | `dashboard_name` | CloudWatch dashboard name |
