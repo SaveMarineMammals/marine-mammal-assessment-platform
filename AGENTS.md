@@ -29,24 +29,37 @@ This file orients automated agents (Cursor, Copilot, CI bots, etc.) working in t
 
 Full rules: [docs/CODING_STANDARDS.md](docs/CODING_STANDARDS.md).
 
-| Rule           | Detail                                                          |
-| -------------- | --------------------------------------------------------------- |
-| Language       | TypeScript, strict mode, ESM                                    |
-| Imports        | Relative imports use `.js` extension (`NodeNext`)               |
-| Formatting     | Prettier — single quotes, semicolons, 100 cols, trailing commas |
-| Lint           | ESLint at repo root; prefix unused vars with `_`                |
-| Workspace deps | `"workspace:*"` for `@mmap/schema`, `@mmap/geo-time`            |
-| Scope          | Minimal diff; match existing patterns; no drive-by refactors    |
-| Comments       | Only for non-obvious logic; no narrating obvious code           |
-| Schema changes | Update JSON Schema, Zod, fixtures, and tests together           |
+| Rule           | Detail                                                                                                     |
+| -------------- | ---------------------------------------------------------------------------------------------------------- |
+| Language       | TypeScript, strict mode, ESM                                                                               |
+| Imports        | Relative imports use `.js` extension (`NodeNext`)                                                          |
+| Formatting     | Prettier — single quotes, semicolons, 100 cols, trailing commas                                            |
+| Lint           | ESLint at repo root; prefix unused vars with `_`                                                           |
+| Workspace deps | `"workspace:*"` for `@mmap/schema`, `@mmap/geo-time`                                                       |
+| Scope          | Minimal diff; match existing patterns; no drive-by refactors                                               |
+| Comments       | Only for non-obvious logic; no narrating obvious code                                                      |
+| Schema changes | Update JSON Schema, Zod, fixtures, and tests together                                                      |
+| Terraform      | `.tf` files must use **LF** line endings (see `.gitattributes`) — CRLF breaks `terraform plan` on Linux CI |
+
+### Formatting (required on every change)
+
+CI runs `pnpm format:check` first in the quality job. **Any edited file must pass Prettier before you finish** — including markdown, YAML, JSON, and TypeScript.
+
+1. After editing, run **`pnpm format`** on the repo (or on paths you touched) to apply fixes.
+2. Confirm with **`pnpm format:check`** (must exit 0).
+3. Do not leave formatting fixes for the user or CI — unformatted docs and workflows are a common CI failure.
 
 Run before finishing (cross-platform — works in PowerShell, cmd, and bash):
 
 ```text
-pnpm validate
+pnpm format
+pnpm format:check
+pnpm lint
+pnpm test
+pnpm build
 ```
 
-Or run each step separately: `pnpm format:check`, `pnpm lint`, `pnpm test`, `pnpm build`.
+Or run the full gate: `pnpm validate` (includes `format:check`, lint, test, build).
 
 If you touch sync, API persistence, or schema ingestion, also run integration tests (PostgreSQL required):
 
@@ -57,9 +70,20 @@ pnpm test:integration -- --database-url postgresql://mmap:mmap@localhost:5432/mm
 
 Or `pnpm validate:integration` after Postgres is up (pass `--database-url` as above if needed).
 
-### Windows (PowerShell)
+### Windows (PowerShell and Git Bash)
 
-This repo has **no `.sh` files** and no bash-based git hooks. **Do not** create shell scripts or run bash-only syntax (`./script.sh`, `cp`, heredoc commits, `cat <<EOF`) for validation or tooling.
+This repo has **no `.sh` files** and no bash-based git hooks. **Do not** create shell scripts or run bash-only syntax (`./script.sh`, `cp`, heredoc commits, `cat <<EOF`) for validation or tooling. Infrastructure helpers live in `scripts/terraform-*.ts` and run via `pnpm exec tsx` on PowerShell, Git Bash, or CI.
+
+**Git Bash is supported** for all `pnpm` commands. Set non-interactive installs when automating:
+
+```bash
+CI=true pnpm install --frozen-lockfile
+pnpm validate
+```
+
+Root `.npmrc` sets `confirm-modules-purge=false` so `pnpm install` does not block on "Proceed? (Y/n)".
+
+**Never invoke Cursor plugin bash hooks** (for example AWS Deployments `validate-drawio.sh`). That script is external to this repo and can leave Git Bash terminals open on Windows. Use **Mermaid** in markdown for architecture diagrams — do not add `.drawio` files to this repository.
 
 Use **pnpm scripts only** — they invoke Node.js and work natively on Windows:
 
@@ -129,16 +153,20 @@ CI **must pass** before merge. Agents must add or update tests when behavior cha
 - Over-engineer abstractions for one-off logic
 - Run web dev server on port 5173 while Docker web is up (cache conflicts)
 - Commit `.env`, credentials, or `node_modules/`
-- Create or invoke `.sh` / bash scripts for validation — use `pnpm validate` instead
+- Create or invoke `.sh` / bash scripts — use `pnpm validate` and `pnpm exec tsx scripts/...` instead
+- Add `.drawio` files or run plugin hooks like `validate-drawio.sh` — use Mermaid in markdown
+- Run long-lived background processes in agent terminals without explicit user request
+- Finish a task without running `pnpm format` then `pnpm format:check` on touched files (CI fails on Prettier drift)
 
 ## Key documentation
 
-| Document                                             | Purpose                             |
-| ---------------------------------------------------- | ----------------------------------- |
-| [docs/CODING_STANDARDS.md](docs/CODING_STANDARDS.md) | Full style guide and testing policy |
-| [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)           | Clone, build, test, troubleshoot    |
-| [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md)         | Functional requirements             |
-| [CONTRIBUTING.md](CONTRIBUTING.md)                   | Human contributor workflow          |
-| [README.md](README.md)                               | Overview and architecture diagram   |
+| Document                                               | Purpose                                    |
+| ------------------------------------------------------ | ------------------------------------------ |
+| [docs/CODING_STANDARDS.md](docs/CODING_STANDARDS.md)   | Full style guide and testing policy        |
+| [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)             | Clone, build, test, troubleshoot           |
+| [docs/ops/FAILURE_MODES.md](docs/ops/FAILURE_MODES.md) | Incident triage and runbooks (FM-01–FM-05) |
+| [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md)           | Functional requirements                    |
+| [CONTRIBUTING.md](CONTRIBUTING.md)                     | Human contributor workflow                 |
+| [README.md](README.md)                                 | Overview and architecture diagram          |
 
 When instructions conflict, **user request** > **this file** > **CODING_STANDARDS.md** > general defaults — but never skip required tests or CI checks for behavioral changes unless the user explicitly accepts that tradeoff.

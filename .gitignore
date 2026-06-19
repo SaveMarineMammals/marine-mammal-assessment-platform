@@ -12,3 +12,11 @@ Thumbs.db
 apps/field/dev-dist
 apps/field/src/generated
 apps/field/public/version.json
+
+# Terraform
+**/.terraform/
+**/tfplan
+**/plan.json
+**/summary.txt
+infra/bootstrap/terraform.tfstate
+infra/bootstrap/terraform.tfstate.backup

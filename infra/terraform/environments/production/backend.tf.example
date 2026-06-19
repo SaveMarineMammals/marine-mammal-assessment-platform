@@ -1,0 +1,12 @@
+# Production uses the same module composition as staging.
+# Copy environments/staging/main.tf and adjust defaults via terraform.tfvars.
+
+terraform {
+  backend "s3" {
+    bucket         = "YOUR-TF-STATE-BUCKET"
+    key            = "production/terraform.tfstate"
+    region         = "us-east-1"
+    dynamodb_table = "terraform-locks"
+    encrypt        = true
+  }
+}
