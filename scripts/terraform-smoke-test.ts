@@ -9,8 +9,8 @@ if (!existsSync(rootDir)) {
   process.exit(1);
 }
 
-const apiUrl = captureTerraform(['-chdir', rootDir, 'output', '-raw', 'api_service_url']);
-const fieldUrl = captureTerraform(['-chdir', rootDir, 'output', '-raw', 'field_url']);
+const apiUrl = captureTerraform(['output', '-raw', 'api_service_url'], { cwd: rootDir });
+const fieldUrl = captureTerraform(['output', '-raw', 'field_url'], { cwd: rootDir });
 
 console.log(`API service URL: ${apiUrl}`);
 console.log(`Field URL: ${fieldUrl}`);

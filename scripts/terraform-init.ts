@@ -8,8 +8,6 @@ const lockTable = requireArg(6, 'lock table');
 
 runTerraform(
   [
-    '-chdir',
-    rootDir,
     'init',
     '-input=false',
     `-backend-config=bucket=${bucket}`,
@@ -17,5 +15,5 @@ runTerraform(
     `-backend-config=region=${region}`,
     `-backend-config=dynamodb_table=${lockTable}`,
   ],
-  { cwd: undefined },
+  { cwd: rootDir },
 );
