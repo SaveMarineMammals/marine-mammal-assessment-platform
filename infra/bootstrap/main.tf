@@ -53,6 +53,10 @@ resource "aws_dynamodb_table" "terraform_lock" {
   tags = local.common_tags
 }
 
+data "tls_certificate" "github" {
+  url = "https://token.actions.githubusercontent.com"
+}
+
 resource "aws_iam_openid_connect_provider" "github" {
   url = "https://token.actions.githubusercontent.com"
 
@@ -60,9 +64,11 @@ resource "aws_iam_openid_connect_provider" "github" {
     "sts.amazonaws.com",
   ]
 
-  thumbprint_list = [
-    "6938fd4d98bab03fa09104f2c",
-  ]
+  # SHA-1 thumbprints from GitHub's TLS chain (40 hex chars each; do not hardcode truncated values)
+  thumbprint_list = distinct([
+    for cert in data.tls_certificate.github.certificates :
+    replace(cert.sha1_fingerprint, ":", "")
+  ])
 }
 
 data "aws_iam_policy_document" "terraform_ci_assume" {
