@@ -29,16 +29,17 @@ This file orients automated agents (Cursor, Copilot, CI bots, etc.) working in t
 
 Full rules: [docs/CODING_STANDARDS.md](docs/CODING_STANDARDS.md).
 
-| Rule           | Detail                                                          |
-| -------------- | --------------------------------------------------------------- |
-| Language       | TypeScript, strict mode, ESM                                    |
-| Imports        | Relative imports use `.js` extension (`NodeNext`)               |
-| Formatting     | Prettier — single quotes, semicolons, 100 cols, trailing commas |
-| Lint           | ESLint at repo root; prefix unused vars with `_`                |
-| Workspace deps | `"workspace:*"` for `@mmap/schema`, `@mmap/geo-time`            |
-| Scope          | Minimal diff; match existing patterns; no drive-by refactors    |
-| Comments       | Only for non-obvious logic; no narrating obvious code           |
-| Schema changes | Update JSON Schema, Zod, fixtures, and tests together           |
+| Rule           | Detail                                                                                                     |
+| -------------- | ---------------------------------------------------------------------------------------------------------- |
+| Language       | TypeScript, strict mode, ESM                                                                               |
+| Imports        | Relative imports use `.js` extension (`NodeNext`)                                                          |
+| Formatting     | Prettier — single quotes, semicolons, 100 cols, trailing commas                                            |
+| Lint           | ESLint at repo root; prefix unused vars with `_`                                                           |
+| Workspace deps | `"workspace:*"` for `@mmap/schema`, `@mmap/geo-time`                                                       |
+| Scope          | Minimal diff; match existing patterns; no drive-by refactors                                               |
+| Comments       | Only for non-obvious logic; no narrating obvious code                                                      |
+| Schema changes | Update JSON Schema, Zod, fixtures, and tests together                                                      |
+| Terraform      | `.tf` files must use **LF** line endings (see `.gitattributes`) — CRLF breaks `terraform plan` on Linux CI |
 
 ### Formatting (required on every change)
 

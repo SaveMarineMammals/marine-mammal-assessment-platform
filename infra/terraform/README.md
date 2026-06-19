@@ -17,3 +17,7 @@ Use separate state keys per environment:
 | production  | `production/terraform.tfstate` |
 
 Copy `backend.tf.example` to `backend.tf` and fill in your state bucket name.
+
+## Line endings
+
+All `*.tf` and `*.tfvars` files must use **LF** line endings (enforced by `.gitattributes`). Windows CRLF causes `Invalid character` errors when Terraform runs on Linux CI.
