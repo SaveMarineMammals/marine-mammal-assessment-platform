@@ -115,3 +115,69 @@ jobs:
 
       - name: Integration tests
         run: pnpm test:integration -- --database-url postgresql://mmap:mmap@localhost:5432/mmap
+
+  terraform-plan:
+    name: Terraform plan
+    runs-on: ubuntu-latest
+    if: vars.TF_INFRA_ENABLED == 'true'
+    permissions:
+      contents: read
+      id-token: write
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Plan staging
+        id: plan-staging
+        uses: ./.github/actions/terraform
+        with:
+          working-directory: infra/terraform/environments/staging
+          command: plan
+          aws-role-arn: ${{ secrets.AWS_TERRAFORM_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION || 'us-east-1' }}
+          state-bucket: ${{ secrets.TF_STATE_BUCKET }}
+          state-key: staging/terraform.tfstate
+          lock-table: ${{ secrets.TF_LOCK_TABLE }}
+
+      - name: Plan production
+        id: plan-production
+        uses: ./.github/actions/terraform
+        with:
+          working-directory: infra/terraform/environments/production
+          command: plan
+          aws-role-arn: ${{ secrets.AWS_TERRAFORM_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION || 'us-east-1' }}
+          state-bucket: ${{ secrets.TF_STATE_BUCKET }}
+          state-key: production/terraform.tfstate
+          lock-table: ${{ secrets.TF_LOCK_TABLE }}
+
+      - name: Warn on pull request when destroys are planned
+        if: github.event_name == 'pull_request' && (steps.plan-staging.outputs.destroy_detected == 'true' || steps.plan-production.outputs.destroy_detected == 'true')
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const stagingDestroy = '${{ steps.plan-staging.outputs.destroy_detected }}' === 'true';
+            const productionDestroy = '${{ steps.plan-production.outputs.destroy_detected }}' === 'true';
+
+            const body = [
+              '⚠️ **Terraform destroy detected**',
+              '',
+              'This pull request plans resource **deletions** in AWS. Review carefully before merging.',
+              '',
+              '| Environment | Destroy planned |',
+              '| --- | --- |',
+              `| staging | ${stagingDestroy ? 'yes' : 'no'} |`,
+              `| production | ${productionDestroy ? 'yes' : 'no'} |`,
+              '',
+              'Production applies only run from `main` after staging verification, but production state is still planned here to catch cross-environment impact early.',
+            ].join('\n');
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body,
+            });
+
+            core.warning('Terraform plan includes resource deletions.');

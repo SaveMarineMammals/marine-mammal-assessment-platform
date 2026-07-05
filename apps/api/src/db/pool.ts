@@ -1,5 +1,5 @@
 import { Pool, type PoolClient, type QueryResultRow } from 'pg';
-import { DATABASE_URL_USAGE } from '../cli/database-url.js';
+import { DATABASE_URL_USAGE, normalizeDatabaseUrl } from '../cli/database-url.js';
 
 let pool: Pool | null = null;
 
@@ -8,7 +8,7 @@ export function getDatabaseUrl(): string {
   if (!url) {
     throw new Error(`DATABASE_URL is not configured. ${DATABASE_URL_USAGE}`);
   }
-  return url;
+  return normalizeDatabaseUrl(url);
 }
 
 export function getPool(): Pool {

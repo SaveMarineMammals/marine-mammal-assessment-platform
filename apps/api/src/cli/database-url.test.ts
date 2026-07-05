@@ -51,4 +51,30 @@ describe('database-url CLI', () => {
     delete process.env.DATABASE_URL;
     expect(() => resolveDatabaseUrl(['node', 'migrate.ts'])).toThrow(DATABASE_URL_USAGE);
   });
+
+  it('normalizes RDS Secrets Manager JSON from the environment', () => {
+    process.env.DATABASE_URL = JSON.stringify({
+      username: 'mmap',
+      password: 'p@ss:word',
+      host: 'db.example.com',
+      port: 5432,
+      dbname: 'mmap',
+    });
+    expect(resolveDatabaseUrl(['node', 'migrate.ts'])).toBe(
+      'postgresql://mmap:p%40ss%3Aword@db.example.com:5432/mmap',
+    );
+  });
+
+  it('normalizes RDS JSON passed via --database-url', () => {
+    const json = JSON.stringify({
+      username: 'mmap',
+      password: 'secret',
+      host: 'localhost',
+      port: 5432,
+      dbname: 'mmap',
+    });
+    expect(parseDatabaseUrlFromArgs(['node', 'migrate.ts', '-d', json])).toBe(
+      'postgresql://mmap:secret@localhost:5432/mmap',
+    );
+  });
 });

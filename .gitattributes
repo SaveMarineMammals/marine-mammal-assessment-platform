@@ -1,0 +1,4 @@
+# Terraform requires LF line endings (CRLF causes "Invalid character" parse errors on Linux CI)
+*.tf text eol=lf
+*.tfvars text eol=lf
+*.tfvars.example text eol=lf

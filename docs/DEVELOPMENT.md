@@ -179,16 +179,26 @@ pnpm test:integration -- --database-url postgresql://mmap:mmap@localhost:5432/mm
 
 Or run `pnpm validate:integration` after Postgres is running (with `--database-url` if `DATABASE_URL` is unset).
 
-### Windows (PowerShell)
+### Windows (PowerShell or Git Bash)
 
-All checks run through **pnpm** — no bash, Git Bash, or `.sh` scripts are required. Use PowerShell from the repository root:
+All checks run through **pnpm** — this repo has **no `.sh` scripts**. Git Bash and PowerShell are both fine for `pnpm validate`, `pnpm test`, and `pnpm exec tsx scripts/...`.
 
-```powershell
+```bash
 pnpm validate
 pnpm test:integration -- --database-url postgresql://mmap:mmap@localhost:5432/mmap
 ```
 
-Copy env examples (instead of `cp`):
+If `pnpm install` prompts to purge `node_modules`, either answer the prompt or run non-interactively:
+
+```bash
+CI=true pnpm install --frozen-lockfile
+```
+
+Root `.npmrc` sets `confirm-modules-purge=false` to reduce interactive prompts.
+
+**Do not** run plugin bash hooks (for example the AWS Deployments `validate-drawio.sh` PostToolUse hook). That script is not part of this repo; on Windows it can leave Git Bash terminals open. Use **Mermaid** diagrams in markdown under `docs/` instead of `.drawio` files.
+
+Copy env examples on PowerShell (instead of `cp`):
 
 ```powershell
 Copy-Item apps/api/.env.example apps/api/.env
@@ -247,3 +257,16 @@ If `DATABASE_URL` is missing or PostgreSQL is unreachable, API integration tests
 ### pnpm / Node version mismatch
 
 The root `package.json` specifies `"engines": { "node": ">=20" }` and `"packageManager": "pnpm@9.15.4"`. Use Node 20 LTS and pnpm 9 for parity with CI.
+
+### Terminal stuck after agent or plugin script
+
+**Symptom:** A Git Bash tab stays open with no output, or shows `validate-drawio.sh`.
+
+**Cause:** The AWS Deployments Cursor plugin runs `validate-drawio.sh` as a PostToolUse hook when a `.drawio` file is written. That script is bash-only and is not maintained in this repository. On Windows it can block or leave shells open.
+
+**Fix:**
+
+1. Close the stuck terminal tab, or end the process from Task Manager.
+2. Do not create `.drawio` files in this repo — use Mermaid in markdown (see `docs/ops/AWS_INFRA.md`).
+3. For agents: run only `pnpm` / `tsx` commands; never invoke `./validate-drawio.sh` or other plugin `.sh` scripts.
+4. For `pnpm install` hangs on "Proceed? (Y/n)", run `CI=true pnpm install --frozen-lockfile` or rely on root `.npmrc` (`confirm-modules-purge=false`).

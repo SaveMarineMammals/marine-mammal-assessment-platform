@@ -59,7 +59,9 @@ Do not relax strictness locally without team discussion.
 
 ## Formatting (Prettier)
 
-Run `pnpm format` before committing, or rely on editor format-on-save using the repo config:
+Run **`pnpm format`** after every edit (applies Prettier to the whole repo, including markdown and YAML). Then run **`pnpm format:check`** to confirm CI will pass. AI agents must not skip the write step — `format:check` alone does not fix violations.
+
+Human contributors may rely on editor format-on-save using the repo config instead:
 
 | Option          | Value    |
 | --------------- | -------- |
