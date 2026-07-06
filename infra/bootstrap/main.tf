@@ -142,6 +142,7 @@ data "aws_iam_policy_document" "terraform_ci" {
       "ec2:*",
       "ecr:*",
       "iam:*",
+      "kms:*",
       "logs:*",
       "rds:*",
       "route53:*",
