@@ -31,11 +31,11 @@ jobs:
       contents: read
       id-token: write
     steps:
-      - name: Assert repository admin
-        uses: ./.github/actions/assert-repo-admin
-
       - name: Checkout
         uses: actions/checkout@v6
+
+      - name: Assert repository admin
+        uses: ./.github/actions/assert-repo-admin
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
