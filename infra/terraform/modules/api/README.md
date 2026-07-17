@@ -7,11 +7,11 @@ ECR repository and App Runner service for the Fastify sync API.
 - `aws_ecr_repository` — scan on push
 - `aws_iam_role` + policies — Secrets Manager read, S3 data bucket, CloudWatch logs
 - `aws_apprunner_service`:
-  - Image from ECR (placeholder tag until first CI deploy)
+  - Initial image from ECR Public placeholder until first CI deploy publishes to private ECR
   - VPC connector for RDS access
   - Runtime env: `DATABASE_URL`, `API_ADMIN_TOKEN`, `CORS_ORIGIN`, `S3_BUCKET`, `PORT=3001`
   - Health check: `/v1/health`
-  - `auto_deployments_enabled` from variable (true staging, false production)
+  - `authentication_configuration` and `auto_deployments_enabled` only when `initial_image_repository_type = "ECR"` (App Runner rejects both for ECR Public)
 - `aws_secretsmanager_secret` for `API_ADMIN_TOKEN`
 
 ## Inputs

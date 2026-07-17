@@ -39,9 +39,10 @@ variable "initial_image_repository_type" {
 }
 
 locals {
-  using_placeholder_image = var.initial_image_repository_type == "ECR_PUBLIC"
-  container_port          = local.using_placeholder_image ? "8080" : "3001"
-  health_check_path       = local.using_placeholder_image ? "/" : "/v1/health"
+  using_placeholder_image  = var.initial_image_repository_type == "ECR_PUBLIC"
+  container_port           = local.using_placeholder_image ? "8080" : "3001"
+  health_check_path        = local.using_placeholder_image ? "/" : "/v1/health"
+  auto_deployments_enabled = var.initial_image_repository_type == "ECR" && var.auto_deployments
 }
 
 resource "random_password" "admin_token" {
@@ -172,8 +173,11 @@ resource "aws_apprunner_service" "api" {
   tags         = var.tags
 
   source_configuration {
-    authentication_configuration {
-      access_role_arn = aws_iam_role.apprunner_access.arn
+    dynamic "authentication_configuration" {
+      for_each = var.initial_image_repository_type == "ECR" ? [1] : []
+      content {
+        access_role_arn = aws_iam_role.apprunner_access.arn
+      }
     }
 
     image_repository {
@@ -199,7 +203,7 @@ resource "aws_apprunner_service" "api" {
       }
     }
 
-    auto_deployments_enabled = var.auto_deployments
+    auto_deployments_enabled = local.auto_deployments_enabled
   }
 
   instance_configuration {
