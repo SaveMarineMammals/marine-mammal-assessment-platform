@@ -24,10 +24,63 @@ locals {
   rds_sg_id = var.rds_security_group_id != "" ? var.rds_security_group_id : var.api_connector_sg_id
 }
 
+data "aws_caller_identity" "current" {}
+
+data "aws_region" "current" {}
+
+data "aws_iam_policy_document" "database_secret" {
+  statement {
+    sid    = "EnableIamUserPermissions"
+    effect = "Allow"
+
+    principals {
+      type        = "AWS"
+      identifiers = ["arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"]
+    }
+
+    actions   = ["kms:*"]
+    resources = ["*"]
+  }
+
+  statement {
+    sid    = "AllowRdsAndSecretsManager"
+    effect = "Allow"
+
+    principals {
+      type = "Service"
+      identifiers = [
+        "rds.amazonaws.com",
+        "secretsmanager.amazonaws.com",
+      ]
+    }
+
+    actions = [
+      "kms:Encrypt",
+      "kms:Decrypt",
+      "kms:ReEncrypt*",
+      "kms:GenerateDataKey*",
+      "kms:CreateGrant",
+      "kms:DescribeKey",
+    ]
+
+    resources = ["*"]
+
+    condition {
+      test     = "StringEquals"
+      variable = "kms:ViaService"
+      values = [
+        "rds.${data.aws_region.current.name}.amazonaws.com",
+        "secretsmanager.${data.aws_region.current.name}.amazonaws.com",
+      ]
+    }
+  }
+}
+
 resource "aws_kms_key" "database_secret" {
   description             = "${var.name_prefix} RDS master user secret encryption"
   deletion_window_in_days = 7
   enable_key_rotation     = true
+  policy                  = data.aws_iam_policy_document.database_secret.json
   tags                    = merge(var.tags, { Name = "${var.name_prefix}-rds-secret" })
 }
 

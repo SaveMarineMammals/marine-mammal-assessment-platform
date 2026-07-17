@@ -4,7 +4,7 @@ Managed PostgreSQL 16 with PostGIS support (via application migrations).
 
 ## Resources
 
-- `aws_kms_key` — encrypts the RDS-managed master user secret
+- `aws_kms_key` — encrypts the RDS-managed master user secret (key policy allows RDS and Secrets Manager via `kms:ViaService`)
 - `aws_db_subnet_group` — private subnets
 - `aws_db_parameter_group` — PostgreSQL 16
 - `aws_db_instance` — with **`manage_master_user_password = true`**
