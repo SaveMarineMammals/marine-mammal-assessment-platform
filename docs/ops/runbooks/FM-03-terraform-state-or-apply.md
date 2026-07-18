@@ -188,6 +188,27 @@ Applies use `-auto-approve` via `scripts/terraform-apply.ts`. State keys are iso
 
      Then re-run apply.
 
+10. **ECS Express service linked role missing (`Unable to assume the service linked role`)**
+
+    First ECS use in an account requires `AWSServiceRoleForECS`. Staging apply creates it via `module.api.aws_iam_service_linked_role.ecs`; production sets `ensure_ecs_service_linked_role = false`.
+
+    - Re-run staging apply after merging the api module fix.
+    - **Immediate CLI fix** (admin credentials):
+
+      ```powershell
+      aws iam create-service-linked-role --aws-service-name ecs.amazonaws.com
+      ```
+
+      Wait ~1 minute for IAM propagation, then re-run apply.
+
+    - If Terraform reports the role already exists, import into staging state:
+
+      ```powershell
+      terraform -chdir=infra/terraform/environments/staging import `
+        'module.api.aws_iam_service_linked_role.ecs[0]' `
+        'arn:aws:iam::ACCOUNT_ID:role/aws-service-role/ecs.amazonaws.com/AWSServiceRoleForECS'
+      ```
+
 ## Verification
 
 - [ ] `terraform plan` exits 0 for staging (and production if applicable)

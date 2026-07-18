@@ -29,6 +29,12 @@ variable "max_task_count" {
 }
 variable "tags" { type = map(string) }
 
+variable "ensure_ecs_service_linked_role" {
+  description = "Create the account-wide AWSServiceRoleForECS if missing (set false in production after staging created it)"
+  type        = bool
+  default     = true
+}
+
 variable "initial_image_uri" {
   description = "Container image used until the application deploy pipeline publishes to ECR"
   type        = string
@@ -209,6 +215,13 @@ resource "aws_iam_role_policy" "ecs_task" {
   policy = data.aws_iam_policy_document.ecs_task.json
 }
 
+# Account-wide prerequisite for ECS clusters and Express Gateway services.
+resource "aws_iam_service_linked_role" "ecs" {
+  count            = var.ensure_ecs_service_linked_role ? 1 : 0
+  aws_service_name = "ecs.amazonaws.com"
+  description      = "Service-linked role for Amazon ECS"
+}
+
 resource "aws_ecs_express_gateway_service" "api" {
   service_name            = "${var.name_prefix}-api"
   execution_role_arn      = aws_iam_role.ecs_execution.arn
@@ -284,6 +297,7 @@ resource "aws_ecs_express_gateway_service" "api" {
     aws_iam_role_policy.ecs_task,
     aws_iam_role_policy_attachment.ecs_execution,
     aws_iam_role_policy_attachment.ecs_infrastructure,
+    aws_iam_service_linked_role.ecs,
   ]
 
   lifecycle {
