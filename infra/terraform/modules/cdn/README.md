@@ -8,11 +8,11 @@ CloudFront distributions, ACM certificates, and Route 53 records.
 - `aws_cloudfront_origin_access_control` — S3 origins
 - `aws_cloudfront_distribution.web`:
   - Default → S3 web bucket
-  - `/v1/*` → App Runner custom origin (HTTPS)
-  - `/openapi*` → App Runner (web only)
+  - `/v1/*` → ECS Express API origin (HTTPS)
+  - `/openapi*` → ECS Express API (web only)
 - `aws_cloudfront_distribution.field`:
   - Default → S3 field bucket
-  - `/v1/*` → App Runner
+  - `/v1/*` → ECS Express API
 - `aws_route53_record` — A/AAAA aliases for web + field hostnames
 - S3 bucket policies granting CloudFront OAC read
 

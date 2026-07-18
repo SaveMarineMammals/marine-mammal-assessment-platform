@@ -13,7 +13,8 @@ data "aws_availability_zones" "available" {
 data "aws_region" "current" {}
 
 locals {
-  azs = slice(data.aws_availability_zones.available.names, 0, 2)
+  azs    = slice(data.aws_availability_zones.available.names, 0, 2)
+  region = data.aws_region.current.region
 }
 
 resource "aws_vpc" "main" {
@@ -103,7 +104,7 @@ resource "aws_vpc_endpoint" "interface" {
   for_each = toset(local.interface_endpoint_services)
 
   vpc_id              = aws_vpc.main.id
-  service_name        = "com.amazonaws.${data.aws_region.current.name}.${each.value}"
+  service_name        = "com.amazonaws.${local.region}.${each.value}"
   vpc_endpoint_type   = "Interface"
   subnet_ids          = aws_subnet.private[*].id
   security_group_ids  = [aws_security_group.vpc_endpoints.id]
@@ -113,7 +114,7 @@ resource "aws_vpc_endpoint" "interface" {
 
 resource "aws_vpc_endpoint" "s3" {
   vpc_id            = aws_vpc.main.id
-  service_name      = "com.amazonaws.${data.aws_region.current.name}.s3"
+  service_name      = "com.amazonaws.${local.region}.s3"
   vpc_endpoint_type = "Gateway"
   route_table_ids   = [aws_vpc.main.main_route_table_id]
   tags              = merge(var.tags, { Name = "${var.name_prefix}-s3" })
