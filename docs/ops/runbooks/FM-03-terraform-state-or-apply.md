@@ -214,17 +214,33 @@ Applies use `-auto-approve` via `scripts/terraform-apply.ts`. State keys are iso
 
     ECS Express in **private subnets** creates an internal ALB with `PRIVATE` ingress only — CloudFront cannot use that origin. The api module uses **public subnets** for `network_configuration` so AWS exposes a `PUBLIC` endpoint. Re-apply after merging; Terraform may replace the Express service when subnets change.
 
-12. **Changing subnet types not supported (`InvalidParameterException`)**
+12. **Changing subnet types / Express service already exists**
 
-    AWS cannot move an Express service from private to public subnets in place. Terraform must destroy and recreate the service. The module renames the resource (`api` → `express`) to force that on migration; future subnet changes use `replace_triggered_by`.
+    AWS cannot move an Express service from private to public subnets in place. Use a **state move**, then **replace**:
 
-    If apply still tries an in-place update, replace manually:
+    1. **`moved` block** (in api module) rewrites `aws_ecs_express_gateway_service.api` → `.express` without calling AWS.
+    2. If apply fails with **Resource Already Exists** (rename raced ahead of destroy), import the live service, drop stale state, then replace:
 
-    ```powershell
-    terraform -chdir=infra/terraform/environments/staging apply `
-      -replace='module.api.aws_ecs_express_gateway_service.express' `
-      -var-file=terraform.tfvars -auto-approve
-    ```
+       ```powershell
+       pnpm exec tsx scripts/terraform-init.ts staging
+       terraform -chdir=infra/terraform/environments/staging import `
+         'module.api.aws_ecs_express_gateway_service.express' `
+         'arn:aws:ecs:us-east-1:ACCOUNT_ID:service/default/mmap-staging-api'
+       terraform -chdir=infra/terraform/environments/staging state rm `
+         'module.api.aws_ecs_express_gateway_service.api'
+       ```
+
+       Skip `state rm` if `api` is not in state. Replace `ACCOUNT_ID` with your AWS account ID.
+
+    3. Recreate on public subnets:
+
+       ```powershell
+       terraform -chdir=infra/terraform/environments/staging apply `
+         -replace='module.api.aws_ecs_express_gateway_service.express' `
+         -var-file=terraform.tfvars -auto-approve
+       ```
+
+    Future subnet changes use `replace_triggered_by` on `terraform_data.express_subnet_set`.
 
 ## Verification
 

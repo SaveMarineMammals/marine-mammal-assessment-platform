@@ -222,6 +222,11 @@ resource "terraform_data" "express_subnet_set" {
   input = join(",", sort(var.subnet_ids))
 }
 
+moved {
+  from = aws_ecs_express_gateway_service.api
+  to   = aws_ecs_express_gateway_service.express
+}
+
 resource "aws_ecs_express_gateway_service" "express" {
   service_name            = "${var.name_prefix}-api"
   execution_role_arn      = aws_iam_role.ecs_execution.arn
