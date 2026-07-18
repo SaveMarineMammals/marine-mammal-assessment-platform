@@ -242,6 +242,37 @@ Applies use `-auto-approve` via `scripts/terraform-apply.ts`. State keys are iso
 
     Future subnet changes use `replace_triggered_by` on `terraform_data.express_subnet_set`.
 
+13. **ECS Express deployment stuck / Terraform 30m timeout (`tfPENDING`, health never passes)**
+
+    The placeholder **nginx** image is not the problem — health checks use `/` on port **80**, which nginx serves. Common causes:
+
+    | Symptom                            | Likely cause                                       | Fix                                                                                    |
+    | ---------------------------------- | -------------------------------------------------- | -------------------------------------------------------------------------------------- |
+    | Deployment `IN_PROGRESS` for hours | ALB target group unhealthy (no ingress on task SG) | Ensure `api_connector` SG allows TCP **80–3001** from the VPC CIDR (networking module) |
+    | Tasks never reach `RUNNING`        | Secrets injected before container start            | Placeholder image omits `DATABASE_URL` / `API_ADMIN_TOKEN`; re-apply after merge       |
+    | CI fails at exactly **30m**        | `wait_for_steady_state = true`                     | Module default is `false`; smoke test validates `/` after apply                        |
+
+    **Diagnose** (with AWS credentials):
+
+    ```powershell
+    pnpm exec tsx scripts/ecs-express-diagnose.ts mmap-staging-api 963120167952 us-east-1
+    ```
+
+    Or in the ECS console: Express service → **Monitor deployment** (target group health, security groups).
+
+    **Unstick** a deployment that has been deploying for >30 minutes:
+
+    1. ECS console → cancel the stuck deployment, **or**
+    2. Replace the Express service and re-apply:
+
+       ```powershell
+       terraform -chdir=infra/terraform/environments/staging apply `
+         -replace='module.api.aws_ecs_express_gateway_service.express' `
+         -var-file=terraform.tfvars -auto-approve
+       ```
+
+    After a failed create with `wait_for_steady_state = true`, Terraform may not have saved state — import per step 12 if needed, then re-apply with the fixes above.
+
 ## Verification
 
 - [ ] `terraform plan` exits 0 for staging (and production if applicable)

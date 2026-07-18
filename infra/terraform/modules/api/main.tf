@@ -38,6 +38,12 @@ variable "initial_image_uri" {
   default     = "public.ecr.aws/nginx/nginx:latest"
 }
 
+variable "wait_for_steady_state" {
+  description = "Block until ECS Express deployment is ACTIVE/STABLE (false avoids 30m CI timeout during bootstrap)"
+  type        = bool
+  default     = false
+}
+
 locals {
   using_placeholder_image = startswith(var.initial_image_uri, "public.ecr.aws/")
   container_port          = local.using_placeholder_image ? 80 : 3001
@@ -235,7 +241,7 @@ resource "aws_ecs_express_gateway_service" "express" {
   cpu                     = var.cpu
   memory                  = var.memory
   health_check_path       = local.health_check_path
-  wait_for_steady_state   = true
+  wait_for_steady_state   = var.wait_for_steady_state
   tags                    = var.tags
 
   primary_container {
@@ -257,34 +263,52 @@ resource "aws_ecs_express_gateway_service" "express" {
       value = "0.0.0.0"
     }
 
-    environment {
-      name  = "NODE_ENV"
-      value = "production"
+    dynamic "environment" {
+      for_each = local.using_placeholder_image ? [] : [1]
+      content {
+        name  = "NODE_ENV"
+        value = "production"
+      }
     }
 
-    environment {
-      name  = "CORS_ORIGIN"
-      value = join(",", var.cors_origins)
+    dynamic "environment" {
+      for_each = local.using_placeholder_image ? [] : [1]
+      content {
+        name  = "CORS_ORIGIN"
+        value = join(",", var.cors_origins)
+      }
     }
 
-    environment {
-      name  = "MINIO_ENDPOINT"
-      value = ""
+    dynamic "environment" {
+      for_each = local.using_placeholder_image ? [] : [1]
+      content {
+        name  = "MINIO_ENDPOINT"
+        value = ""
+      }
     }
 
-    environment {
-      name  = "PUBLIC_PSEUDONYMIZE_NAMES"
-      value = "false"
+    dynamic "environment" {
+      for_each = local.using_placeholder_image ? [] : [1]
+      content {
+        name  = "PUBLIC_PSEUDONYMIZE_NAMES"
+        value = "false"
+      }
     }
 
-    secret {
-      name       = "DATABASE_URL"
-      value_from = var.database_secret_arn
+    dynamic "secret" {
+      for_each = local.using_placeholder_image ? [] : [1]
+      content {
+        name       = "DATABASE_URL"
+        value_from = var.database_secret_arn
+      }
     }
 
-    secret {
-      name       = "API_ADMIN_TOKEN"
-      value_from = aws_secretsmanager_secret.admin_token.arn
+    dynamic "secret" {
+      for_each = local.using_placeholder_image ? [] : [1]
+      content {
+        name       = "API_ADMIN_TOKEN"
+        value_from = aws_secretsmanager_secret.admin_token.arn
+      }
     }
   }
 

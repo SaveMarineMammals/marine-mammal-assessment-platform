@@ -89,6 +89,14 @@ resource "aws_security_group" "api_connector" {
     ignore_changes = [description]
   }
 
+  ingress {
+    description = "HTTP from VPC (ALB health checks and traffic to API tasks)"
+    from_port   = 80
+    to_port     = 3001
+    protocol    = "tcp"
+    cidr_blocks = [aws_vpc.main.cidr_block]
+  }
+
   egress {
     from_port   = 0
     to_port     = 0
