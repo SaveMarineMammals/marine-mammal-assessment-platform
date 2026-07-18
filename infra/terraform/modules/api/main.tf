@@ -12,7 +12,10 @@ terraform {
 }
 
 variable "name_prefix" { type = string }
-variable "private_subnet_ids" { type = list(string) }
+variable "subnet_ids" {
+  description = "Subnets for ECS Express (public subnets for an internet-facing ALB)"
+  type        = list(string)
+}
 variable "api_connector_sg_id" { type = string }
 variable "database_secret_arn" { type = string }
 variable "database_secret_kms_key_arn" {
@@ -222,6 +225,7 @@ resource "aws_ecs_express_gateway_service" "api" {
   cpu                     = var.cpu
   memory                  = var.memory
   health_check_path       = local.health_check_path
+  wait_for_steady_state   = true
   tags                    = var.tags
 
   primary_container {
@@ -275,7 +279,7 @@ resource "aws_ecs_express_gateway_service" "api" {
   }
 
   network_configuration {
-    subnets         = var.private_subnet_ids
+    subnets         = var.subnet_ids
     security_groups = [var.api_connector_sg_id]
   }
 
@@ -302,11 +306,11 @@ resource "aws_ecs_express_gateway_service" "api" {
 }
 
 locals {
-  public_ingress_endpoint = one([
-    for path in aws_ecs_express_gateway_service.api.ingress_paths :
-    path.endpoint
-    if path.access_type == "PUBLIC"
-  ])
+  ingress_endpoint = coalesce(
+    try([for path in aws_ecs_express_gateway_service.api.ingress_paths : path.endpoint if path.access_type == "PUBLIC"][0], null),
+    try([for path in aws_ecs_express_gateway_service.api.ingress_paths : path.endpoint if path.access_type == "PRIVATE"][0], null),
+    try(aws_ecs_express_gateway_service.api.ingress_paths[0].endpoint, null),
+  )
 }
 
 output "ecr_repository_arn" {
@@ -322,7 +326,7 @@ output "service_arn" {
 }
 
 output "service_url" {
-  value = "https://${local.public_ingress_endpoint}"
+  value = "https://${local.ingress_endpoint}"
 }
 
 output "service_name" {

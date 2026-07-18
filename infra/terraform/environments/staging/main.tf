@@ -49,7 +49,7 @@ module "api" {
   source = "../../modules/api"
 
   name_prefix                 = local.name_prefix
-  private_subnet_ids          = module.networking.private_subnet_ids
+  subnet_ids                  = module.networking.public_subnet_ids
   api_connector_sg_id         = module.networking.api_connector_security_group_id
   database_secret_arn         = module.database.database_url_secret_arn
   database_secret_kms_key_arn = module.database.database_secret_kms_key_arn

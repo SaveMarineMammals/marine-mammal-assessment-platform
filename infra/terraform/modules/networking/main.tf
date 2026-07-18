@@ -33,6 +33,50 @@ resource "aws_subnet" "private" {
   tags              = merge(var.tags, { Name = "${var.name_prefix}-private-${count.index + 1}" })
 }
 
+resource "aws_internet_gateway" "main" {
+  vpc_id = aws_vpc.main.id
+  tags   = merge(var.tags, { Name = "${var.name_prefix}-igw" })
+}
+
+resource "aws_subnet" "public" {
+  count = length(local.azs)
+
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = cidrsubnet(aws_vpc.main.cidr_block, 4, count.index + length(local.azs))
+  availability_zone       = local.azs[count.index]
+  map_public_ip_on_launch = true
+  tags                    = merge(var.tags, { Name = "${var.name_prefix}-public-${count.index + 1}" })
+}
+
+resource "aws_route_table" "public" {
+  vpc_id = aws_vpc.main.id
+  tags   = merge(var.tags, { Name = "${var.name_prefix}-public" })
+
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.main.id
+  }
+}
+
+resource "aws_route_table" "private" {
+  vpc_id = aws_vpc.main.id
+  tags   = merge(var.tags, { Name = "${var.name_prefix}-private" })
+}
+
+resource "aws_route_table_association" "public" {
+  count = length(aws_subnet.public)
+
+  subnet_id      = aws_subnet.public[count.index].id
+  route_table_id = aws_route_table.public.id
+}
+
+resource "aws_route_table_association" "private" {
+  count = length(aws_subnet.private)
+
+  subnet_id      = aws_subnet.private[count.index].id
+  route_table_id = aws_route_table.private.id
+}
+
 resource "aws_security_group" "api_connector" {
   name        = "${var.name_prefix}-api-connector"
   description = "ECS API tasks access to RDS"
@@ -126,7 +170,7 @@ resource "aws_vpc_endpoint" "s3" {
   vpc_id            = aws_vpc.main.id
   service_name      = "com.amazonaws.${local.region}.s3"
   vpc_endpoint_type = "Gateway"
-  route_table_ids   = [aws_vpc.main.main_route_table_id]
+  route_table_ids   = [aws_route_table.private.id, aws_route_table.public.id]
   tags              = merge(var.tags, { Name = "${var.name_prefix}-s3" })
 }
 
@@ -136,6 +180,10 @@ output "vpc_id" {
 
 output "private_subnet_ids" {
   value = aws_subnet.private[*].id
+}
+
+output "public_subnet_ids" {
+  value = aws_subnet.public[*].id
 }
 
 output "api_connector_security_group_id" {

@@ -14,9 +14,9 @@ ECR repository and ECS Express Mode service for the Fastify sync API.
 ## Inputs
 
 | Name                          | Type              |
-| ----------------------------- | ----------------- |
+| ----------------------------- | ----------------- | ---------------------------------------------------- |
 | `name_prefix`                 | string            |
-| `private_subnet_ids`          | list(string)      |
+| `subnet_ids`                  | list(string)      | Public subnets for ECS Express (internet-facing ALB) |
 | `api_connector_sg_id`         | string            |
 | `database_secret_arn`         | string            |
 | `database_secret_kms_key_arn` | string (optional) |

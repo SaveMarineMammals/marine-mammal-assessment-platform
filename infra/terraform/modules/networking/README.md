@@ -5,7 +5,7 @@ VPC and security groups for RDS and ECS API tasks.
 ## Resources
 
 - `aws_vpc` — 10.0.0.0/16
-- `aws_subnet` — private subnets (2 AZ)
+- `aws_subnet` — private subnets (RDS) and public subnets (ECS Express ALB)
 - `aws_security_group.api_connector` — ECS task ENIs
 - `aws_security_group.rds` — PostgreSQL from API connector SG
 
@@ -18,9 +18,10 @@ VPC and security groups for RDS and ECS API tasks.
 
 ## Outputs
 
-| Name                              | Description          |
-| --------------------------------- | -------------------- |
-| `vpc_id`                          | VPC ID               |
-| `private_subnet_ids`              | Private subnet IDs   |
-| `api_connector_security_group_id` | SG for ECS API tasks |
-| `rds_security_group_id`           | SG for RDS           |
+| Name                              | Description                     |
+| --------------------------------- | ------------------------------- |
+| `vpc_id`                          | VPC ID                          |
+| `private_subnet_ids`              | Private subnet IDs (RDS)        |
+| `public_subnet_ids`               | Public subnet IDs (ECS Express) |
+| `api_connector_security_group_id` | SG for ECS API tasks            |
+| `rds_security_group_id`           | SG for RDS                      |
