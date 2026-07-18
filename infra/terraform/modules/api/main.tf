@@ -280,8 +280,10 @@ resource "aws_ecs_express_gateway_service" "api" {
   }
 
   scaling_target {
-    min_task_count = 1
-    max_task_count = var.max_task_count
+    auto_scaling_metric       = "AVERAGE_CPU"
+    auto_scaling_target_value = 60
+    min_task_count            = 1
+    max_task_count            = var.max_task_count
   }
 
   depends_on = [
