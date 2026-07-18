@@ -217,7 +217,12 @@ data "aws_iam_role" "ecs_service_linked" {
   name = "AWSServiceRoleForECS"
 }
 
-resource "aws_ecs_express_gateway_service" "api" {
+# Subnet changes force a new Express service (AWS rejects in-place subnet type updates).
+resource "terraform_data" "express_subnet_set" {
+  input = join(",", sort(var.subnet_ids))
+}
+
+resource "aws_ecs_express_gateway_service" "express" {
   service_name            = "${var.name_prefix}-api"
   execution_role_arn      = aws_iam_role.ecs_execution.arn
   infrastructure_role_arn = aws_iam_role.ecs_infrastructure.arn
@@ -299,6 +304,7 @@ resource "aws_ecs_express_gateway_service" "api" {
   ]
 
   lifecycle {
+    replace_triggered_by = [terraform_data.express_subnet_set]
     ignore_changes = [
       primary_container[0].image,
     ]
@@ -307,9 +313,9 @@ resource "aws_ecs_express_gateway_service" "api" {
 
 locals {
   ingress_endpoint = coalesce(
-    try([for path in aws_ecs_express_gateway_service.api.ingress_paths : path.endpoint if path.access_type == "PUBLIC"][0], null),
-    try([for path in aws_ecs_express_gateway_service.api.ingress_paths : path.endpoint if path.access_type == "PRIVATE"][0], null),
-    try(aws_ecs_express_gateway_service.api.ingress_paths[0].endpoint, null),
+    try([for path in aws_ecs_express_gateway_service.express.ingress_paths : path.endpoint if path.access_type == "PUBLIC"][0], null),
+    try([for path in aws_ecs_express_gateway_service.express.ingress_paths : path.endpoint if path.access_type == "PRIVATE"][0], null),
+    try(aws_ecs_express_gateway_service.express.ingress_paths[0].endpoint, null),
   )
 }
 
@@ -322,7 +328,7 @@ output "ecr_repository_url" {
 }
 
 output "service_arn" {
-  value = aws_ecs_express_gateway_service.api.service_arn
+  value = aws_ecs_express_gateway_service.express.service_arn
 }
 
 output "service_url" {
@@ -330,7 +336,7 @@ output "service_url" {
 }
 
 output "service_name" {
-  value = aws_ecs_express_gateway_service.api.service_name
+  value = aws_ecs_express_gateway_service.express.service_name
 }
 
 output "ecs_execution_role_arn" {

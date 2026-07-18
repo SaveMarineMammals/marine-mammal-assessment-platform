@@ -214,6 +214,18 @@ Applies use `-auto-approve` via `scripts/terraform-apply.ts`. State keys are iso
 
     ECS Express in **private subnets** creates an internal ALB with `PRIVATE` ingress only — CloudFront cannot use that origin. The api module uses **public subnets** for `network_configuration` so AWS exposes a `PUBLIC` endpoint. Re-apply after merging; Terraform may replace the Express service when subnets change.
 
+12. **Changing subnet types not supported (`InvalidParameterException`)**
+
+    AWS cannot move an Express service from private to public subnets in place. Terraform must destroy and recreate the service. The module renames the resource (`api` → `express`) to force that on migration; future subnet changes use `replace_triggered_by`.
+
+    If apply still tries an in-place update, replace manually:
+
+    ```powershell
+    terraform -chdir=infra/terraform/environments/staging apply `
+      -replace='module.api.aws_ecs_express_gateway_service.express' `
+      -var-file=terraform.tfvars -auto-approve
+    ```
+
 ## Verification
 
 - [ ] `terraform plan` exits 0 for staging (and production if applicable)
