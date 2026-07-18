@@ -136,6 +136,7 @@ data "aws_iam_policy_document" "terraform_ci" {
     effect = "Allow"
     actions = [
       "acm:*",
+      "apprunner:*",
       "ecs:*",
       "cloudfront:*",
       "cloudwatch:*",

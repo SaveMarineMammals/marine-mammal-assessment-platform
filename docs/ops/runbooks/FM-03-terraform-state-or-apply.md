@@ -152,9 +152,17 @@ Applies use `-auto-approve` via `scripts/terraform-apply.ts`. State keys are iso
    pnpm exec tsx scripts/terraform-smoke-test.ts staging
    ```
 
+6. **App Runner cleanup after ECS migration (`AccessDenied` on `apprunner:Describe*`)**
+
+   Terraform state may still reference App Runner service and VPC connector resources removed from HCL. The CI role needs `apprunner:*` (included in bootstrap) to read and destroy them.
+
+   - Re-run **Infra bootstrap** so `mmap-terraform-ci` picks up the updated policy, **or** temporarily attach `apprunner:*` to that role in IAM.
+   - Re-run staging apply; Terraform should destroy the old App Runner resources.
+   - After cleanup succeeds, `apprunner:*` can remain in bootstrap for safety or be removed once state is clean.
+
    Smoke test hits App Runner `api_service_url` root (placeholder image returns 200 on `/` until real API is deployed). If URL is wrong, check `outputs.tf` and module.api `service_url`.
 
-6. **Skipped jobs**
+7. **Skipped jobs**
 
    If Terraform jobs do not appear at all, set `TF_INFRA_ENABLED=true` and ensure PR touches `infra/**` or workflow paths for deploy triggers.
 
