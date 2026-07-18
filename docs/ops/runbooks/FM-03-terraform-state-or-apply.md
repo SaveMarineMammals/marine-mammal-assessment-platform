@@ -210,6 +210,10 @@ Applies use `-auto-approve` via `scripts/terraform-apply.ts`. State keys are iso
 
       Then import into bootstrap state as above (or re-run bootstrap after import).
 
+11. **`service_url` null / no PUBLIC `ingress_paths`**
+
+    ECS Express in **private subnets** creates an internal ALB with `PRIVATE` ingress only — CloudFront cannot use that origin. The api module uses **public subnets** for `network_configuration` so AWS exposes a `PUBLIC` endpoint. Re-apply after merging; Terraform may replace the Express service when subnets change.
+
 ## Verification
 
 - [ ] `terraform plan` exits 0 for staging (and production if applicable)
