@@ -39,6 +39,12 @@ resource "aws_security_group" "api_connector" {
   vpc_id      = aws_vpc.main.id
   tags        = merge(var.tags, { Name = "${var.name_prefix}-api-connector" })
 
+  lifecycle {
+    # AWS has no API to update GroupDescription; changing it forces replacement and
+    # breaks RDS-attached ENIs during destroy (AuthFailure on DetachNetworkInterface).
+    ignore_changes = [description]
+  }
+
   egress {
     from_port   = 0
     to_port     = 0
@@ -52,6 +58,10 @@ resource "aws_security_group" "rds" {
   description = "PostgreSQL access from ECS API tasks"
   vpc_id      = aws_vpc.main.id
   tags        = merge(var.tags, { Name = "${var.name_prefix}-rds" })
+
+  lifecycle {
+    ignore_changes = [description]
+  }
 
   ingress {
     description     = "PostgreSQL from ECS API tasks"

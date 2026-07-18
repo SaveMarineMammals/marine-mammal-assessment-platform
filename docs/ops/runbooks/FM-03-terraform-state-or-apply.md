@@ -160,9 +160,16 @@ Applies use `-auto-approve` via `scripts/terraform-apply.ts`. State keys are iso
    - Re-run staging apply; Terraform should destroy the old App Runner resources.
    - After cleanup succeeds, `apprunner:*` can remain in bootstrap for safety or be removed once state is clean.
 
-   Smoke test hits App Runner `api_service_url` root (placeholder image returns 200 on `/` until real API is deployed). If URL is wrong, check `outputs.tf` and module.api `service_url`.
+7. **Security group delete fails detaching RDS ENI (`AuthFailure` on `DetachNetworkInterface`)**
 
-7. **Skipped jobs**
+   Changing `aws_security_group.description` forces replacement. Terraform cannot detach RDS-managed ENIs when destroying the old group — this looks like a permissions error but is not an IAM gap.
+
+   - Networking module SGs use `lifecycle { ignore_changes = [description] }` to avoid accidental replacement.
+   - If a failed apply left duplicate SGs, confirm RDS still uses the intended group in the AWS console, remove orphan SGs manually if needed, then re-run apply.
+
+   Smoke test hits ECS Express `api_service_url` root (placeholder image returns 200 on `/` until real API is deployed). If URL is wrong, check `outputs.tf` and module.api `service_url`.
+
+8. **Skipped jobs**
 
    If Terraform jobs do not appear at all, set `TF_INFRA_ENABLED=true` and ensure PR touches `infra/**` or workflow paths for deploy triggers.
 
