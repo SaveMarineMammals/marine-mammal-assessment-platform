@@ -8,6 +8,7 @@ Creates remote state storage and the GitHub OIDC role used by CI for `terraform 
 - DynamoDB table for state locking
 - GitHub OIDC provider (if not already present in the account)
 - IAM role `mmap-terraform-ci` trusted by this repository
+- IAM service-linked role `AWSServiceRoleForECS` (account-wide ECS prerequisite)
 
 ## Run via GitHub Actions (recommended)
 
@@ -28,6 +29,21 @@ terraform apply
 ```
 
 Bootstrap uses **local state** stored in `infra/bootstrap/terraform.tfstate` — back up this file; it is not stored in S3.
+
+## ECS service-linked role
+
+Bootstrap creates `AWSServiceRoleForECS` (`ecs.amazonaws.com`). Staging/production Terraform reads this role via a data source in the api module; it is not recreated per environment.
+
+If the role already exists in the account (for example after a manual `aws iam create-service-linked-role`), import it into bootstrap state before re-running apply:
+
+```powershell
+cd infra/bootstrap
+terraform import aws_iam_service_linked_role.ecs `
+  "arn:aws:iam::ACCOUNT_ID:role/aws-service-role/ecs.amazonaws.com/AWSServiceRoleForECS"
+terraform apply
+```
+
+Replace `ACCOUNT_ID` with your AWS account ID.
 
 ## After bootstrap
 

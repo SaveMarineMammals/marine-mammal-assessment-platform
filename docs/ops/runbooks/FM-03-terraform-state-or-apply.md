@@ -190,15 +190,25 @@ Applies use `-auto-approve` via `scripts/terraform-apply.ts`. State keys are iso
 
 10. **ECS Express service linked role (`Unable to assume the service linked role` / `AWSServiceRoleForECS has been taken`)**
 
-    First ECS use in an account requires the AWS-managed role `AWSServiceRoleForECS`. The api module reads it with `data.aws_iam_role.ecs_service_linked` — it does **not** create the role (avoids conflicts when the role already exists outside Terraform state).
+    First ECS use in an account requires the AWS-managed role `AWSServiceRoleForECS`. **Bootstrap** creates and owns this role; the api module only reads it with `data.aws_iam_role.ecs_service_linked`.
 
-    - **Role missing:** create once with admin credentials, wait ~1 minute, re-run apply:
+    - **New accounts:** re-run **Infra bootstrap** so the role is created before staging apply.
+    - **Role already exists outside bootstrap state:** import into bootstrap, then apply:
+
+      ```powershell
+      cd infra/bootstrap
+      terraform import aws_iam_service_linked_role.ecs `
+        "arn:aws:iam::ACCOUNT_ID:role/aws-service-role/ecs.amazonaws.com/AWSServiceRoleForECS"
+      terraform apply
+      ```
+
+    - **Role missing and bootstrap not yet re-run:**
 
       ```powershell
       aws iam create-service-linked-role --aws-service-name ecs.amazonaws.com
       ```
 
-    - **Role exists but Terraform tried to create it:** merge the data-source fix and re-run apply (no import needed).
+      Then import into bootstrap state as above (or re-run bootstrap after import).
 
 ## Verification
 

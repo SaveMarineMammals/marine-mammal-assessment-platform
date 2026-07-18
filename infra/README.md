@@ -4,7 +4,7 @@ Terraform layout for staging and production. Full architecture: [docs/ops/AWS_IN
 
 ## Quick start (operators)
 
-1. **Bootstrap** — run [Infra bootstrap](../../.github/workflows/infra-bootstrap.yml) once (admin only). See [docs/ops/INFRA_PIPELINES.md](../docs/ops/INFRA_PIPELINES.md).
+1. **Bootstrap** — run [Infra bootstrap](../../.github/workflows/infra-bootstrap.yml) once (admin only). Creates remote state, the Terraform CI OIDC role, and the account-wide `AWSServiceRoleForECS` service-linked role. See [docs/ops/INFRA_PIPELINES.md](../docs/ops/INFRA_PIPELINES.md).
 2. **Enable CI** — set repository variable `TF_INFRA_ENABLED=true` and add Terraform secrets from bootstrap outputs.
 3. **Deploy** — merge infra changes to `main` for progressive staging → production apply, or use **Infra staging (manual)** from a feature branch.
 

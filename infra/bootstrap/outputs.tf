@@ -13,6 +13,11 @@ output "terraform_ci_role_arn" {
   value       = aws_iam_role.terraform_ci.arn
 }
 
+output "ecs_service_linked_role_arn" {
+  description = "Account-wide AWSServiceRoleForECS required by ECS Express Gateway services"
+  value       = aws_iam_service_linked_role.ecs.arn
+}
+
 output "github_actions_secrets" {
   description = "Add these as GitHub repository secrets or variables"
   value = {

@@ -166,3 +166,9 @@ resource "aws_iam_role_policy" "terraform_ci" {
   role   = aws_iam_role.terraform_ci.id
   policy = data.aws_iam_policy_document.terraform_ci.json
 }
+
+# Account-wide prerequisite for ECS Express Gateway services (one per AWS account).
+resource "aws_iam_service_linked_role" "ecs" {
+  aws_service_name = "ecs.amazonaws.com"
+  description      = "Allows Amazon ECS to manage AWS resources on your behalf"
+}

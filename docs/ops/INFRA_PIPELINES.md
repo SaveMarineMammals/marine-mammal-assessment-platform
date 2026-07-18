@@ -4,12 +4,12 @@ GitHub Actions workflows for AWS Terraform bootstrap, plan, and progressive depl
 
 ## Workflows
 
-| Workflow                                                                     | Trigger                               | Purpose                                                            |
-| ---------------------------------------------------------------------------- | ------------------------------------- | ------------------------------------------------------------------ |
-| [infra-bootstrap.yml](../../.github/workflows/infra-bootstrap.yml)           | Manual (`workflow_dispatch`)          | One-time S3 state bucket, DynamoDB lock table, Terraform OIDC role |
-| [ci.yml](../../.github/workflows/ci.yml) → `terraform-plan`                  | PR + push to `main`                   | Plan staging & production; PR comment if destroys detected         |
-| [infra-deploy.yml](../../.github/workflows/infra-deploy.yml)                 | Push to `main` (infra paths) + manual | Apply staging → verify → apply production (main only)              |
-| [infra-staging-manual.yml](../../.github/workflows/infra-staging-manual.yml) | Manual                                | Apply **staging only** from any branch/ref                         |
+| Workflow                                                                     | Trigger                               | Purpose                                                                                     |
+| ---------------------------------------------------------------------------- | ------------------------------------- | ------------------------------------------------------------------------------------------- |
+| [infra-bootstrap.yml](../../.github/workflows/infra-bootstrap.yml)           | Manual (`workflow_dispatch`)          | One-time S3 state bucket, DynamoDB lock table, Terraform OIDC role, ECS service-linked role |
+| [ci.yml](../../.github/workflows/ci.yml) → `terraform-plan`                  | PR + push to `main`                   | Plan staging & production; PR comment if destroys detected                                  |
+| [infra-deploy.yml](../../.github/workflows/infra-deploy.yml)                 | Push to `main` (infra paths) + manual | Apply staging → verify → apply production (main only)                                       |
+| [infra-staging-manual.yml](../../.github/workflows/infra-staging-manual.yml) | Manual                                | Apply **staging only** from any branch/ref                                                  |
 
 ## One-time setup
 
@@ -53,6 +53,8 @@ Run **Infra bootstrap** from Actions (admin only). Copy outputs into repository 
 | `AWS_TERRAFORM_ROLE_ARN` | `terraform_ci_role_arn`  |
 | `TF_STATE_BUCKET`        | `terraform_state_bucket` |
 | `TF_LOCK_TABLE`          | `terraform_lock_table`   |
+
+Bootstrap also creates **`AWSServiceRoleForECS`**, an account-wide prerequisite for ECS Express Gateway services. If that role already exists, import it into bootstrap state before re-running bootstrap (see [infra/bootstrap/README.md](../../infra/bootstrap/README.md)).
 
 ### 3. Enable Terraform CI jobs
 
