@@ -23,5 +23,5 @@ if (!response.ok) {
   process.exit(1);
 }
 
-console.log(`App Runner placeholder health check passed at ${healthUrl}`);
+console.log(`ECS Express placeholder health check passed at ${healthUrl}`);
 console.log(`CloudFront field URL: ${fieldUrl} (available after app deploy publishes /v1/health)`);

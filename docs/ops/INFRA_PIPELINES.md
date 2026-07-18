@@ -25,14 +25,17 @@ Create environments in **Settings → Environments**:
 
 After the first Terraform apply per environment, add GitHub secrets from `terraform output`:
 
-| Secret                | Terraform output                   |
-| --------------------- | ---------------------------------- |
-| `DATABASE_SECRET_ARN` | `database_secret_arn`              |
-| `AWS_DEPLOY_ROLE_ARN` | `github_deploy_role_arn`           |
-| `WEB_STATIC_BUCKET`   | `web_static_bucket`                |
-| `FIELD_STATIC_BUCKET` | `field_static_bucket`              |
-| `WEB_CLOUDFRONT_ID`   | `web_cloudfront_distribution_id`   |
-| `FIELD_CLOUDFRONT_ID` | `field_cloudfront_distribution_id` |
+| Secret                        | Terraform output                   |
+| ----------------------------- | ---------------------------------- |
+| `DATABASE_SECRET_ARN`         | `database_secret_arn`              |
+| `AWS_DEPLOY_ROLE_ARN`         | `github_deploy_role_arn`           |
+| `ECS_SERVICE_NAME`            | `ecs_service_name`                 |
+| `ECS_EXECUTION_ROLE_ARN`      | `ecs_execution_role_arn`           |
+| `ECS_INFRASTRUCTURE_ROLE_ARN` | `ecs_infrastructure_role_arn`      |
+| `WEB_STATIC_BUCKET`           | `web_static_bucket`                |
+| `FIELD_STATIC_BUCKET`         | `field_static_bucket`              |
+| `WEB_CLOUDFRONT_ID`           | `web_cloudfront_distribution_id`   |
+| `FIELD_CLOUDFRONT_ID`         | `field_cloudfront_distribution_id` |
 
 Do **not** store a plaintext `DATABASE_URL` in GitHub.
 

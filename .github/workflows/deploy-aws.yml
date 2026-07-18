@@ -3,6 +3,7 @@
 # Requires Terraform infrastructure applied first. GitHub environment secrets:
 # - AWS_DEPLOY_ROLE_ARN, DATABASE_SECRET_ARN (RDS-managed secret ARN from terraform output)
 # - WEB_STATIC_BUCKET, FIELD_STATIC_BUCKET, WEB_CLOUDFRONT_ID, FIELD_CLOUDFRONT_ID
+# - ECS_SERVICE_NAME, ECS_EXECUTION_ROLE_ARN, ECS_INFRASTRUCTURE_ROLE_ARN
 
 name: Deploy AWS
 
@@ -104,10 +105,17 @@ jobs:
           $env:DATABASE_URL = $secret
           pnpm --filter @mmap/api db:migrate
 
-      - name: Deploy API to App Runner
-        shell: pwsh
+      - name: Deploy API to ECS Express
+        uses: aws-actions/amazon-ecs-deploy-express-service@v1
         env:
           IMAGE_TAG: ${{ github.ref_name }}
           ECR_REGISTRY: ${{ steps.ecr.outputs.registry }}
-        run: |
-          Write-Host "TODO: wire App Runner update-service + start-deployment using Terraform outputs"
+        with:
+          service-name: ${{ secrets.ECS_SERVICE_NAME }}
+          image: ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
+          execution-role-arn: ${{ secrets.ECS_EXECUTION_ROLE_ARN }}
+          infrastructure-role-arn: ${{ secrets.ECS_INFRASTRUCTURE_ROLE_ARN }}
+          container-port: '3001'
+          health-check-path: /v1/health
+          min-task-count: 1
+          max-task-count: 4

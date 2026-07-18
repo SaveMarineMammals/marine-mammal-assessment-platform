@@ -42,3 +42,15 @@ output "field_cloudfront_distribution_id" {
 output "ecr_repository_url" {
   value = module.api.ecr_repository_url
 }
+
+output "ecs_service_name" {
+  value = module.api.service_name
+}
+
+output "ecs_execution_role_arn" {
+  value = module.api.ecs_execution_role_arn
+}
+
+output "ecs_infrastructure_role_arn" {
+  value = module.api.ecs_infrastructure_role_arn
+}

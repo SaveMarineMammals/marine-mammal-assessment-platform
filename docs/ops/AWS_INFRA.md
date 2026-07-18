@@ -27,7 +27,7 @@ flowchart TB
     DataBucket[dataset / attachments bucket]
   end
 
-  subgraph compute [App Runner v1]
+  subgraph compute [ECS Express Mode]
     API[Fastify API service]
   end
 
@@ -76,7 +76,7 @@ flowchart TB
 
 | Decision          | v1 (this sketch)                                                              | Upgrade path                                                    |
 | ----------------- | ----------------------------------------------------------------------------- | --------------------------------------------------------------- |
-| API compute       | **App Runner** — low ops, health-checked rolling deploy                       | **ECS Fargate + CodeDeploy** for native canary traffic shifting |
+| API compute       | **ECS Express Mode** — AWS-recommended App Runner replacement; ALB + Fargate  | **ECS Fargate + CodeDeploy** for native canary traffic shifting |
 | Database          | **RDS PostgreSQL** (`db.t4g.micro` staging, `db.t4g.small` prod) with PostGIS | Aurora Serverless v2 if sync volume grows                       |
 | Frontends         | **S3 + CloudFront** (build artifacts from CI)                                 | Same; invalidate cache on deploy                                |
 | Object storage    | **S3** (dataset exports, future attachments)                                  | Lifecycle rules to Glacier for old snapshots                    |

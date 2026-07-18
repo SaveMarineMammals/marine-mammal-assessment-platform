@@ -1,7 +1,6 @@
 variable "name_prefix" { type = string }
 variable "github_repository" { type = string }
 variable "ecr_repository_arn" { type = string }
-variable "app_runner_arn" { type = string }
 variable "web_bucket_arn" { type = string }
 variable "field_bucket_arn" { type = string }
 variable "cloudfront_distribution_ids" { type = list(string) }
@@ -67,11 +66,14 @@ data "aws_iam_policy_document" "deploy" {
   statement {
     effect = "Allow"
     actions = [
-      "apprunner:StartDeployment",
-      "apprunner:UpdateService",
-      "apprunner:DescribeService",
+      "ecs:UpdateExpressGatewayService",
+      "ecs:DescribeExpressGatewayService",
+      "ecs:DescribeServices",
+      "ecs:DescribeServiceDeployments",
+      "ecs:ListServiceDeployments",
+      "iam:PassRole",
     ]
-    resources = [var.app_runner_arn]
+    resources = ["*"]
   }
 
   statement {

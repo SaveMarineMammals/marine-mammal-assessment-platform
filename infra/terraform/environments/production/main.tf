@@ -42,18 +42,17 @@ module "storage" {
 module "api" {
   source = "../../modules/api"
 
-  name_prefix         = local.name_prefix
-  vpc_connector_arn   = module.networking.app_runner_vpc_connector_arn
-  private_subnet_ids  = module.networking.private_subnet_ids
-  api_connector_sg_id = module.networking.api_connector_security_group_id
+  name_prefix                 = local.name_prefix
+  private_subnet_ids          = module.networking.private_subnet_ids
+  api_connector_sg_id         = module.networking.api_connector_security_group_id
   database_secret_arn         = module.database.database_url_secret_arn
   database_secret_kms_key_arn = module.database.database_secret_kms_key_arn
   data_bucket_arn             = module.storage.data_bucket_arn
-  cpu                 = var.api_cpu
-  memory              = var.api_memory
-  cors_origins        = local.computed_cors
-  auto_deployments    = false
-  tags                = local.common_tags
+  cpu                         = var.api_cpu
+  memory                      = var.api_memory
+  cors_origins                = local.computed_cors
+  max_task_count              = 4
+  tags                        = local.common_tags
 }
 
 module "cdn" {
@@ -78,7 +77,6 @@ module "monitoring" {
   source = "../../modules/monitoring"
 
   name_prefix      = local.name_prefix
-  api_service_arn  = module.api.service_arn
   api_service_name = module.api.service_name
   db_instance_id   = module.database.db_instance_id
   health_check_url = "${module.cdn.field_url}/v1/health"
@@ -88,12 +86,11 @@ module "monitoring" {
 module "github_oidc" {
   source = "../../modules/github-oidc"
 
-  name_prefix                 = local.name_prefix
-  github_repository           = var.github_repository
-  ecr_repository_arn          = module.api.ecr_repository_arn
-  app_runner_arn              = module.api.service_arn
-  web_bucket_arn              = module.storage.web_bucket_arn
-  field_bucket_arn            = module.storage.field_bucket_arn
-  cloudfront_distribution_ids = module.cdn.distribution_ids
-  tags                        = local.common_tags
+  name_prefix                   = local.name_prefix
+  github_repository             = var.github_repository
+  ecr_repository_arn            = module.api.ecr_repository_arn
+  web_bucket_arn                = module.storage.web_bucket_arn
+  field_bucket_arn              = module.storage.field_bucket_arn
+  cloudfront_distribution_ids   = module.cdn.distribution_ids
+  tags                          = local.common_tags
 }
