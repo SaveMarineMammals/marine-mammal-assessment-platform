@@ -224,7 +224,8 @@ resource "aws_ecs_express_gateway_service" "api" {
     container_port = local.container_port
 
     aws_logs_configuration {
-      log_group = aws_cloudwatch_log_group.api.name
+      log_group           = aws_cloudwatch_log_group.api.name
+      log_stream_prefix   = "ecs"
     }
 
     environment {
