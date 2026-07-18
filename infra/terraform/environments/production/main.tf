@@ -57,7 +57,6 @@ module "api" {
   memory                      = var.api_memory
   cors_origins                = local.computed_cors
   max_task_count              = 4
-  ensure_ecs_service_linked_role = false
   tags                        = local.common_tags
 }
 
