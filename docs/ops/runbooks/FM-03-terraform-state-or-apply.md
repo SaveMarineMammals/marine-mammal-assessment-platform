@@ -173,6 +173,21 @@ Applies use `-auto-approve` via `scripts/terraform-apply.ts`. State keys are iso
 
    If Terraform jobs do not appear at all, set `TF_INFRA_ENABLED=true` and ensure PR touches `infra/**` or workflow paths for deploy triggers.
 
+9. **CloudWatch log group already exists (`ResourceAlreadyExistsException`)**
+
+   The ECS migration moved `aws_cloudwatch_log_group.api` from the `monitoring` module to the `api` module. Staging may already have `/mmap-staging/api` in AWS while state still points at the old address (or has no entry).
+
+   - **Preferred:** merge the `moved` block in environment `main.tf` and re-run apply — Terraform rewrites state without recreating the group.
+   - **If apply still tries to create:** import the existing group once (PowerShell, with staging credentials):
+
+     ```powershell
+     pnpm exec tsx scripts/terraform-init.ts staging
+     terraform -chdir=infra/terraform/environments/staging import `
+       'module.api.aws_cloudwatch_log_group.api' '/mmap-staging/api'
+     ```
+
+     Then re-run apply.
+
 ## Verification
 
 - [ ] `terraform plan` exits 0 for staging (and production if applicable)

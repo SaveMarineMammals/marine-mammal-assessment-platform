@@ -11,6 +11,12 @@ locals {
   ])
 }
 
+# ECS migration: log group lived in monitoring; api module now owns it.
+moved {
+  from = module.monitoring.aws_cloudwatch_log_group.api
+  to   = module.api.aws_cloudwatch_log_group.api
+}
+
 module "networking" {
   source = "../../modules/networking"
 
