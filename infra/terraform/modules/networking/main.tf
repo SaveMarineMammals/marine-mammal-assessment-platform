@@ -131,49 +131,9 @@ resource "aws_security_group" "rds" {
   }
 }
 
-resource "aws_security_group" "vpc_endpoints" {
-  name        = "${var.name_prefix}-vpc-endpoints"
-  description = "Interface VPC endpoints for private ECS tasks"
-  vpc_id      = aws_vpc.main.id
-  tags        = merge(var.tags, { Name = "${var.name_prefix}-vpc-endpoints" })
-
-  ingress {
-    description     = "HTTPS from ECS API tasks"
-    from_port       = 443
-    to_port         = 443
-    protocol        = "tcp"
-    security_groups = [aws_security_group.api_connector.id]
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-}
-
-locals {
-  interface_endpoint_services = [
-    "ecr.api",
-    "ecr.dkr",
-    "logs",
-    "secretsmanager",
-  ]
-}
-
-resource "aws_vpc_endpoint" "interface" {
-  for_each = toset(local.interface_endpoint_services)
-
-  vpc_id              = aws_vpc.main.id
-  service_name        = "com.amazonaws.${local.region}.${each.value}"
-  vpc_endpoint_type   = "Interface"
-  subnet_ids          = aws_subnet.private[*].id
-  security_group_ids  = [aws_security_group.vpc_endpoints.id]
-  private_dns_enabled = true
-  tags                = merge(var.tags, { Name = "${var.name_prefix}-${each.value}" })
-}
-
+# Gateway endpoint only (no hourly charge). Interface PrivateLink endpoints for
+# ECR/Logs/Secrets Manager are intentionally omitted — ECS Express tasks run in
+# public subnets and reach AWS APIs via the internet gateway (~$58/mo saved).
 resource "aws_vpc_endpoint" "s3" {
   vpc_id            = aws_vpc.main.id
   service_name      = "com.amazonaws.${local.region}.s3"

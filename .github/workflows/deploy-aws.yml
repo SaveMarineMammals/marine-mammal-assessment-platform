@@ -28,13 +28,15 @@ permissions:
 
 env:
   AWS_REGION: us-east-1
-  ECR_REPOSITORY: mmap-api
 
 jobs:
   deploy:
     name: Deploy to ${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'production' }}
     runs-on: ubuntu-latest
     environment: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'production' }}
+    env:
+      # Must match Terraform module.api ECR repo: mmap-{environment}-api
+      ECR_REPOSITORY: mmap-${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'production' }}-api
     steps:
       - name: Checkout
         uses: actions/checkout@v6

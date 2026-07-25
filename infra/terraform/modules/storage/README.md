@@ -2,13 +2,13 @@
 
 S3 buckets for static frontends and dataset/attachment object storage.
 
-## Resources to implement
+## Resources
 
 - `aws_s3_bucket.web_static` — web build artifacts; block public access (CloudFront OAC only)
 - `aws_s3_bucket.field_static` — field PWA artifacts
 - `aws_s3_bucket.data` — private exports/attachments; IAM access from API role only
 - Bucket versioning on `data`
-- Lifecycle rule: transition old dataset prefixes to Glacier after N days
+- No Glacier lifecycle rule yet (documented as a future cost-hygiene item)
 
 ## Inputs
 

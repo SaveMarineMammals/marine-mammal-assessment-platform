@@ -52,7 +52,7 @@ Applies use `-auto-approve` via `scripts/terraform-apply.ts`. State keys are iso
 
    - **Plan only fails** → usually config/provider/permissions; production may still be untouched.
    - **Staging apply fails** → production apply never runs (`needs: staging-apply`).
-   - **Verify staging fails** → smoke test could not reach App Runner URL from Terraform output.
+   - **Verify staging fails** → smoke test could not reach ECS Express `api_service_url` from Terraform output.
 
 3. **Read the error class**
 
@@ -60,7 +60,7 @@ Applies use `-auto-approve` via `scripts/terraform-apply.ts`. State keys are iso
    | --------------------------------- | ------------------------------------ |
    | `Error acquiring the state lock`  | Stale lock from parallel/crashed job |
    | `AccessDenied` on S3/DynamoDB/IAM | OIDC role or bootstrap secrets wrong |
-   | `InvalidParameterCombination`     | RDS/App Runner module input drift    |
+   | `InvalidParameterCombination`     | RDS/ECS Express module input drift   |
    | Destroy actions in plan           | Resource rename or removed block     |
 
 4. **Inspect lock table (AWS)**
@@ -152,13 +152,13 @@ Applies use `-auto-approve` via `scripts/terraform-apply.ts`. State keys are iso
    pnpm exec tsx scripts/terraform-smoke-test.ts staging
    ```
 
-6. **App Runner cleanup after ECS migration (`AccessDenied` on `apprunner:Describe*`)**
+6. **Legacy App Runner resources still in state (`AccessDenied` on `apprunner:Describe*`)**
 
-   Terraform state may still reference App Runner service and VPC connector resources removed from HCL. The CI role needs `apprunner:*` (included in bootstrap) to read and destroy them.
+   Older stacks may still reference App Runner service / VPC connector resources removed from HCL after the ECS Express migration. The Terraform CI role includes `apprunner:*` in bootstrap so apply can destroy leftovers.
 
-   - Re-run **Infra bootstrap** so `mmap-terraform-ci` picks up the updated policy, **or** temporarily attach `apprunner:*` to that role in IAM.
+   - Re-run **Infra bootstrap** so `mmap-terraform-ci` picks up the policy, **or** temporarily attach `apprunner:*` to that role in IAM.
    - Re-run staging apply; Terraform should destroy the old App Runner resources.
-   - After cleanup succeeds, `apprunner:*` can remain in bootstrap for safety or be removed once state is clean.
+   - After state is clean, `apprunner:*` can remain for safety or be removed from bootstrap.
 
 7. **Security group delete fails detaching RDS ENI (`AuthFailure` on `DetachNetworkInterface`)**
 

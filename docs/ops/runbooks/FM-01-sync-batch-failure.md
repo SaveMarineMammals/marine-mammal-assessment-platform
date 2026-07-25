@@ -25,8 +25,8 @@ Production and Docker use **same-origin** `/v1` (nginx or CloudFront path behavi
 | Assessment badge `pending` or `error`                             | Field app list/detail                                                    |
 | Sync / Settings page lists failed queue entries with `last_error` | `apps/field/src/pages/SyncPage.tsx`, `SettingsPage.tsx`                  |
 | API connectivity indicator offline                                | `apps/field/src/sync/api-connectivity.ts` (polls `/v1/health` every 30s) |
-| CloudWatch 4xx/5xx on App Runner or ALB                           | AWS console (when deployed)                                              |
-| API logs show validation errors                                   | `sync_audit` table / App Runner logs                                     |
+| CloudWatch 4xx/5xx on ALB / ECS Express                           | AWS console (when deployed)                                              |
+| API logs show validation errors                                   | `sync_audit` table / CloudWatch log group `/mmap-{env}/api`              |
 
 ## Prerequisites
 
@@ -89,7 +89,7 @@ Production and Docker use **same-origin** `/v1` (nginx or CloudFront path behavi
    curl -s "https://field-staging.<your-domain>/v1/health"
    ```
 
-   If the static site loads but `/v1/health` fails, the CDN API origin or App Runner service is misconfigured. See [AWS_INFRA.md](../AWS_INFRA.md).
+   If the static site loads but `/v1/health` fails, the CDN API origin or ECS Express service is misconfigured. See [AWS_INFRA.md](../AWS_INFRA.md).
 
 ## Resolution
 
@@ -121,10 +121,11 @@ Production and Docker use **same-origin** `/v1` (nginx or CloudFront path behavi
 
    This calls `retryFailedSyncEntries()` then `triggerSync({ force: true })`.
 
-6. **Production CloudFront / App Runner**
+6. **Production CloudFront / ECS Express**
 
    - Confirm infra outputs: `field_url`, `api_service_url` (`infra/terraform/environments/staging/outputs.tf`).
    - Run application deploy after infra is healthy ([FM-04-deploy-pipeline-failure.md](FM-04-deploy-pipeline-failure.md)).
+   - If staging was hibernated, resume first: `pnpm exec tsx scripts/staging-hibernate.ts resume`.
 
 ## Verification
 

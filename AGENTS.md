@@ -72,7 +72,7 @@ Or `pnpm validate:integration` after Postgres is up (pass `--database-url` as ab
 
 ### Windows (PowerShell and Git Bash)
 
-This repo has **no `.sh` files** and no bash-based git hooks. **Do not** create shell scripts or run bash-only syntax (`./script.sh`, `cp`, heredoc commits, `cat <<EOF`) for validation or tooling. Infrastructure helpers live in `scripts/terraform-*.ts` and run via `pnpm exec tsx` on PowerShell, Git Bash, or CI.
+This repo has **no `.sh` files** and no bash-based git hooks. **Do not** create shell scripts or run bash-only syntax (`./script.sh`, `cp`, heredoc commits, `cat <<EOF`) for validation or tooling. Infrastructure helpers live in `scripts/terraform-*.ts` and `scripts/staging-hibernate.ts`, and run via `pnpm exec tsx` on PowerShell, Git Bash, or CI.
 
 **Git Bash is supported** for all `pnpm` commands. Set non-interactive installs when automating:
 

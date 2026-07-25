@@ -1,10 +1,9 @@
 # cdn module
 
-CloudFront distributions, ACM certificates, and Route 53 records.
+CloudFront distributions for public web and field PWA, with same-origin `/v1` routing to ECS Express.
 
-## Resources to implement
+## Resources
 
-- `aws_acm_certificate` (provider `aws.us_east_1`) — `*.domain` or per-host certs
 - `aws_cloudfront_origin_access_control` — S3 origins
 - `aws_cloudfront_distribution.web`:
   - Default → S3 web bucket
@@ -13,8 +12,9 @@ CloudFront distributions, ACM certificates, and Route 53 records.
 - `aws_cloudfront_distribution.field`:
   - Default → S3 field bucket
   - `/v1/*` → ECS Express API
-- `aws_route53_record` — A/AAAA aliases for web + field hostnames
 - S3 bucket policies granting CloudFront OAC read
+
+When `domain_name` is empty (current default), distributions use the **CloudFront default certificate** and `*.cloudfront.net` hostnames. ACM certificates and Route 53 aliases are not provisioned until a custom domain is configured.
 
 Preserve same-origin `/v1` routing so field PWA needs no `VITE_API_BASE_URL`.
 
@@ -35,6 +35,6 @@ Preserve same-origin `/v1` routing so field PWA needs no `VITE_API_BASE_URL`.
 
 | Name               | Description                                          |
 | ------------------ | ---------------------------------------------------- |
-| `web_fqdn`         | e.g. `staging.example.org`                           |
-| `field_fqdn`       | e.g. `field-staging.example.org`                     |
+| `web_fqdn`         | Custom FQDN or CloudFront domain name                |
+| `field_fqdn`       | Custom FQDN or CloudFront domain name                |
 | `distribution_ids` | list of CloudFront distribution IDs for invalidation |

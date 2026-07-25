@@ -115,7 +115,17 @@ pnpm exec tsx scripts/terraform-init.ts `
 terraform -chdir=infra/terraform/environments/staging plan -var-file=terraform.tfvars
 ```
 
-All infra helper scripts are **TypeScript** (`scripts/terraform-*.ts`) and run on Windows PowerShell and Linux CI — no bash required.
+Cut staging cost without destroying the stack (scales API to 0 tasks, stops RDS):
+
+```powershell
+pnpm exec tsx scripts/staging-hibernate.ts status
+pnpm exec tsx scripts/staging-hibernate.ts hibernate
+pnpm exec tsx scripts/staging-hibernate.ts resume
+```
+
+See [AWS_INFRA.md](AWS_INFRA.md#hibernate-staging-scale-to-zero) for the ~$25/mo hibernated floor and caveats.
+
+All infra helper scripts are **TypeScript** (`scripts/terraform-*.ts`, `scripts/staging-hibernate.ts`) and run on Windows PowerShell and Linux CI — no bash required.
 
 ## Related
 

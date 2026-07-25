@@ -1,6 +1,7 @@
 # github-oidc module
 
-IAM OIDC trust and deploy policy for GitHub Actions.
+Per-environment IAM deploy role for GitHub Actions. Trusts the **shared** account OIDC
+provider created by [bootstrap](../../../bootstrap/README.md) (`token.actions.githubusercontent.com`).
 
 ## Permissions
 
