@@ -25,7 +25,7 @@ The secret ARN (output `database_url_secret_arn`) contains JSON:
 }
 ```
 
-App Runner injects this JSON into the `DATABASE_URL` environment variable. The API (`apps/api/src/cli/database-url.ts`) normalizes it to a PostgreSQL connection string at runtime.
+ECS Express injects this JSON into the `DATABASE_URL` task secret. The API (`apps/api/src/cli/database-url.ts`) normalizes it to a PostgreSQL connection string at runtime.
 
 Local development and CI continue to use a plain `DATABASE_URL` connection string (`postgresql://mmap:mmap@localhost:5432/mmap`).
 

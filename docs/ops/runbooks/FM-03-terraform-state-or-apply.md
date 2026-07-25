@@ -52,7 +52,7 @@ Applies use `-auto-approve` via `scripts/terraform-apply.ts`. State keys are iso
 
    - **Plan only fails** → usually config/provider/permissions; production may still be untouched.
    - **Staging apply fails** → production apply never runs (`needs: staging-apply`).
-   - **Verify staging fails** → smoke test could not reach App Runner URL from Terraform output.
+   - **Verify staging fails** → smoke test could not reach ECS Express `api_service_url` from Terraform output.
 
 3. **Read the error class**
 
@@ -60,7 +60,7 @@ Applies use `-auto-approve` via `scripts/terraform-apply.ts`. State keys are iso
    | --------------------------------- | ------------------------------------ |
    | `Error acquiring the state lock`  | Stale lock from parallel/crashed job |
    | `AccessDenied` on S3/DynamoDB/IAM | OIDC role or bootstrap secrets wrong |
-   | `InvalidParameterCombination`     | RDS/App Runner module input drift    |
+   | `InvalidParameterCombination`     | RDS/ECS Express module input drift   |
    | Destroy actions in plan           | Resource rename or removed block     |
 
 4. **Inspect lock table (AWS)**
@@ -152,11 +152,147 @@ Applies use `-auto-approve` via `scripts/terraform-apply.ts`. State keys are iso
    pnpm exec tsx scripts/terraform-smoke-test.ts staging
    ```
 
-   Smoke test hits App Runner `api_service_url` root (placeholder image returns 200 on `/` until real API is deployed). If URL is wrong, check `outputs.tf` and module.api `service_url`.
+6. **Legacy App Runner resources still in state (`AccessDenied` on `apprunner:Describe*`)**
 
-6. **Skipped jobs**
+   Older stacks may still reference App Runner service / VPC connector resources removed from HCL after the ECS Express migration. The Terraform CI role includes `apprunner:*` in bootstrap so apply can destroy leftovers.
+
+   - Re-run **Infra bootstrap** so `mmap-terraform-ci` picks up the policy, **or** temporarily attach `apprunner:*` to that role in IAM.
+   - Re-run staging apply; Terraform should destroy the old App Runner resources.
+   - After state is clean, `apprunner:*` can remain for safety or be removed from bootstrap.
+
+7. **Security group delete fails detaching RDS ENI (`AuthFailure` on `DetachNetworkInterface`)**
+
+   Changing `aws_security_group.description` forces replacement. Terraform cannot detach RDS-managed ENIs when destroying the old group — this looks like a permissions error but is not an IAM gap.
+
+   - Networking module SGs use `lifecycle { ignore_changes = [description] }` to avoid accidental replacement.
+   - If a failed apply left duplicate SGs, confirm RDS still uses the intended group in the AWS console, remove orphan SGs manually if needed, then re-run apply.
+
+   Smoke test hits ECS Express `api_service_url` root (placeholder image returns 200 on `/` until real API is deployed). If URL is wrong, check `outputs.tf` and module.api `service_url`.
+
+   **Double `https://https://…` / `getaddrinfo EAI_AGAIN https`:** Express `ingress_paths[].endpoint` already includes the scheme. The api module must strip it before adding `https://` (see `local.ingress_host`). Re-apply or refresh outputs after that fix; the smoke test also normalizes a double scheme defensively.
+
+8. **Skipped jobs**
 
    If Terraform jobs do not appear at all, set `TF_INFRA_ENABLED=true` and ensure PR touches `infra/**` or workflow paths for deploy triggers.
+
+9. **Secrets Manager name conflict after destroy (`InvalidRequestException` / secret scheduled for deletion)**
+
+   Destroying staging schedules `mmap-staging/api-admin-token` for deletion (default recovery window). Re-apply cannot recreate the same name until the window ends or the secret is force-deleted.
+
+   - **One-time cleanup** (staging only; permanent — no restore):
+
+     ```powershell
+     aws secretsmanager delete-secret `
+       --secret-id mmap-staging/api-admin-token `
+       --force-delete-without-recovery `
+       --region us-east-1
+     ```
+
+     List leftovers: `aws secretsmanager list-secrets --include-planned-deletion --region us-east-1`.
+
+   - **Prevention:** the api module sets `recovery_window_in_days = 0` for non-production so destroy force-deletes the admin token. Production keeps a 30-day window.
+
+   - **KMS:** customer-managed keys use a minimum 7-day deletion window and cannot be force-deleted immediately. A pending key does not block recreate if the alias was destroyed with the stack; if apply fails on `alias/mmap-staging-rds-secret`, wait for the old key to finish deletion or cancel deletion and import that key into state.
+
+10. **CloudWatch log group already exists (`ResourceAlreadyExistsException`)**
+
+    The ECS migration moved `aws_cloudwatch_log_group.api` from the `monitoring` module to the `api` module. Staging may already have `/mmap-staging/api` in AWS while state still points at the old address (or has no entry).
+
+    - **Preferred:** merge the `moved` block in environment `main.tf` and re-run apply — Terraform rewrites state without recreating the group.
+    - **If apply still tries to create:** import the existing group once (PowerShell, with staging credentials):
+
+      ```powershell
+      pnpm exec tsx scripts/terraform-init.ts staging
+      terraform -chdir=infra/terraform/environments/staging import `
+        'module.api.aws_cloudwatch_log_group.api' '/mmap-staging/api'
+      ```
+
+      Then re-run apply.
+
+11. **ECS Express service linked role (`Unable to assume the service linked role` / `AWSServiceRoleForECS has been taken`)**
+
+    First ECS use in an account requires the AWS-managed role `AWSServiceRoleForECS`. **Bootstrap** creates and owns this role; the api module only reads it with `data.aws_iam_role.ecs_service_linked`.
+
+    - **New accounts:** re-run **Infra bootstrap** so the role is created before staging apply.
+    - **Role already exists outside bootstrap state:** import into bootstrap, then apply:
+
+      ```powershell
+      cd infra/bootstrap
+      terraform import aws_iam_service_linked_role.ecs `
+        "arn:aws:iam::ACCOUNT_ID:role/aws-service-role/ecs.amazonaws.com/AWSServiceRoleForECS"
+      terraform apply
+      ```
+
+    - **Role missing and bootstrap not yet re-run:**
+
+      ```powershell
+      aws iam create-service-linked-role --aws-service-name ecs.amazonaws.com
+      ```
+
+      Then import into bootstrap state as above (or re-run bootstrap after import).
+
+12. **`service_url` null / no PUBLIC `ingress_paths`**
+
+    ECS Express in **private subnets** creates an internal ALB with `PRIVATE` ingress only — CloudFront cannot use that origin. The api module uses **public subnets** for `network_configuration` so AWS exposes a `PUBLIC` endpoint. Re-apply after merging; Terraform may replace the Express service when subnets change.
+
+13. **Changing subnet types / Express service already exists**
+
+    AWS cannot move an Express service from private to public subnets in place. Use a **state move**, then **replace**:
+
+    1. **`moved` block** (in api module) rewrites `aws_ecs_express_gateway_service.api` → `.express` without calling AWS.
+    2. If apply fails with **Resource Already Exists** (rename raced ahead of destroy), import the live service, drop stale state, then replace:
+
+       ```powershell
+       pnpm exec tsx scripts/terraform-init.ts staging
+       terraform -chdir=infra/terraform/environments/staging import `
+         'module.api.aws_ecs_express_gateway_service.express' `
+         'arn:aws:ecs:us-east-1:ACCOUNT_ID:service/default/mmap-staging-api'
+       terraform -chdir=infra/terraform/environments/staging state rm `
+         'module.api.aws_ecs_express_gateway_service.api'
+       ```
+
+       Skip `state rm` if `api` is not in state. Replace `ACCOUNT_ID` with your AWS account ID.
+
+    3. Recreate on public subnets:
+
+       ```powershell
+       terraform -chdir=infra/terraform/environments/staging apply `
+         -replace='module.api.aws_ecs_express_gateway_service.express' `
+         -var-file=terraform.tfvars -auto-approve
+       ```
+
+    Future subnet changes use `replace_triggered_by` on `terraform_data.express_subnet_set`.
+
+14. **ECS Express deployment stuck / Terraform 30m timeout (`tfPENDING`, health never passes)**
+
+    The placeholder **nginx** image is not the problem — health checks use `/` on port **80**, which nginx serves. Common causes:
+
+    | Symptom                            | Likely cause                                       | Fix                                                                                    |
+    | ---------------------------------- | -------------------------------------------------- | -------------------------------------------------------------------------------------- |
+    | Deployment `IN_PROGRESS` for hours | ALB target group unhealthy (no ingress on task SG) | Ensure `api_connector` SG allows TCP **80–3001** from the VPC CIDR (networking module) |
+    | Tasks never reach `RUNNING`        | Secrets injected before container start            | Placeholder image omits `DATABASE_URL` / `API_ADMIN_TOKEN`; re-apply after merge       |
+    | CI fails at exactly **30m**        | `wait_for_steady_state = true`                     | Module default is `false`; smoke test validates `/` after apply                        |
+
+    **Diagnose** (with AWS credentials):
+
+    ```powershell
+    pnpm exec tsx scripts/ecs-express-diagnose.ts mmap-staging-api 963120167952 us-east-1
+    ```
+
+    Or in the ECS console: Express service → **Monitor deployment** (target group health, security groups).
+
+    **Unstick** a deployment that has been deploying for >30 minutes:
+
+    1. ECS console → cancel the stuck deployment, **or**
+    2. Replace the Express service and re-apply:
+
+       ```powershell
+       terraform -chdir=infra/terraform/environments/staging apply `
+         -replace='module.api.aws_ecs_express_gateway_service.express' `
+         -var-file=terraform.tfvars -auto-approve
+       ```
+
+    After a failed create with `wait_for_steady_state = true`, Terraform may not have saved state — import per step 13 if needed, then re-apply with the fixes above.
 
 ## Verification
 

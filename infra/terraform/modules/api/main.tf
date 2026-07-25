@@ -2,7 +2,7 @@ terraform {
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = "~> 5.0"
+      version = "~> 6.23"
     }
     random = {
       source  = "hashicorp/random"
@@ -12,8 +12,10 @@ terraform {
 }
 
 variable "name_prefix" { type = string }
-variable "vpc_connector_arn" { type = string }
-variable "private_subnet_ids" { type = list(string) }
+variable "subnet_ids" {
+  description = "Subnets for ECS Express (public subnets for an internet-facing ALB)"
+  type        = list(string)
+}
 variable "api_connector_sg_id" { type = string }
 variable "database_secret_arn" { type = string }
 variable "database_secret_kms_key_arn" {
@@ -24,24 +26,29 @@ variable "data_bucket_arn" { type = string }
 variable "cpu" { type = string }
 variable "memory" { type = string }
 variable "cors_origins" { type = list(string) }
-variable "auto_deployments" { type = bool }
+variable "max_task_count" {
+  type    = number
+  default = 2
+}
 variable "tags" { type = map(string) }
 
 variable "initial_image_uri" {
   description = "Container image used until the application deploy pipeline publishes to ECR"
   type        = string
-  default     = "public.ecr.aws/aws-containers/hello-app-runner:latest"
+  default     = "public.ecr.aws/nginx/nginx:latest"
 }
 
-variable "initial_image_repository_type" {
-  type    = string
-  default = "ECR_PUBLIC"
+variable "wait_for_steady_state" {
+  description = "Block until ECS Express deployment is ACTIVE/STABLE (false avoids 30m CI timeout during bootstrap)"
+  type        = bool
+  default     = false
 }
 
 locals {
-  using_placeholder_image = var.initial_image_repository_type == "ECR_PUBLIC"
-  container_port          = local.using_placeholder_image ? "8080" : "3001"
+  using_placeholder_image = startswith(var.initial_image_uri, "public.ecr.aws/")
+  container_port          = local.using_placeholder_image ? 80 : 3001
   health_check_path       = local.using_placeholder_image ? "/" : "/v1/health"
+  app_port                = local.using_placeholder_image ? "80" : "3001"
 }
 
 resource "random_password" "admin_token" {
@@ -51,12 +58,22 @@ resource "random_password" "admin_token" {
 
 resource "aws_secretsmanager_secret" "admin_token" {
   name = "${var.name_prefix}/api-admin-token"
-  tags = var.tags
+  # Staging/ephemeral: force-delete on destroy so re-apply is not blocked by the
+  # 7–30 day Secrets Manager recovery window (same name cannot be recreated while
+  # scheduled for deletion). Production keeps a recovery window for accident recovery.
+  recovery_window_in_days = startswith(var.name_prefix, "mmap-production") ? 30 : 0
+  tags                    = var.tags
 }
 
 resource "aws_secretsmanager_secret_version" "admin_token" {
   secret_id     = aws_secretsmanager_secret.admin_token.id
   secret_string = random_password.admin_token.result
+}
+
+resource "aws_cloudwatch_log_group" "api" {
+  name              = "/${var.name_prefix}/api"
+  retention_in_days = 30
+  tags              = var.tags
 }
 
 resource "aws_ecr_repository" "api" {
@@ -71,8 +88,8 @@ resource "aws_ecr_repository" "api" {
   tags = var.tags
 }
 
-resource "aws_iam_role" "apprunner_access" {
-  name = "${var.name_prefix}-apprunner-access"
+resource "aws_iam_role" "ecs_execution" {
+  name = "${var.name_prefix}-ecs-execution"
   tags = var.tags
 
   assume_role_policy = jsonencode({
@@ -80,34 +97,51 @@ resource "aws_iam_role" "apprunner_access" {
     Statement = [{
       Effect = "Allow"
       Principal = {
-        Service = "build.apprunner.amazonaws.com"
+        Service = "ecs-tasks.amazonaws.com"
       }
       Action = "sts:AssumeRole"
     }]
   })
 }
 
-resource "aws_iam_role_policy" "apprunner_access" {
-  name = "${var.name_prefix}-apprunner-access"
-  role = aws_iam_role.apprunner_access.id
+resource "aws_iam_role_policy_attachment" "ecs_execution" {
+  role       = aws_iam_role.ecs_execution.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+}
 
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Effect = "Allow"
-      Action = [
-        "ecr:GetAuthorizationToken",
-        "ecr:BatchCheckLayerAvailability",
-        "ecr:GetDownloadUrlForLayer",
-        "ecr:BatchGetImage",
+data "aws_iam_policy_document" "ecs_execution" {
+  statement {
+    effect = "Allow"
+    actions = [
+      "secretsmanager:GetSecretValue",
+    ]
+    resources = [
+      var.database_secret_arn,
+      aws_secretsmanager_secret.admin_token.arn,
+    ]
+  }
+
+  dynamic "statement" {
+    for_each = var.database_secret_kms_key_arn != "" ? [1] : []
+    content {
+      effect = "Allow"
+      actions = [
+        "kms:Decrypt",
+        "kms:DescribeKey",
       ]
-      Resource = "*"
-    }]
-  })
+      resources = [var.database_secret_kms_key_arn]
+    }
+  }
 }
 
-resource "aws_iam_role" "apprunner_instance" {
-  name = "${var.name_prefix}-apprunner-instance"
+resource "aws_iam_role_policy" "ecs_execution" {
+  name   = "${var.name_prefix}-ecs-execution"
+  role   = aws_iam_role.ecs_execution.id
+  policy = data.aws_iam_policy_document.ecs_execution.json
+}
+
+resource "aws_iam_role" "ecs_infrastructure" {
+  name = "${var.name_prefix}-ecs-infrastructure"
   tags = var.tags
 
   assume_role_policy = jsonencode({
@@ -115,14 +149,35 @@ resource "aws_iam_role" "apprunner_instance" {
     Statement = [{
       Effect = "Allow"
       Principal = {
-        Service = "tasks.apprunner.amazonaws.com"
+        Service = "ecs.amazonaws.com"
       }
       Action = "sts:AssumeRole"
     }]
   })
 }
 
-data "aws_iam_policy_document" "apprunner_instance" {
+resource "aws_iam_role_policy_attachment" "ecs_infrastructure" {
+  role       = aws_iam_role.ecs_infrastructure.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSInfrastructureRoleforExpressGatewayServices"
+}
+
+resource "aws_iam_role" "ecs_task" {
+  name = "${var.name_prefix}-ecs-task"
+  tags = var.tags
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Principal = {
+        Service = "ecs-tasks.amazonaws.com"
+      }
+      Action = "sts:AssumeRole"
+    }]
+  })
+}
+
+data "aws_iam_policy_document" "ecs_task" {
   statement {
     effect = "Allow"
     actions = [
@@ -161,74 +216,145 @@ data "aws_iam_policy_document" "apprunner_instance" {
   }
 }
 
-resource "aws_iam_role_policy" "apprunner_instance" {
-  name   = "${var.name_prefix}-apprunner-instance"
-  role   = aws_iam_role.apprunner_instance.id
-  policy = data.aws_iam_policy_document.apprunner_instance.json
+resource "aws_iam_role_policy" "ecs_task" {
+  name   = "${var.name_prefix}-ecs-task"
+  role   = aws_iam_role.ecs_task.id
+  policy = data.aws_iam_policy_document.ecs_task.json
 }
 
-resource "aws_apprunner_service" "api" {
-  service_name = "${var.name_prefix}-api"
-  tags         = var.tags
+# Account-wide prerequisite for ECS Express Gateway services (AWS-managed; not created here).
+data "aws_iam_role" "ecs_service_linked" {
+  name = "AWSServiceRoleForECS"
+}
 
-  source_configuration {
-    authentication_configuration {
-      access_role_arn = aws_iam_role.apprunner_access.arn
+# Subnet changes force a new Express service (AWS rejects in-place subnet type updates).
+resource "terraform_data" "express_subnet_set" {
+  input = join(",", sort(var.subnet_ids))
+}
+
+moved {
+  from = aws_ecs_express_gateway_service.api
+  to   = aws_ecs_express_gateway_service.express
+}
+
+resource "aws_ecs_express_gateway_service" "express" {
+  service_name            = "${var.name_prefix}-api"
+  execution_role_arn      = aws_iam_role.ecs_execution.arn
+  infrastructure_role_arn = aws_iam_role.ecs_infrastructure.arn
+  task_role_arn           = aws_iam_role.ecs_task.arn
+  cpu                     = var.cpu
+  memory                  = var.memory
+  health_check_path       = local.health_check_path
+  wait_for_steady_state   = var.wait_for_steady_state
+  tags                    = var.tags
+
+  primary_container {
+    image          = var.initial_image_uri
+    container_port = local.container_port
+
+    aws_logs_configuration {
+      log_group           = aws_cloudwatch_log_group.api.name
+      log_stream_prefix   = "ecs"
     }
 
-    image_repository {
-      image_identifier      = var.initial_image_uri
-      image_repository_type = var.initial_image_repository_type
+    environment {
+      name  = "PORT"
+      value = local.app_port
+    }
 
-      image_configuration {
-        port = local.container_port
+    environment {
+      name  = "HOST"
+      value = "0.0.0.0"
+    }
 
-        runtime_environment_secrets = {
-          DATABASE_URL     = var.database_secret_arn
-          API_ADMIN_TOKEN  = aws_secretsmanager_secret.admin_token.arn
-        }
-
-        runtime_environment_variables = {
-          PORT                   = "3001"
-          HOST                   = "0.0.0.0"
-          NODE_ENV               = "production"
-          CORS_ORIGIN            = join(",", var.cors_origins)
-          MINIO_ENDPOINT         = ""
-          PUBLIC_PSEUDONYMIZE_NAMES = "false"
-        }
+    dynamic "environment" {
+      for_each = local.using_placeholder_image ? [] : [1]
+      content {
+        name  = "NODE_ENV"
+        value = "production"
       }
     }
 
-    auto_deployments_enabled = var.auto_deployments
-  }
+    dynamic "environment" {
+      for_each = local.using_placeholder_image ? [] : [1]
+      content {
+        name  = "CORS_ORIGIN"
+        value = join(",", var.cors_origins)
+      }
+    }
 
-  instance_configuration {
-    cpu               = var.cpu
-    memory            = var.memory
-    instance_role_arn = aws_iam_role.apprunner_instance.arn
-  }
+    dynamic "environment" {
+      for_each = local.using_placeholder_image ? [] : [1]
+      content {
+        name  = "MINIO_ENDPOINT"
+        value = ""
+      }
+    }
 
-  health_check_configuration {
-    protocol            = "HTTP"
-    path                = local.health_check_path
-    healthy_threshold   = 1
-    unhealthy_threshold = 5
-    interval            = 10
-    timeout             = 5
-  }
+    dynamic "environment" {
+      for_each = local.using_placeholder_image ? [] : [1]
+      content {
+        name  = "PUBLIC_PSEUDONYMIZE_NAMES"
+        value = "false"
+      }
+    }
 
-  network_configuration {
-    egress_configuration {
-      egress_type       = "VPC"
-      vpc_connector_arn = var.vpc_connector_arn
+    dynamic "secret" {
+      for_each = local.using_placeholder_image ? [] : [1]
+      content {
+        name       = "DATABASE_URL"
+        value_from = var.database_secret_arn
+      }
+    }
+
+    dynamic "secret" {
+      for_each = local.using_placeholder_image ? [] : [1]
+      content {
+        name       = "API_ADMIN_TOKEN"
+        value_from = aws_secretsmanager_secret.admin_token.arn
+      }
     }
   }
 
+  network_configuration {
+    subnets         = var.subnet_ids
+    security_groups = [var.api_connector_sg_id]
+  }
+
+  scaling_target {
+    auto_scaling_metric       = "AVERAGE_CPU"
+    auto_scaling_target_value = 60
+    min_task_count            = 1
+    max_task_count            = var.max_task_count
+  }
+
+  depends_on = [
+    aws_iam_role_policy.ecs_execution,
+    aws_iam_role_policy.ecs_task,
+    aws_iam_role_policy_attachment.ecs_execution,
+    aws_iam_role_policy_attachment.ecs_infrastructure,
+    data.aws_iam_role.ecs_service_linked,
+  ]
+
   lifecycle {
+    replace_triggered_by = [terraform_data.express_subnet_set]
     ignore_changes = [
-      source_configuration[0].image_repository[0].image_identifier,
+      primary_container[0].image,
     ]
   }
+}
+
+locals {
+  # Express ManagedIngressPath.endpoint is already a full URL (e.g. https://mm-….on.aws).
+  ingress_endpoint = coalesce(
+    try([for path in aws_ecs_express_gateway_service.express.ingress_paths : path.endpoint if path.access_type == "PUBLIC"][0], null),
+    try([for path in aws_ecs_express_gateway_service.express.ingress_paths : path.endpoint if path.access_type == "PRIVATE"][0], null),
+    try(aws_ecs_express_gateway_service.express.ingress_paths[0].endpoint, null),
+  )
+  ingress_host = trimsuffix(
+    replace(replace(coalesce(local.ingress_endpoint, ""), "https://", ""), "http://", ""),
+    "/",
+  )
 }
 
 output "ecr_repository_arn" {
@@ -240,17 +366,30 @@ output "ecr_repository_url" {
 }
 
 output "service_arn" {
-  value = aws_apprunner_service.api.arn
+  value = aws_ecs_express_gateway_service.express.service_arn
 }
 
 output "service_url" {
-  value = "https://${aws_apprunner_service.api.service_url}"
+  description = "HTTPS URL for the Express managed ALB (scheme normalized; endpoint already includes https://)"
+  value       = local.ingress_host != "" ? "https://${local.ingress_host}" : null
 }
 
 output "service_name" {
-  value = aws_apprunner_service.api.service_name
+  value = aws_ecs_express_gateway_service.express.service_name
+}
+
+output "ecs_execution_role_arn" {
+  value = aws_iam_role.ecs_execution.arn
+}
+
+output "ecs_infrastructure_role_arn" {
+  value = aws_iam_role.ecs_infrastructure.arn
 }
 
 output "admin_token_secret_arn" {
   value = aws_secretsmanager_secret.admin_token.arn
+}
+
+output "api_log_group_name" {
+  value = aws_cloudwatch_log_group.api.name
 }

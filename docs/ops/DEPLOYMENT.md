@@ -6,19 +6,23 @@ Operator checklist for promoting MMAP to staging and production on AWS. See [AWS
 
 - AWS account with Terraform remote state bucket and lock table bootstrapped
 - GitHub environment secrets / OIDC role configured (`infra/terraform/modules/github-oidc`)
-- Route 53 hosted zone (or DNS CNAME targets documented)
-- ACM certificates issued (DNS validation)
+- Optional: Route 53 hosted zone + ACM certificate when using a custom `domain_name` (CloudFront default certificate is used when `domain_name` is empty)
 
 ## Staging deploy
 
-1. Merge changes to `main`; CI passes (`pnpm validate` locally if needed).
-2. Trigger staging deploy (push to `main` or manual workflow).
-3. Verify:
-   - `https://field-staging.<domain>/` loads field PWA
-   - `https://staging.<domain>/` loads public web
-   - `curl https://field-staging.<domain>/v1/health` returns `status: ok`
-4. Run smoke sync: field app → create assessment → sync → confirm in API/admin or public list.
-5. Check CloudWatch dashboard for 5xx alarms (should be green).
+Staging is **ephemeral by default** for cost control: destroy when idle, re-apply when needed. See [AWS_INFRA.md — Ephemeral staging](AWS_INFRA.md#ephemeral-staging). Local Docker covers day-to-day development.
+
+CloudFront is currently **optional** (`enable_cdn = false`) until the AWS account can create distributions. Live API testing uses `api_service_url` (ECS Express). See [Optional CloudFront](AWS_INFRA.md#optional-cloudfront-enable_cdn).
+
+1. Ensure staging infrastructure exists (`terraform apply` or Infra staging manual workflow). Cold start is typically 10–20 minutes.
+2. Merge application changes to `main`; CI passes (`pnpm validate` locally if needed).
+3. Trigger staging deploy (push to `main` or manual workflow).
+4. Verify:
+   - `terraform output -raw api_service_url` → `curl …/v1/health` returns `status: ok`
+   - When `enable_cdn = true`: field/web CloudFront URLs load; same-origin `/v1/health` works
+5. Run smoke sync against the live API (field app with `VITE_API_BASE_URL` pointing at Express if CDN is off, or same-origin when CDN is on).
+6. Check CloudWatch dashboard / alarms (should be green).
+7. When idle, either hibernate (`pnpm exec tsx scripts/staging-hibernate.ts hibernate`, ~$25/mo floor) or destroy staging infrastructure (~$0/mo; bootstrap remains).
 
 ## Production promotion
 
@@ -31,12 +35,11 @@ Operator checklist for promoting MMAP to staging and production on AWS. See [AWS
 
 ## Rollback
 
-| Component          | Rollback action                                               |
-| ------------------ | ------------------------------------------------------------- |
-| API (App Runner)   | Redeploy previous ECR image tag via `StartDeployment`         |
-| API (ECS phase 2)  | CodeDeploy rollback or shift traffic to previous target group |
-| Web / field static | Restore previous S3 version; CloudFront invalidation `/*`     |
-| Database           | Restore RDS snapshot (see below) — **last resort**            |
+| Component          | Rollback action                                                   |
+| ------------------ | ----------------------------------------------------------------- |
+| API (ECS Express)  | Redeploy previous ECR image tag via `deploy-aws` / Express update |
+| Web / field static | Restore previous S3 version; CloudFront invalidation `/*`         |
+| Database           | Restore RDS snapshot (see below) — **last resort**                |
 
 ## Database backup & restore drill
 
@@ -53,8 +56,8 @@ Operator checklist for promoting MMAP to staging and production on AWS. See [AWS
 ## Monitoring checks after deploy
 
 - [ ] `/v1/health` returns 200 from both CloudFront distributions
-- [ ] CloudWatch alarm `mmap-api-5xx` in OK state
-- [ ] No spike in App Runner health check failures
+- [ ] CloudWatch alarms `mmap-{env}-ecs-cpu-high` and `mmap-{env}-rds-low-storage` in OK state
+- [ ] ECS Express service healthy / tasks running (unless hibernated)
 - [ ] RDS free storage above threshold
 - [ ] Field PWA `version.json` reflects new build (update prompt if applicable)
 

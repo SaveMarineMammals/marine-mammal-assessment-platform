@@ -40,3 +40,11 @@ jobs:
       - name: Smoke test staging
         shell: pwsh
         run: pnpm exec tsx scripts/terraform-smoke-test.ts staging
+
+      - name: Diagnose ECS Express (on apply failure)
+        if: failure()
+        shell: pwsh
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+        run: pnpm exec tsx scripts/ecs-express-diagnose.ts mmap-staging-api 963120167952 $env:AWS_REGION
+        continue-on-error: true

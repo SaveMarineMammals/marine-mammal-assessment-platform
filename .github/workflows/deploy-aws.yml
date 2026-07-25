@@ -2,7 +2,9 @@
 #
 # Requires Terraform infrastructure applied first. GitHub environment secrets:
 # - AWS_DEPLOY_ROLE_ARN, DATABASE_SECRET_ARN (RDS-managed secret ARN from terraform output)
-# - WEB_STATIC_BUCKET, FIELD_STATIC_BUCKET, WEB_CLOUDFRONT_ID, FIELD_CLOUDFRONT_ID
+# - WEB_STATIC_BUCKET, FIELD_STATIC_BUCKET
+# - WEB_CLOUDFRONT_ID, FIELD_CLOUDFRONT_ID (optional when enable_cdn=false)
+# - ECS_SERVICE_NAME, ECS_EXECUTION_ROLE_ARN, ECS_INFRASTRUCTURE_ROLE_ARN
 
 name: Deploy AWS
 
@@ -27,13 +29,15 @@ permissions:
 
 env:
   AWS_REGION: us-east-1
-  ECR_REPOSITORY: mmap-api
 
 jobs:
   deploy:
     name: Deploy to ${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'production' }}
     runs-on: ubuntu-latest
     environment: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'production' }}
+    env:
+      # Must match Terraform module.api ECR repo: mmap-{environment}-api
+      ECR_REPOSITORY: mmap-${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'production' }}-api
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -75,9 +79,16 @@ jobs:
 
       - name: Invalidate CloudFront caches
         shell: pwsh
+        env:
+          WEB_CLOUDFRONT_ID: ${{ secrets.WEB_CLOUDFRONT_ID }}
+          FIELD_CLOUDFRONT_ID: ${{ secrets.FIELD_CLOUDFRONT_ID }}
         run: |
-          aws cloudfront create-invalidation --distribution-id "${{ secrets.WEB_CLOUDFRONT_ID }}" --paths "/*"
-          aws cloudfront create-invalidation --distribution-id "${{ secrets.FIELD_CLOUDFRONT_ID }}" --paths "/*"
+          if ([string]::IsNullOrWhiteSpace($env:WEB_CLOUDFRONT_ID) -or [string]::IsNullOrWhiteSpace($env:FIELD_CLOUDFRONT_ID)) {
+            Write-Output "Skipping CloudFront invalidation (enable_cdn=false or CLOUDFRONT secrets unset)."
+            exit 0
+          }
+          aws cloudfront create-invalidation --distribution-id $env:WEB_CLOUDFRONT_ID --paths "/*"
+          aws cloudfront create-invalidation --distribution-id $env:FIELD_CLOUDFRONT_ID --paths "/*"
 
       - name: Login to Amazon ECR
         id: ecr
@@ -104,10 +115,17 @@ jobs:
           $env:DATABASE_URL = $secret
           pnpm --filter @mmap/api db:migrate
 
-      - name: Deploy API to App Runner
-        shell: pwsh
+      - name: Deploy API to ECS Express
+        uses: aws-actions/amazon-ecs-deploy-express-service@v1
         env:
           IMAGE_TAG: ${{ github.ref_name }}
           ECR_REGISTRY: ${{ steps.ecr.outputs.registry }}
-        run: |
-          Write-Host "TODO: wire App Runner update-service + start-deployment using Terraform outputs"
+        with:
+          service-name: ${{ secrets.ECS_SERVICE_NAME }}
+          image: ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
+          execution-role-arn: ${{ secrets.ECS_EXECUTION_ROLE_ARN }}
+          infrastructure-role-arn: ${{ secrets.ECS_INFRASTRUCTURE_ROLE_ARN }}
+          container-port: '3001'
+          health-check-path: /v1/health
+          min-task-count: 1
+          max-task-count: 4

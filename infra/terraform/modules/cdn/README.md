@@ -1,20 +1,22 @@
 # cdn module
 
-CloudFront distributions, ACM certificates, and Route 53 records.
+CloudFront distributions for public web and field PWA, with same-origin `/v1` routing to ECS Express.
 
-## Resources to implement
+## Resources
 
-- `aws_acm_certificate` (provider `aws.us_east_1`) — `*.domain` or per-host certs
 - `aws_cloudfront_origin_access_control` — S3 origins
 - `aws_cloudfront_distribution.web`:
   - Default → S3 web bucket
-  - `/v1/*` → App Runner custom origin (HTTPS)
-  - `/openapi*` → App Runner (web only)
+  - `/v1/*` → ECS Express API origin (HTTPS)
+  - `/openapi*` → ECS Express API (web only)
 - `aws_cloudfront_distribution.field`:
   - Default → S3 field bucket
-  - `/v1/*` → App Runner
-- `aws_route53_record` — A/AAAA aliases for web + field hostnames
+  - `/v1/*` → ECS Express API
 - S3 bucket policies granting CloudFront OAC read
+
+When `domain_name` is empty (current default), distributions use the **CloudFront default certificate** and `*.cloudfront.net` hostnames. ACM certificates and Route 53 aliases are not provisioned until a custom domain is configured.
+
+Environments may set `enable_cdn = false` to skip this module entirely (account verification / CloudFront create blocked). See [AWS_INFRA.md](../../../../docs/ops/AWS_INFRA.md#optional-cloudfront-enable_cdn).
 
 Preserve same-origin `/v1` routing so field PWA needs no `VITE_API_BASE_URL`.
 
@@ -35,6 +37,6 @@ Preserve same-origin `/v1` routing so field PWA needs no `VITE_API_BASE_URL`.
 
 | Name               | Description                                          |
 | ------------------ | ---------------------------------------------------- |
-| `web_fqdn`         | e.g. `staging.example.org`                           |
-| `field_fqdn`       | e.g. `field-staging.example.org`                     |
+| `web_fqdn`         | Custom FQDN or CloudFront domain name                |
+| `field_fqdn`       | Custom FQDN or CloudFront domain name                |
 | `distribution_ids` | list of CloudFront distribution IDs for invalidation |

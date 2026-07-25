@@ -9,7 +9,7 @@
 The API persists sync batches and serves public dataset endpoints through a **PostgreSQL** connection pool (`apps/api/src/db/pool.ts`). Locally and in CI, `DATABASE_URL` is a plain PostgreSQL URL. On AWS:
 
 - RDS uses `manage_master_user_password = true`; credentials live in **Secrets Manager** as JSON.
-- App Runner injects that secret into the `DATABASE_URL` environment variable (secret ARN reference in `infra/terraform/modules/api/main.tf`).
+- ECS Express injects that secret into the `DATABASE_URL` environment variable (secret ARN reference in `infra/terraform/modules/api/main.tf`).
 - The API and CLI normalize JSON to a connection string via `normalizeDatabaseUrl()` in `apps/api/src/cli/database-url.ts`.
 - The **deploy-aws** workflow fetches the same secret for migrations before API rollout.
 
@@ -18,24 +18,25 @@ The API persists sync batches and serves public dataset endpoints through a **Po
 **What breaks:**
 
 - Missing or malformed `DATABASE_URL` → pool connection errors; public routes return **503** `{ "error": "Database unavailable" }`.
-- RDS unreachable from App Runner (VPC connector, security group) → health may pass but sync/public DB routes fail.
+- RDS unreachable from ECS Express tasks (security group / subnet) → health may pass but sync/public DB routes fail.
 - Wrong `DATABASE_SECRET_ARN` in GitHub → migration step fails during deploy.
 - Secret rotation without API redeploy → transient auth failures until tasks restart.
+- Staging hibernated (RDS stopped) → DB routes fail until `staging-hibernate.ts resume`.
 
 ## Detection
 
-| Signal                                          | Where                                                             |
-| ----------------------------------------------- | ----------------------------------------------------------------- |
-| `503 Database unavailable`                      | `GET /v1/public/stats`, `/v1/public/assessments`                  |
-| Sync batch persistence errors                   | API logs, `sync_audit` with `status: error`                       |
-| App Runner service unhealthy                    | AWS Console → App Runner → health check failures                  |
-| Deploy job fails at **Run database migrations** | `.github/workflows/deploy-aws.yml`                                |
-| CloudWatch alarms                               | `mmap-api-5xx`, RDS storage/CPU ([AWS_INFRA.md](../AWS_INFRA.md)) |
-| Local: integration tests skip                   | Missing `DATABASE_URL` or Postgres not running                    |
+| Signal                                          | Where                                                                                     |
+| ----------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `503 Database unavailable`                      | `GET /v1/public/stats`, `/v1/public/assessments`                                          |
+| Sync batch persistence errors                   | API logs, `sync_audit` with `status: error`                                               |
+| ECS Express service / tasks unhealthy           | AWS Console → ECS → Express service; `scripts/ecs-express-diagnose.ts`                    |
+| Deploy job fails at **Run database migrations** | `.github/workflows/deploy-aws.yml`                                                        |
+| CloudWatch alarms                               | `mmap-{env}-ecs-cpu-high`, `mmap-{env}-rds-low-storage` ([AWS_INFRA.md](../AWS_INFRA.md)) |
+| Local: integration tests skip                   | Missing `DATABASE_URL` or Postgres not running                                            |
 
 ## Prerequisites
 
-- AWS CLI configured (staging/production) with permission to read Secrets Manager and describe RDS/App Runner
+- AWS CLI configured (staging/production) with permission to read Secrets Manager and describe RDS/ECS
 - For local: Docker or native PostgreSQL on port 5432
 - GitHub environment secret `DATABASE_SECRET_ARN` matches Terraform output `database_secret_arn`
 
@@ -117,12 +118,13 @@ The API persists sync batches and serves public dataset endpoints through a **Po
 6. **AWS: RDS and network**
 
    - RDS instance in **private subnets**, `publicly_accessible = false` (`infra/terraform/modules/database/main.tf`).
-   - App Runner uses **VPC connector** egress to reach RDS on port 5432.
+   - ECS Express tasks run in **public subnets** and reach RDS on port 5432 via the VPC.
    - Security group on RDS must allow ingress from `api-connector-sg`.
 
-   ```bash
-   aws rds describe-db-instances --query "DBInstances[?DBInstanceIdentifier.contains(@,'mmap')].[DBInstanceStatus,Endpoint.Address]"
-   aws apprunner describe-service --service-arn "<service-arn>"
+   ```powershell
+   aws rds describe-db-instances --query "DBInstances[?contains(DBInstanceIdentifier,'mmap')].[DBInstanceIdentifier,DBInstanceStatus,Endpoint.Address]"
+   pnpm exec tsx scripts/ecs-express-diagnose.ts mmap-staging-api 963120167952 us-east-1
+   pnpm exec tsx scripts/staging-hibernate.ts status
    ```
 
 7. **Compare GitHub secret to Terraform output**
@@ -167,20 +169,21 @@ The API persists sync batches and serves public dataset endpoints through a **Po
    - Confirm deploy role can `secretsmanager:GetSecretValue` on that ARN.
    - Re-run failed workflow job after fixing IAM or ARN mismatch.
 
-4. **App Runner cannot reach RDS**
+4. **ECS Express tasks cannot reach RDS**
 
-   - Verify VPC connector attached and healthy.
-   - Verify RDS security group allows connector SG on **5432**.
-   - Check RDS status (storage full, rebooting). Restore from snapshot if corrupted ([DEPLOYMENT.md](../DEPLOYMENT.md#database-backup--restore-drill)).
+   - Verify RDS security group allows `api-connector` SG on **5432**.
+   - Confirm tasks are in the public subnets wired by Terraform (`module.api` → `module.networking.public_subnet_ids`).
+   - Check RDS status (stopped/hibernated, storage full, rebooting). Resume if hibernated: `pnpm exec tsx scripts/staging-hibernate.ts resume`.
+   - Restore from snapshot if corrupted ([DEPLOYMENT.md](../DEPLOYMENT.md#database-backup--restore-drill)).
 
 5. **Secret rotation**
 
-   - After RDS automatic rotation, restart App Runner deployment so tasks pick up new password.
+   - After RDS automatic rotation, redeploy the API (or force a new Express deployment) so tasks pick up the new password.
    - Migrations in CI always fetch fresh secret at runtime — no plaintext URL in GitHub.
 
 6. **JSON parse errors in API startup**
 
-   - Ensure App Runner `runtime_environment_secrets.DATABASE_URL` points to the **RDS master user secret ARN**, not the admin token secret.
+   - Ensure the Express task secret `DATABASE_URL` points to the **RDS master user secret ARN**, not the admin token secret.
    - See `infra/terraform/modules/api/main.tf`.
 
 ## Verification
@@ -188,13 +191,13 @@ The API persists sync batches and serves public dataset endpoints through a **Po
 - [ ] `pnpm --filter @mmap/api db:migrate` succeeds with resolved URL
 - [ ] `GET /v1/public/stats` returns 200 (not 503)
 - [ ] `POST /v1/sync/batch` with valid fixture persists (integration test or manual curl)
-- [ ] App Runner health check passes on `/v1/health` (after real API image deployed)
+- [ ] ECS Express `/v1/health` passes (after real API image deployed)
 - [ ] CloudWatch RDS alarms OK
 
 ## Escalation / when to stop
 
 - **Stop** and use RDS snapshot restore if data corruption is suspected — do not run destructive SQL on production.
-- **Escalate** if secret, IAM, and security groups are correct but connections still timeout — network/VPC connector issue may need Terraform change ([FM-03](FM-03-terraform-state-or-apply.md)).
+- **Escalate** if secret, IAM, and security groups are correct but connections still timeout — network issue may need Terraform change ([FM-03](FM-03-terraform-state-or-apply.md)).
 - Never commit database passwords or full secret JSON to git ([SECURITY_REMEDIATION.md](../SECURITY_REMEDIATION.md) INF-04, INF-06).
 
 ## References
@@ -204,8 +207,9 @@ The API persists sync batches and serves public dataset endpoints through a **Po
 | Connection pool        | `apps/api/src/db/pool.ts`                  |
 | URL normalization      | `apps/api/src/cli/database-url.ts`         |
 | RDS module             | `infra/terraform/modules/database/main.tf` |
-| App Runner secrets     | `infra/terraform/modules/api/main.tf`      |
+| ECS Express secrets    | `infra/terraform/modules/api/main.tf`      |
 | Deploy migrations step | `.github/workflows/deploy-aws.yml`         |
 | Env example            | `apps/api/.env.example`                    |
 | Deployment / restore   | [DEPLOYMENT.md](../DEPLOYMENT.md)          |
 | Secrets architecture   | [AWS_INFRA.md](../AWS_INFRA.md)            |
+| Staging hibernate      | `scripts/staging-hibernate.ts`             |

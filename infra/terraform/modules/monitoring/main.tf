@@ -1,30 +1,24 @@
 variable "api_service_name" { type = string }
 variable "name_prefix" { type = string }
-variable "api_service_arn" { type = string }
 variable "db_instance_id" { type = string }
 variable "health_check_url" { type = string }
 variable "tags" { type = map(string) }
 
-resource "aws_cloudwatch_log_group" "api" {
-  name              = "/${var.name_prefix}/api"
-  retention_in_days = 30
-  tags              = var.tags
-}
-
-resource "aws_cloudwatch_metric_alarm" "apprunner_4xx" {
-  alarm_name          = "${var.name_prefix}-apprunner-4xx"
+resource "aws_cloudwatch_metric_alarm" "ecs_cpu" {
+  alarm_name          = "${var.name_prefix}-ecs-cpu-high"
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 3
-  metric_name         = "4xxStatusResponses"
-  namespace           = "AWS/AppRunner"
+  metric_name         = "CPUUtilization"
+  namespace           = "AWS/ECS"
   period              = 300
-  statistic           = "Sum"
-  threshold           = 50
+  statistic           = "Average"
+  threshold           = 80
   treat_missing_data  = "notBreaching"
-  alarm_description   = "Elevated App Runner 4xx responses"
+  alarm_description   = "Elevated ECS API CPU utilization"
   tags                = var.tags
 
   dimensions = {
+    ClusterName = "default"
     ServiceName = var.api_service_name
   }
 }
@@ -67,8 +61,4 @@ resource "aws_cloudwatch_dashboard" "main" {
 
 output "dashboard_name" {
   value = aws_cloudwatch_dashboard.main.dashboard_name
-}
-
-output "api_log_group_name" {
-  value = aws_cloudwatch_log_group.api.name
 }

@@ -4,12 +4,12 @@ GitHub Actions workflows for AWS Terraform bootstrap, plan, and progressive depl
 
 ## Workflows
 
-| Workflow                                                                     | Trigger                               | Purpose                                                            |
-| ---------------------------------------------------------------------------- | ------------------------------------- | ------------------------------------------------------------------ |
-| [infra-bootstrap.yml](../../.github/workflows/infra-bootstrap.yml)           | Manual (`workflow_dispatch`)          | One-time S3 state bucket, DynamoDB lock table, Terraform OIDC role |
-| [ci.yml](../../.github/workflows/ci.yml) → `terraform-plan`                  | PR + push to `main`                   | Plan staging & production; PR comment if destroys detected         |
-| [infra-deploy.yml](../../.github/workflows/infra-deploy.yml)                 | Push to `main` (infra paths) + manual | Apply staging → verify → apply production (main only)              |
-| [infra-staging-manual.yml](../../.github/workflows/infra-staging-manual.yml) | Manual                                | Apply **staging only** from any branch/ref                         |
+| Workflow                                                                     | Trigger                               | Purpose                                                                                     |
+| ---------------------------------------------------------------------------- | ------------------------------------- | ------------------------------------------------------------------------------------------- |
+| [infra-bootstrap.yml](../../.github/workflows/infra-bootstrap.yml)           | Manual (`workflow_dispatch`)          | One-time S3 state bucket, DynamoDB lock table, Terraform OIDC role, ECS service-linked role |
+| [ci.yml](../../.github/workflows/ci.yml) → `terraform-plan`                  | PR + push to `main`                   | Plan staging & production; PR comment if destroys detected                                  |
+| [infra-deploy.yml](../../.github/workflows/infra-deploy.yml)                 | Push to `main` (infra paths) + manual | Apply staging → verify → apply production (main only)                                       |
+| [infra-staging-manual.yml](../../.github/workflows/infra-staging-manual.yml) | Manual                                | Apply **staging only** from any branch/ref                                                  |
 
 ## One-time setup
 
@@ -25,14 +25,17 @@ Create environments in **Settings → Environments**:
 
 After the first Terraform apply per environment, add GitHub secrets from `terraform output`:
 
-| Secret                | Terraform output                   |
-| --------------------- | ---------------------------------- |
-| `DATABASE_SECRET_ARN` | `database_secret_arn`              |
-| `AWS_DEPLOY_ROLE_ARN` | `github_deploy_role_arn`           |
-| `WEB_STATIC_BUCKET`   | `web_static_bucket`                |
-| `FIELD_STATIC_BUCKET` | `field_static_bucket`              |
-| `WEB_CLOUDFRONT_ID`   | `web_cloudfront_distribution_id`   |
-| `FIELD_CLOUDFRONT_ID` | `field_cloudfront_distribution_id` |
+| Secret                        | Terraform output                   | Notes                                      |
+| ----------------------------- | ---------------------------------- | ------------------------------------------ |
+| `DATABASE_SECRET_ARN`         | `database_secret_arn`              |                                            |
+| `AWS_DEPLOY_ROLE_ARN`         | `github_deploy_role_arn`           |                                            |
+| `ECS_SERVICE_NAME`            | `ecs_service_name`                 |                                            |
+| `ECS_EXECUTION_ROLE_ARN`      | `ecs_execution_role_arn`           |                                            |
+| `ECS_INFRASTRUCTURE_ROLE_ARN` | `ecs_infrastructure_role_arn`      |                                            |
+| `WEB_STATIC_BUCKET`           | `web_static_bucket`                |                                            |
+| `FIELD_STATIC_BUCKET`         | `field_static_bucket`              |                                            |
+| `WEB_CLOUDFRONT_ID`           | `web_cloudfront_distribution_id`   | Leave empty / omit when `enable_cdn=false` |
+| `FIELD_CLOUDFRONT_ID`         | `field_cloudfront_distribution_id` | Leave empty / omit when `enable_cdn=false` |
 
 Do **not** store a plaintext `DATABASE_URL` in GitHub.
 
@@ -50,6 +53,8 @@ Run **Infra bootstrap** from Actions (admin only). Copy outputs into repository 
 | `AWS_TERRAFORM_ROLE_ARN` | `terraform_ci_role_arn`  |
 | `TF_STATE_BUCKET`        | `terraform_state_bucket` |
 | `TF_LOCK_TABLE`          | `terraform_lock_table`   |
+
+Bootstrap also creates **`AWSServiceRoleForECS`**, an account-wide prerequisite for ECS Express Gateway services. If that role already exists, import it into bootstrap state before re-running bootstrap (see [infra/bootstrap/README.md](../../infra/bootstrap/README.md)).
 
 ### 3. Enable Terraform CI jobs
 
@@ -110,7 +115,17 @@ pnpm exec tsx scripts/terraform-init.ts `
 terraform -chdir=infra/terraform/environments/staging plan -var-file=terraform.tfvars
 ```
 
-All infra helper scripts are **TypeScript** (`scripts/terraform-*.ts`) and run on Windows PowerShell and Linux CI — no bash required.
+Cut staging cost without destroying the stack (scales API to 0 tasks, stops RDS):
+
+```powershell
+pnpm exec tsx scripts/staging-hibernate.ts status
+pnpm exec tsx scripts/staging-hibernate.ts hibernate
+pnpm exec tsx scripts/staging-hibernate.ts resume
+```
+
+See [AWS_INFRA.md](AWS_INFRA.md#hibernate-staging-scale-to-zero) for the ~$25/mo hibernated floor and caveats.
+
+All infra helper scripts are **TypeScript** (`scripts/terraform-*.ts`, `scripts/staging-hibernate.ts`) and run on Windows PowerShell and Linux CI — no bash required.
 
 ## Related
 

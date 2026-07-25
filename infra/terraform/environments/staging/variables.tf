@@ -58,6 +58,12 @@ variable "cors_origins" {
   default     = []
 }
 
+variable "enable_cdn" {
+  description = "Provision CloudFront for web/field. Set false until the AWS account can create distributions (e.g. unverified account)."
+  type        = bool
+  default     = true
+}
+
 variable "tags" {
   type    = map(string)
   default = {}
