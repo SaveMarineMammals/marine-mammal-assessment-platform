@@ -9,10 +9,19 @@ if (!existsSync(rootDir)) {
   process.exit(1);
 }
 
-const apiUrl = captureTerraform(['output', '-raw', 'api_service_url'], { cwd: rootDir });
+const apiUrlRaw = captureTerraform(['output', '-raw', 'api_service_url'], { cwd: rootDir });
 const enableCdn = captureTerraform(['output', '-raw', 'enable_cdn'], { cwd: rootDir });
 const fieldUrl =
   enableCdn === 'true' ? captureTerraform(['output', '-raw', 'field_url'], { cwd: rootDir }) : '';
+
+/** Express ingress endpoints are full URLs; older module output double-prefixed https://. */
+function normalizeHttpsUrl(raw: string): string {
+  const trimmed = raw.trim().replace(/\/$/, '');
+  const withoutScheme = trimmed.replace(/^https?:\/\//i, '').replace(/^https?:\/\//i, '');
+  return `https://${withoutScheme}`;
+}
+
+const apiUrl = normalizeHttpsUrl(apiUrlRaw);
 
 console.log(`API service URL: ${apiUrl}`);
 console.log(`enable_cdn: ${enableCdn}`);
@@ -22,7 +31,7 @@ if (fieldUrl) {
   console.log('Field URL: (CloudFront disabled — use API service URL for live tests)');
 }
 
-const healthUrl = `${apiUrl.replace(/\/$/, '')}/`;
+const healthUrl = `${apiUrl}/`;
 const response = await fetch(healthUrl);
 
 if (!response.ok) {

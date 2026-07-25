@@ -169,6 +169,8 @@ Applies use `-auto-approve` via `scripts/terraform-apply.ts`. State keys are iso
 
    Smoke test hits ECS Express `api_service_url` root (placeholder image returns 200 on `/` until real API is deployed). If URL is wrong, check `outputs.tf` and module.api `service_url`.
 
+   **Double `https://https://…` / `getaddrinfo EAI_AGAIN https`:** Express `ingress_paths[].endpoint` already includes the scheme. The api module must strip it before adding `https://` (see `local.ingress_host`). Re-apply or refresh outputs after that fix; the smoke test also normalizes a double scheme defensively.
+
 8. **Skipped jobs**
 
    If Terraform jobs do not appear at all, set `TF_INFRA_ENABLED=true` and ensure PR touches `infra/**` or workflow paths for deploy triggers.

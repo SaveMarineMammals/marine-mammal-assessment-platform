@@ -30,14 +30,14 @@ ECR repository and ECS Express Mode service for the Fastify sync API.
 
 ## Outputs
 
-| Name                          | Description                           |
-| ----------------------------- | ------------------------------------- |
-| `ecr_repository_arn`          | ECR repo ARN                          |
-| `service_arn`                 | ECS Express service ARN               |
-| `service_name`                | e.g. `mmap-staging-api`               |
-| `service_url`                 | HTTPS ALB URL (CloudFront API origin) |
-| `ecs_execution_role_arn`      | Task execution role for CI deploy     |
-| `ecs_infrastructure_role_arn` | Express infrastructure role for CI    |
+| Name                          | Description                                        |
+| ----------------------------- | -------------------------------------------------- |
+| `ecr_repository_arn`          | ECR repo ARN                                       |
+| `service_arn`                 | ECS Express service ARN                            |
+| `service_name`                | e.g. `mmap-staging-api`                            |
+| `service_url`                 | HTTPS ALB URL (scheme-normalized Express endpoint) |
+| `ecs_execution_role_arn`      | Task execution role for CI deploy                  |
+| `ecs_infrastructure_role_arn` | Express infrastructure role for CI                 |
 
 Initial apply uses a public nginx placeholder image until the deploy pipeline publishes the API image to ECR. Terraform ignores subsequent image changes (CI updates Express directly).
 

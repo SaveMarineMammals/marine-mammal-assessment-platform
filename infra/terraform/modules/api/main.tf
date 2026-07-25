@@ -345,10 +345,15 @@ resource "aws_ecs_express_gateway_service" "express" {
 }
 
 locals {
+  # Express ManagedIngressPath.endpoint is already a full URL (e.g. https://mm-….on.aws).
   ingress_endpoint = coalesce(
     try([for path in aws_ecs_express_gateway_service.express.ingress_paths : path.endpoint if path.access_type == "PUBLIC"][0], null),
     try([for path in aws_ecs_express_gateway_service.express.ingress_paths : path.endpoint if path.access_type == "PRIVATE"][0], null),
     try(aws_ecs_express_gateway_service.express.ingress_paths[0].endpoint, null),
+  )
+  ingress_host = trimsuffix(
+    replace(replace(coalesce(local.ingress_endpoint, ""), "https://", ""), "http://", ""),
+    "/",
   )
 }
 
@@ -365,7 +370,8 @@ output "service_arn" {
 }
 
 output "service_url" {
-  value = "https://${local.ingress_endpoint}"
+  description = "HTTPS URL for the Express managed ALB (scheme normalized; endpoint already includes https://)"
+  value       = local.ingress_host != "" ? "https://${local.ingress_host}" : null
 }
 
 output "service_name" {
