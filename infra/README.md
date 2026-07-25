@@ -37,6 +37,18 @@ terraform destroy -var-file=terraform.tfvars
 
 Do not destroy the bootstrap stack (`infra/bootstrap`).
 
+### Optional CloudFront (`enable_cdn`)
+
+Staging and production currently set `enable_cdn = false` so apply succeeds while CloudFront
+create is blocked (unverified AWS account). Test the live API with:
+
+```powershell
+terraform -chdir=infra/terraform/environments/staging output -raw api_service_url
+```
+
+Set `enable_cdn = true` after account verification. Full details:
+[docs/ops/AWS_INFRA.md](../docs/ops/AWS_INFRA.md#optional-cloudfront-enable_cdn).
+
 ### Hibernate staging (keep it provisioned, cut most cost)
 
 When a full teardown is too heavy, scale the API to zero tasks and stop RDS instead. Floor is ~$25/mo (ALB + public IPv4 + RDS storage) versus ~$0/mo when destroyed. Full details and caveats: [docs/ops/AWS_INFRA.md](../docs/ops/AWS_INFRA.md#hibernate-staging-scale-to-zero).

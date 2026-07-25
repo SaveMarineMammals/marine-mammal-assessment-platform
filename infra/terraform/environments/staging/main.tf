@@ -62,6 +62,7 @@ module "api" {
 }
 
 module "cdn" {
+  count  = var.enable_cdn ? 1 : 0
   source = "../../modules/cdn"
 
   providers = {
@@ -84,9 +85,9 @@ module "monitoring" {
 
   name_prefix      = local.name_prefix
   api_service_name = module.api.service_name
-  db_instance_id    = module.database.db_instance_id
-  health_check_url  = "${module.cdn.field_url}/v1/health"
-  tags              = local.common_tags
+  db_instance_id   = module.database.db_instance_id
+  health_check_url = var.enable_cdn ? "${module.cdn[0].field_url}/v1/health" : "${module.api.service_url}/v1/health"
+  tags             = local.common_tags
 }
 
 module "github_oidc" {
@@ -97,6 +98,6 @@ module "github_oidc" {
   ecr_repository_arn          = module.api.ecr_repository_arn
   web_bucket_arn              = module.storage.web_bucket_arn
   field_bucket_arn            = module.storage.field_bucket_arn
-  cloudfront_distribution_ids = module.cdn.distribution_ids
+  cloudfront_distribution_ids = var.enable_cdn ? module.cdn[0].distribution_ids : []
   tags                        = local.common_tags
 }

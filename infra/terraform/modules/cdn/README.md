@@ -16,6 +16,8 @@ CloudFront distributions for public web and field PWA, with same-origin `/v1` ro
 
 When `domain_name` is empty (current default), distributions use the **CloudFront default certificate** and `*.cloudfront.net` hostnames. ACM certificates and Route 53 aliases are not provisioned until a custom domain is configured.
 
+Environments may set `enable_cdn = false` to skip this module entirely (account verification / CloudFront create blocked). See [AWS_INFRA.md](../../../../docs/ops/AWS_INFRA.md#optional-cloudfront-enable_cdn).
+
 Preserve same-origin `/v1` routing so field PWA needs no `VITE_API_BASE_URL`.
 
 ## Inputs

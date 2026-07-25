@@ -92,13 +92,19 @@ data "aws_iam_policy_document" "deploy" {
     ]
   }
 
-  statement {
-    effect = "Allow"
-    actions = [
-      "cloudfront:CreateInvalidation",
-      "cloudfront:GetInvalidation",
-    ]
-    resources = [for id in var.cloudfront_distribution_ids : "arn:aws:cloudfront::${data.aws_caller_identity.current.account_id}:distribution/${id}"]
+  dynamic "statement" {
+    for_each = length(var.cloudfront_distribution_ids) > 0 ? [1] : []
+    content {
+      effect = "Allow"
+      actions = [
+        "cloudfront:CreateInvalidation",
+        "cloudfront:GetInvalidation",
+      ]
+      resources = [
+        for id in var.cloudfront_distribution_ids :
+        "arn:aws:cloudfront::${data.aws_caller_identity.current.account_id}:distribution/${id}"
+      ]
+    }
   }
 }
 

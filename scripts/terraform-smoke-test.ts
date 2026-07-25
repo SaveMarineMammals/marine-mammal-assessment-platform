@@ -10,10 +10,17 @@ if (!existsSync(rootDir)) {
 }
 
 const apiUrl = captureTerraform(['output', '-raw', 'api_service_url'], { cwd: rootDir });
-const fieldUrl = captureTerraform(['output', '-raw', 'field_url'], { cwd: rootDir });
+const enableCdn = captureTerraform(['output', '-raw', 'enable_cdn'], { cwd: rootDir });
+const fieldUrl =
+  enableCdn === 'true' ? captureTerraform(['output', '-raw', 'field_url'], { cwd: rootDir }) : '';
 
 console.log(`API service URL: ${apiUrl}`);
-console.log(`Field URL: ${fieldUrl}`);
+console.log(`enable_cdn: ${enableCdn}`);
+if (fieldUrl) {
+  console.log(`Field URL: ${fieldUrl}`);
+} else {
+  console.log('Field URL: (CloudFront disabled — use API service URL for live tests)');
+}
 
 const healthUrl = `${apiUrl.replace(/\/$/, '')}/`;
 const response = await fetch(healthUrl);
@@ -23,5 +30,9 @@ if (!response.ok) {
   process.exit(1);
 }
 
-console.log(`ECS Express placeholder health check passed at ${healthUrl}`);
-console.log(`CloudFront field URL: ${fieldUrl} (available after app deploy publishes /v1/health)`);
+console.log(`ECS Express health check passed at ${healthUrl}`);
+if (fieldUrl) {
+  console.log(
+    `CloudFront field URL: ${fieldUrl} (same-origin /v1 after app deploy publishes /v1/health)`,
+  );
+}

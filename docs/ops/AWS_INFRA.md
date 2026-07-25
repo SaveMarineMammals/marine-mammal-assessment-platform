@@ -112,14 +112,42 @@ Do **not** add NAT gateways (~$32/mo each) unless tasks move to private subnets.
 
 ## Environments
 
-|                     | Staging                        | Production                        |
-| ------------------- | ------------------------------ | --------------------------------- |
-| Terraform workspace | `staging`                      | `production`                      |
-| API service         | `mmap-staging-api`             | `mmap-production-api`             |
-| RDS instance        | `db.t4g.micro`, single-AZ      | `db.t4g.small`, multi-AZ optional |
-| CloudFront          | `field-staging.*`, `staging.*` | `field.*`, `www.*`                |
-| Deletion protection | off                            | on                                |
-| Backup retention    | 7 days                         | 30 days                           |
+|                     | Staging                                   | Production                                |
+| ------------------- | ----------------------------------------- | ----------------------------------------- |
+| Terraform workspace | `staging`                                 | `production`                              |
+| API service         | `mmap-staging-api`                        | `mmap-production-api`                     |
+| RDS instance        | `db.t4g.micro`, single-AZ                 | `db.t4g.small`, multi-AZ optional         |
+| CloudFront          | off until account verified (`enable_cdn`) | off until account verified (`enable_cdn`) |
+| Deletion protection | off                                       | on                                        |
+| Backup retention    | 7 days                                    | 30 days                                   |
+
+## Optional CloudFront (`enable_cdn`)
+
+New or unverified AWS accounts are often blocked from creating CloudFront distributions
+until account verification completes. That blocks a full Terraform apply if CDN is
+required.
+
+**Workaround:** set `enable_cdn = false` in environment `terraform.tfvars` (current
+default for staging and production). Terraform still provisions networking, RDS, ECS
+Express, S3, monitoring, and the deploy role. Skip `module.cdn`.
+
+| Capability                    | With `enable_cdn = false`                                               |
+| ----------------------------- | ----------------------------------------------------------------------- |
+| Live API + RDS + sync testing | Yes — use `terraform output -raw api_service_url`                       |
+| ECR image deploy / migrations | Yes                                                                     |
+| S3 static sync                | Yes (artifacts only; no public CloudFront URL)                          |
+| Same-origin field/web on AWS  | No — enable CDN after verification                                      |
+| Browser field app → live API  | Set `VITE_API_BASE_URL` to the Express URL and `cors_origins` in tfvars |
+
+When verification is done:
+
+1. Set `enable_cdn = true` in `terraform.tfvars`
+2. `terraform apply`
+3. Store `WEB_CLOUDFRONT_ID` / `FIELD_CLOUDFRONT_ID` GitHub secrets from outputs
+4. Prefer same-origin field/web URLs; leave `VITE_API_BASE_URL` unset for production builds
+
+Smoke tests always hit `api_service_url` (works with or without CDN). Deploy skips
+CloudFront invalidation when those secrets are empty.
 
 ## Repository layout
 

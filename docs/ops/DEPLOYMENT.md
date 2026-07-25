@@ -12,15 +12,16 @@ Operator checklist for promoting MMAP to staging and production on AWS. See [AWS
 
 Staging is **ephemeral by default** for cost control: destroy when idle, re-apply when needed. See [AWS_INFRA.md — Ephemeral staging](AWS_INFRA.md#ephemeral-staging). Local Docker covers day-to-day development.
 
+CloudFront is currently **optional** (`enable_cdn = false`) until the AWS account can create distributions. Live API testing uses `api_service_url` (ECS Express). See [Optional CloudFront](AWS_INFRA.md#optional-cloudfront-enable_cdn).
+
 1. Ensure staging infrastructure exists (`terraform apply` or Infra staging manual workflow). Cold start is typically 10–20 minutes.
 2. Merge application changes to `main`; CI passes (`pnpm validate` locally if needed).
 3. Trigger staging deploy (push to `main` or manual workflow).
 4. Verify:
-   - `https://field-staging.<domain>/` loads field PWA (or CloudFront default domain if no custom DNS)
-   - `https://staging.<domain>/` loads public web
-   - `curl https://field-staging.<domain>/v1/health` returns `status: ok`
-5. Run smoke sync: field app → create assessment → sync → confirm in API/admin or public list.
-6. Check CloudWatch dashboard for 5xx alarms (should be green).
+   - `terraform output -raw api_service_url` → `curl …/v1/health` returns `status: ok`
+   - When `enable_cdn = true`: field/web CloudFront URLs load; same-origin `/v1/health` works
+5. Run smoke sync against the live API (field app with `VITE_API_BASE_URL` pointing at Express if CDN is off, or same-origin when CDN is on).
+6. Check CloudWatch dashboard / alarms (should be green).
 7. When idle, either hibernate (`pnpm exec tsx scripts/staging-hibernate.ts hibernate`, ~$25/mo floor) or destroy staging infrastructure (~$0/mo; bootstrap remains).
 
 ## Production promotion

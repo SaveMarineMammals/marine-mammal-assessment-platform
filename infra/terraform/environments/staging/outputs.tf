@@ -7,16 +7,24 @@ output "database_secret_kms_key_arn" {
   value = module.database.database_secret_kms_key_arn
 }
 
+output "enable_cdn" {
+  description = "Whether CloudFront distributions are provisioned"
+  value       = var.enable_cdn
+}
+
 output "web_url" {
-  value = module.cdn.web_url
+  description = "Public web URL (CloudFront when enable_cdn; empty otherwise)"
+  value       = var.enable_cdn ? module.cdn[0].web_url : ""
 }
 
 output "field_url" {
-  value = module.cdn.field_url
+  description = "Field PWA URL (CloudFront when enable_cdn; empty otherwise)"
+  value       = var.enable_cdn ? module.cdn[0].field_url : ""
 }
 
 output "api_service_url" {
-  value = module.api.service_url
+  description = "ECS Express HTTPS URL — primary test entrypoint when enable_cdn is false"
+  value       = module.api.service_url
 }
 
 output "github_deploy_role_arn" {
@@ -32,11 +40,13 @@ output "field_static_bucket" {
 }
 
 output "web_cloudfront_distribution_id" {
-  value = module.cdn.distribution_ids[0]
+  description = "Empty when enable_cdn is false"
+  value       = var.enable_cdn ? module.cdn[0].distribution_ids[0] : ""
 }
 
 output "field_cloudfront_distribution_id" {
-  value = module.cdn.distribution_ids[1]
+  description = "Empty when enable_cdn is false"
+  value       = var.enable_cdn ? module.cdn[0].distribution_ids[1] : ""
 }
 
 output "ecr_repository_url" {
