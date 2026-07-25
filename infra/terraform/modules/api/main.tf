@@ -58,7 +58,11 @@ resource "random_password" "admin_token" {
 
 resource "aws_secretsmanager_secret" "admin_token" {
   name = "${var.name_prefix}/api-admin-token"
-  tags = var.tags
+  # Staging/ephemeral: force-delete on destroy so re-apply is not blocked by the
+  # 7–30 day Secrets Manager recovery window (same name cannot be recreated while
+  # scheduled for deletion). Production keeps a recovery window for accident recovery.
+  recovery_window_in_days = startswith(var.name_prefix, "mmap-production") ? 30 : 0
+  tags                    = var.tags
 }
 
 resource "aws_secretsmanager_secret_version" "admin_token" {

@@ -173,22 +173,41 @@ Applies use `-auto-approve` via `scripts/terraform-apply.ts`. State keys are iso
 
    If Terraform jobs do not appear at all, set `TF_INFRA_ENABLED=true` and ensure PR touches `infra/**` or workflow paths for deploy triggers.
 
-9. **CloudWatch log group already exists (`ResourceAlreadyExistsException`)**
+9. **Secrets Manager name conflict after destroy (`InvalidRequestException` / secret scheduled for deletion)**
 
-   The ECS migration moved `aws_cloudwatch_log_group.api` from the `monitoring` module to the `api` module. Staging may already have `/mmap-staging/api` in AWS while state still points at the old address (or has no entry).
+   Destroying staging schedules `mmap-staging/api-admin-token` for deletion (default recovery window). Re-apply cannot recreate the same name until the window ends or the secret is force-deleted.
 
-   - **Preferred:** merge the `moved` block in environment `main.tf` and re-run apply — Terraform rewrites state without recreating the group.
-   - **If apply still tries to create:** import the existing group once (PowerShell, with staging credentials):
+   - **One-time cleanup** (staging only; permanent — no restore):
 
      ```powershell
-     pnpm exec tsx scripts/terraform-init.ts staging
-     terraform -chdir=infra/terraform/environments/staging import `
-       'module.api.aws_cloudwatch_log_group.api' '/mmap-staging/api'
+     aws secretsmanager delete-secret `
+       --secret-id mmap-staging/api-admin-token `
+       --force-delete-without-recovery `
+       --region us-east-1
      ```
 
-     Then re-run apply.
+     List leftovers: `aws secretsmanager list-secrets --include-planned-deletion --region us-east-1`.
 
-10. **ECS Express service linked role (`Unable to assume the service linked role` / `AWSServiceRoleForECS has been taken`)**
+   - **Prevention:** the api module sets `recovery_window_in_days = 0` for non-production so destroy force-deletes the admin token. Production keeps a 30-day window.
+
+   - **KMS:** customer-managed keys use a minimum 7-day deletion window and cannot be force-deleted immediately. A pending key does not block recreate if the alias was destroyed with the stack; if apply fails on `alias/mmap-staging-rds-secret`, wait for the old key to finish deletion or cancel deletion and import that key into state.
+
+10. **CloudWatch log group already exists (`ResourceAlreadyExistsException`)**
+
+    The ECS migration moved `aws_cloudwatch_log_group.api` from the `monitoring` module to the `api` module. Staging may already have `/mmap-staging/api` in AWS while state still points at the old address (or has no entry).
+
+    - **Preferred:** merge the `moved` block in environment `main.tf` and re-run apply — Terraform rewrites state without recreating the group.
+    - **If apply still tries to create:** import the existing group once (PowerShell, with staging credentials):
+
+      ```powershell
+      pnpm exec tsx scripts/terraform-init.ts staging
+      terraform -chdir=infra/terraform/environments/staging import `
+        'module.api.aws_cloudwatch_log_group.api' '/mmap-staging/api'
+      ```
+
+      Then re-run apply.
+
+11. **ECS Express service linked role (`Unable to assume the service linked role` / `AWSServiceRoleForECS has been taken`)**
 
     First ECS use in an account requires the AWS-managed role `AWSServiceRoleForECS`. **Bootstrap** creates and owns this role; the api module only reads it with `data.aws_iam_role.ecs_service_linked`.
 
@@ -210,11 +229,11 @@ Applies use `-auto-approve` via `scripts/terraform-apply.ts`. State keys are iso
 
       Then import into bootstrap state as above (or re-run bootstrap after import).
 
-11. **`service_url` null / no PUBLIC `ingress_paths`**
+12. **`service_url` null / no PUBLIC `ingress_paths`**
 
     ECS Express in **private subnets** creates an internal ALB with `PRIVATE` ingress only — CloudFront cannot use that origin. The api module uses **public subnets** for `network_configuration` so AWS exposes a `PUBLIC` endpoint. Re-apply after merging; Terraform may replace the Express service when subnets change.
 
-12. **Changing subnet types / Express service already exists**
+13. **Changing subnet types / Express service already exists**
 
     AWS cannot move an Express service from private to public subnets in place. Use a **state move**, then **replace**:
 
@@ -242,7 +261,7 @@ Applies use `-auto-approve` via `scripts/terraform-apply.ts`. State keys are iso
 
     Future subnet changes use `replace_triggered_by` on `terraform_data.express_subnet_set`.
 
-13. **ECS Express deployment stuck / Terraform 30m timeout (`tfPENDING`, health never passes)**
+14. **ECS Express deployment stuck / Terraform 30m timeout (`tfPENDING`, health never passes)**
 
     The placeholder **nginx** image is not the problem — health checks use `/` on port **80**, which nginx serves. Common causes:
 
@@ -271,7 +290,7 @@ Applies use `-auto-approve` via `scripts/terraform-apply.ts`. State keys are iso
          -var-file=terraform.tfvars -auto-approve
        ```
 
-    After a failed create with `wait_for_steady_state = true`, Terraform may not have saved state — import per step 12 if needed, then re-apply with the fixes above.
+    After a failed create with `wait_for_steady_state = true`, Terraform may not have saved state — import per step 13 if needed, then re-apply with the fixes above.
 
 ## Verification
 

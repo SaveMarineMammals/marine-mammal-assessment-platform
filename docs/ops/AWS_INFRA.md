@@ -345,6 +345,10 @@ terraform destroy -var-file=terraform.tfvars
 
 Recreate with the same `init`, then `terraform apply -var-file=terraform.tfvars` (or the Infra staging manual GitHub workflow). Confirm only `mmap-staging-*` resources change — bootstrap stays untouched.
 
+If re-apply fails because `mmap-staging/api-admin-token` is still in the Secrets Manager
+recovery window (from a destroy before `recovery_window_in_days = 0` was set), force-delete
+it once — see [FM-03 § soft-deleted secret](runbooks/FM-03-terraform-state-or-apply.md).
+
 ## Hibernate staging (scale to zero)
 
 `scripts/staging-hibernate.ts` reduces spend **without** destroying staging. Use it when

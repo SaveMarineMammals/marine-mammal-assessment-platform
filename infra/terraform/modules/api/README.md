@@ -8,7 +8,7 @@ ECR repository and ECS Express Mode service for the Fastify sync API.
 - `aws_ecs_express_gateway_service` — Fargate tasks, managed ALB, auto scaling
 - `aws_iam_role` — ECS execution, infrastructure, and task roles
 - `data.aws_iam_role.ecs_service_linked` — verifies `AWSServiceRoleForECS` exists (created by [bootstrap](../../../bootstrap/README.md))
-- `aws_secretsmanager_secret` for `API_ADMIN_TOKEN`
+- `aws_secretsmanager_secret` for `API_ADMIN_TOKEN` (`recovery_window_in_days = 0` outside production so ephemeral destroy/re-apply is not blocked by soft-delete)
 - `aws_cloudwatch_log_group` — `/{name_prefix}/api` (e.g. `/mmap-staging/api`)
 
 ## Inputs
