@@ -56,12 +56,15 @@ Applies use `-auto-approve` via `scripts/terraform-apply.ts`. State keys are iso
 
 3. **Read the error class**
 
-   | Error pattern                     | Likely cause                         |
-   | --------------------------------- | ------------------------------------ |
-   | `Error acquiring the state lock`  | Stale lock from parallel/crashed job |
-   | `AccessDenied` on S3/DynamoDB/IAM | OIDC role or bootstrap secrets wrong |
-   | `InvalidParameterCombination`     | RDS/ECS Express module input drift   |
-   | Destroy actions in plan           | Resource rename or removed block     |
+   | Error pattern                                  | Likely cause                                                                                             |
+   | ---------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+   | `Error acquiring the state lock`               | Stale lock from parallel/crashed job                                                                     |
+   | `AccessDenied` on S3/DynamoDB/IAM              | OIDC role or bootstrap secrets wrong                                                                     |
+   | `kms:TagResource` on `CreateKey`               | `mmap-terraform-ci` missing `kms:*`; re-run bootstrap or patch IAM                                       |
+   | `Credentials could not be loaded` in bootstrap | Missing `AWS_BOOTSTRAP_ACCESS_KEY_ID` / `AWS_BOOTSTRAP_SECRET_ACCESS_KEY` on the `bootstrap` environment |
+   | RDS `master_user_secret` / KMS                 | Customer CMK missing RDS/Secrets Manager key policy (see database module)                                |
+   | `InvalidParameterCombination`                  | RDS/ECS Express module input drift                                                                       |
+   | Destroy actions in plan                        | Resource rename or removed block                                                                         |
 
 4. **Inspect lock table (AWS)**
 
@@ -134,25 +137,33 @@ Applies use `-auto-approve` via `scripts/terraform-apply.ts`. State keys are iso
    - Re-run **Infra bootstrap** (admin) if bucket/table missing.
    - Update `AWS_TERRAFORM_ROLE_ARN`, `TF_STATE_BUCKET`, `TF_LOCK_TABLE` from bootstrap outputs.
 
-3. **Apply failure mid-run**
+3. **Terraform CI role missing KMS permissions**
+
+   Merging `kms:*` into `infra/bootstrap/main.tf` does **not** update the live IAM role until bootstrap apply succeeds.
+
+   - Ensure the **`bootstrap`** environment has `AWS_BOOTSTRAP_ACCESS_KEY_ID` and `AWS_BOOTSTRAP_SECRET_ACCESS_KEY`, then re-run **Infra bootstrap**.
+   - **Or** manually add `kms:*` to the `ManageProjectInfrastructure` statement on IAM role `mmap-terraform-ci` in the AWS console.
+   - Re-run **Infra staging (manual)** or **Infra deploy**.
+
+4. **Apply failure mid-run**
 
    - Read Terraform error; fix HCL or AWS quota.
    - Run `terraform plan` — Terraform may propose partial completion.
    - For staging-only validation from a feature branch: **Infra staging (manual)** workflow.
 
-4. **Destroy planned unintentionally**
+5. **Destroy planned unintentionally**
 
    - Do **not** merge until plan is understood.
    - Use `moved` blocks or `terraform state mv` for renames instead of destroy+create when possible.
    - Production apply only runs from `main` after staging verify — use that gate.
 
-5. **Smoke test failure after apply**
+6. **Smoke test failure after apply**
 
    ```bash
    pnpm exec tsx scripts/terraform-smoke-test.ts staging
    ```
 
-6. **Legacy App Runner resources still in state (`AccessDenied` on `apprunner:Describe*`)**
+7. **Legacy App Runner resources still in state (`AccessDenied` on `apprunner:Describe*`)**
 
    Older stacks may still reference App Runner service / VPC connector resources removed from HCL after the ECS Express migration. The Terraform CI role includes `apprunner:*` in bootstrap so apply can destroy leftovers.
 
@@ -160,7 +171,7 @@ Applies use `-auto-approve` via `scripts/terraform-apply.ts`. State keys are iso
    - Re-run staging apply; Terraform should destroy the old App Runner resources.
    - After state is clean, `apprunner:*` can remain for safety or be removed from bootstrap.
 
-7. **Security group delete fails detaching RDS ENI (`AuthFailure` on `DetachNetworkInterface`)**
+8. **Security group delete fails detaching RDS ENI (`AuthFailure` on `DetachNetworkInterface`)**
 
    Changing `aws_security_group.description` forces replacement. Terraform cannot detach RDS-managed ENIs when destroying the old group — this looks like a permissions error but is not an IAM gap.
 
@@ -171,30 +182,30 @@ Applies use `-auto-approve` via `scripts/terraform-apply.ts`. State keys are iso
 
    **Double `https://https://…` / `getaddrinfo EAI_AGAIN https`:** Express `ingress_paths[].endpoint` already includes the scheme. The api module must strip it before adding `https://` (see `local.ingress_host`). Re-apply or refresh outputs after that fix; the smoke test also normalizes a double scheme defensively.
 
-8. **Skipped jobs**
+9. **Skipped jobs**
 
    If Terraform jobs do not appear at all, set `TF_INFRA_ENABLED=true` and ensure PR touches `infra/**` or workflow paths for deploy triggers.
 
-9. **Secrets Manager name conflict after destroy (`InvalidRequestException` / secret scheduled for deletion)**
+10. **Secrets Manager name conflict after destroy (`InvalidRequestException` / secret scheduled for deletion)**
 
-   Destroying staging schedules `mmap-staging/api-admin-token` for deletion (default recovery window). Re-apply cannot recreate the same name until the window ends or the secret is force-deleted.
+Destroying staging schedules `mmap-staging/api-admin-token` for deletion (default recovery window). Re-apply cannot recreate the same name until the window ends or the secret is force-deleted.
 
-   - **One-time cleanup** (staging only; permanent — no restore):
+- **One-time cleanup** (staging only; permanent — no restore):
 
-     ```powershell
-     aws secretsmanager delete-secret `
-       --secret-id mmap-staging/api-admin-token `
-       --force-delete-without-recovery `
-       --region us-east-1
-     ```
+  ```powershell
+  aws secretsmanager delete-secret `
+    --secret-id mmap-staging/api-admin-token `
+    --force-delete-without-recovery `
+    --region us-east-1
+  ```
 
-     List leftovers: `aws secretsmanager list-secrets --include-planned-deletion --region us-east-1`.
+  List leftovers: `aws secretsmanager list-secrets --include-planned-deletion --region us-east-1`.
 
-   - **Prevention:** the api module sets `recovery_window_in_days = 0` for non-production so destroy force-deletes the admin token. Production keeps a 30-day window.
+- **Prevention:** the api module sets `recovery_window_in_days = 0` for non-production so destroy force-deletes the admin token. Production keeps a 30-day window.
 
-   - **KMS:** customer-managed keys use a minimum 7-day deletion window and cannot be force-deleted immediately. A pending key does not block recreate if the alias was destroyed with the stack; if apply fails on `alias/mmap-staging-rds-secret`, wait for the old key to finish deletion or cancel deletion and import that key into state.
+- **KMS:** customer-managed keys use a minimum 7-day deletion window and cannot be force-deleted immediately. A pending key does not block recreate if the alias was destroyed with the stack; if apply fails on `alias/mmap-staging-rds-secret`, wait for the old key to finish deletion or cancel deletion and import that key into state.
 
-10. **CloudWatch log group already exists (`ResourceAlreadyExistsException`)**
+11. **CloudWatch log group already exists (`ResourceAlreadyExistsException`)**
 
     The ECS migration moved `aws_cloudwatch_log_group.api` from the `monitoring` module to the `api` module. Staging may already have `/mmap-staging/api` in AWS while state still points at the old address (or has no entry).
 
@@ -209,7 +220,7 @@ Applies use `-auto-approve` via `scripts/terraform-apply.ts`. State keys are iso
 
       Then re-run apply.
 
-11. **ECS Express service linked role (`Unable to assume the service linked role` / `AWSServiceRoleForECS has been taken`)**
+12. **ECS Express service linked role (`Unable to assume the service linked role` / `AWSServiceRoleForECS has been taken`)**
 
     First ECS use in an account requires the AWS-managed role `AWSServiceRoleForECS`. **Bootstrap** creates and owns this role; the api module only reads it with `data.aws_iam_role.ecs_service_linked`.
 
@@ -231,11 +242,11 @@ Applies use `-auto-approve` via `scripts/terraform-apply.ts`. State keys are iso
 
       Then import into bootstrap state as above (or re-run bootstrap after import).
 
-12. **`service_url` null / no PUBLIC `ingress_paths`**
+13. **`service_url` null / no PUBLIC `ingress_paths`**
 
     ECS Express in **private subnets** creates an internal ALB with `PRIVATE` ingress only — CloudFront cannot use that origin. The api module uses **public subnets** for `network_configuration` so AWS exposes a `PUBLIC` endpoint. Re-apply after merging; Terraform may replace the Express service when subnets change.
 
-13. **Changing subnet types / Express service already exists**
+14. **Changing subnet types / Express service already exists**
 
     AWS cannot move an Express service from private to public subnets in place. Use a **state move**, then **replace**:
 
@@ -263,7 +274,7 @@ Applies use `-auto-approve` via `scripts/terraform-apply.ts`. State keys are iso
 
     Future subnet changes use `replace_triggered_by` on `terraform_data.express_subnet_set`.
 
-14. **ECS Express deployment stuck / Terraform 30m timeout (`tfPENDING`, health never passes)**
+15. **ECS Express deployment stuck / Terraform 30m timeout (`tfPENDING`, health never passes)**
 
     The placeholder **nginx** image is not the problem — health checks use `/` on port **80**, which nginx serves. Common causes:
 
@@ -292,7 +303,7 @@ Applies use `-auto-approve` via `scripts/terraform-apply.ts`. State keys are iso
          -var-file=terraform.tfvars -auto-approve
        ```
 
-    After a failed create with `wait_for_steady_state = true`, Terraform may not have saved state — import per step 13 if needed, then re-apply with the fixes above.
+    After a failed create with `wait_for_steady_state = true`, Terraform may not have saved state — import per step 14 if needed, then re-apply with the fixes above.
 
 ## Verification
 
