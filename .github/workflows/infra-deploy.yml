@@ -89,7 +89,7 @@ jobs:
             "${{ vars.AWS_REGION || 'us-east-1' }}" `
             "${{ secrets.TF_LOCK_TABLE }}"
 
-      # Hibernate scales Auto Scaling outside Terraform; no-op apply leaves desired=0.
+      # Resume scales Auto Scaling back up and force-deploys if running=0 (stuck FAILED rollout).
       - name: Resume staging if hibernated
         shell: pwsh
         run: pnpm exec tsx scripts/staging-hibernate.ts resume

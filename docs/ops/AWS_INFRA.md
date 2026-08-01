@@ -393,10 +393,11 @@ destroy the stack instead.
 
 - **RDS auto-starts after 7 days.** AWS restarts stopped instances automatically; re-run
   `hibernate` or destroy the stack for longer idle periods.
-- **Terraform drift.** The api module pins `min_task_count = 1`, but hibernate mutates
-  Application Auto Scaling outside Terraform, so a no-op apply may leave desired/min at 0.
-  Infra deploy **Verify staging** runs `staging-hibernate.ts resume` before smoke. Re-run
-  `hibernate` after a successful deploy if you want the cost floor again.
+- **Terraform drift / stuck rollouts.** The api module pins `min_task_count = 1`, but hibernate
+  mutates Application Auto Scaling outside Terraform, and a FAILED Express rollout can leave
+  `desired=1 running=0` until a new deployment is forced. Infra deploy **Verify staging** runs
+  `staging-hibernate.ts resume`, which restores scale, force-new-deploys when needed, and waits
+  for a running task. Re-run `hibernate` after a successful deploy if you want the cost floor again.
 - **The script is safe to re-run.** It reads current state first and skips resources that
   are already scaled down, stopped, or absent (for example after a destroy).
 

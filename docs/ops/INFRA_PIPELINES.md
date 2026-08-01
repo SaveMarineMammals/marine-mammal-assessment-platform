@@ -85,7 +85,7 @@ Production apply runs **only** when:
 - Staging apply and smoke test succeeded
 - `TF_INFRA_ENABLED=true`
 
-**Verify staging** runs `staging-hibernate.ts resume` before smoke so a hibernated stack (desired/min tasks at 0) does not fail the gate after a no-op Terraform apply. Operators who want cost savings must re-run hibernate manually after deploy. The smoke script probes `/v1/health` then `/` with ~2 minutes of retries.
+**Verify staging** runs `staging-hibernate.ts resume` before smoke. Resume restores Auto Scaling, and if `running < desired` (stuck FAILED Express rollout), force-new-deploys and waits up to 5 minutes for a running task. Operators who want cost savings must re-run hibernate manually after deploy. The smoke script probes `/v1/health` then `/` with ~5 minutes of retries.
 
 ## Plan locking and concurrency
 
