@@ -9,7 +9,7 @@ This folder contains a **repository ruleset** you can import to protect the defa
 | Changes land on `main` only via pull request                  | `update` + `pull_request` rules block direct pushes and require a PR to merge |
 | All review conversations resolved                             | `required_review_thread_resolution: true`                                     |
 | At least one approval from someone other than the last pusher | `required_approving_review_count: 1` + `require_last_push_approval: true`     |
-| CI must pass before merge                                     | Required status checks for all three CI jobs                                  |
+| CI must pass before merge                                     | Required status checks for all PR CI jobs                                     |
 | Branch up to date with `main` before merge                    | `strict_required_status_checks_policy: true`                                  |
 | No force-push or branch deletion                              | `non_fast_forward` + `deletion` rules                                         |
 | Linear commit history on `main`                               | `required_linear_history` (merge commits disallowed; use squash or rebase)    |
@@ -28,13 +28,17 @@ GitHub rulesets do not block the PR author from approving their own PR if they n
 4. Review the preview (especially bypass actors and required checks)
 5. Click **Create**
 
-After the first CI run on a pull request, confirm the three required check names appear exactly as:
+After changing required checks (or after the first CI run on a pull request), confirm the check names appear exactly as:
 
 - `Lint, format & unit tests`
+- `CodeQL`
 - `Production build`
 - `API & field sync integration`
+- `Terraform plan`
 
 If GitHub shows different names, edit the ruleset’s required checks to match the names under **Pull request → Checks** on a sample PR.
+
+**Re-import note:** When this JSON is updated (for example adding CodeQL or Terraform plan), re-import or manually edit the live ruleset so production branch protection matches the file.
 
 ## Repository settings (not in the ruleset JSON)
 

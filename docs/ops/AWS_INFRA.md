@@ -176,7 +176,10 @@ infra/
             └── (same structure)
 
 .github/workflows/
-└── deploy-aws.yml                     Deploy on release tag (sketch)
+├── ci.yml                             PR quality + CodeQL + terraform plan
+├── cd.yml                             Progressive staging → production CD
+├── release-staging.yml                Manual staging infra+app+verify
+└── _deploy-app.yml / _verify-env.yml  Reusable deploy and live-verify
 
 docs/ops/
 ├── AWS_INFRA.md                       This document
@@ -251,25 +254,27 @@ sequenceDiagram
   participant S3 as S3
   participant CF as CloudFront
 
-  Dev->>GH: Push tag v1.0.0
-  GH->>GHA: deploy-aws workflow
+  Dev->>GH: Merge to main
+  GH->>GHA: CD workflow
+  GHA->>GHA: Quality gates then staging terraform apply
   GHA->>GHA: pnpm build web + field
   GHA->>S3: sync static assets
   GHA->>CF: CreateInvalidation /*
   GHA->>GHA: docker build apps/api
-  GHA->>ECR: push image :v1.0.0
+  GHA->>ECR: push image SHA
   GHA->>ECS: Update Express Gateway service image
   ECS->>ECS: Rolling deploy with health checks
+  GHA->>GHA: Full live-verify then promote production
 ```
 
-**Staging:** Infra staging manual workflow, or progressive apply on `main` when infra changes. App deploy via `deploy-aws`.
+**Staging:** CD on merge to `main`, or **Release staging** from a feature branch (infra + app + full live-verify).
 
-**Production:** deploy on semver tag `v*` after staging verification (and infra apply on `main`).
+**Production:** automatic CD promotion after staging full live-verify succeeds (smoke live-verify after production deploy).
 
 Database migrations run before API rollout. The deploy workflow reads **`DATABASE_SECRET_ARN`** (RDS-managed Secrets Manager secret) — not a plaintext URL in GitHub:
 
 ```powershell
-# deploy-aws.yml (simplified)
+# _deploy-app.yml (simplified)
 $env:DATABASE_URL = aws secretsmanager get-secret-value --secret-id $env:DATABASE_SECRET_ARN ...
 pnpm --filter @mmap/api db:migrate
 ```
@@ -324,7 +329,7 @@ Apply for **AWS Activate** (nonprofit) to offset year-one cost when the stack is
 
 Staging is not required 24/7 for a nonprofit pilot. Default practice:
 
-1. **Create** when you need demos, UAT, or pre-production validation (`terraform apply` or Infra staging manual workflow).
+1. **Create** when you need demos, UAT, or pre-production validation (`terraform apply` or **Release staging** workflow).
 2. **Destroy** when idle so ALB + RDS + IPv4 stop billing (`terraform destroy` against the staging root only).
 3. **Never destroy** bootstrap: S3 state bucket `mmap-terraform-state-*`, DynamoDB lock table, shared GitHub OIDC provider, Terraform CI role.
 
@@ -343,7 +348,7 @@ terraform plan -destroy -var-file=terraform.tfvars
 terraform destroy -var-file=terraform.tfvars
 ```
 
-Recreate with the same `init`, then `terraform apply -var-file=terraform.tfvars` (or the Infra staging manual GitHub workflow). Confirm only `mmap-staging-*` resources change — bootstrap stays untouched.
+Recreate with the same `init`, then `terraform apply -var-file=terraform.tfvars` (or the **Release staging** GitHub workflow). Confirm only `mmap-staging-*` resources change — bootstrap stays untouched.
 
 If re-apply fails because `mmap-staging/api-admin-token` is still in the Secrets Manager
 recovery window (from a destroy before `recovery_window_in_days = 0` was set), force-delete
@@ -395,7 +400,7 @@ destroy the stack instead.
   `hibernate` or destroy the stack for longer idle periods.
 - **Terraform drift / stuck rollouts.** The api module pins `min_task_count = 1`, but hibernate
   mutates Application Auto Scaling outside Terraform, and a FAILED Express rollout can leave
-  `desired=1 running=0` until a new deployment is forced. Infra deploy **Verify staging** runs
+  `desired=1 running=0` until a new deployment is forced. CD / Release staging **verify** runs
   `staging-hibernate.ts resume`, which restores scale, force-new-deploys when needed, and waits
   for a running task. Re-run `hibernate` after a successful deploy if you want the cost floor again.
 - **The script is safe to re-run.** It reads current state first and skips resources that

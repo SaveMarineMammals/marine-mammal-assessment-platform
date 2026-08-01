@@ -10,20 +10,20 @@ Last updated: 2026-06-15
 
 ## Infrastructure
 
-| ID     | Priority | Finding                                                          | Recommendation                                                                 | Status   |
-| ------ | -------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------ | -------- |
-| INF-01 | Critical | Terraform CI role has `iam:*`, `secretsmanager:*`, `s3:*` on `*` | Least-privilege policies per module; deny IAM user/key creation                | open     |
-| INF-02 | Critical | OIDC trust `repo:ORG/REPO:*` for Terraform CI                    | Restrict `sub` to `main`, environments, named workflows                        | open     |
-| INF-03 | High     | Long-lived bootstrap access keys                                 | One-time bootstrap via SSO; delete keys after use                              | open     |
-| INF-04 | High     | `DATABASE_URL` duplicated in GitHub Secrets for migrations       | Use `DATABASE_SECRET_ARN` + Secrets Manager at runtime (see INF-06)            | done     |
-| INF-05 | High     | State bucket lacks bucket policy, KMS CMK, TLS-only deny         | Harden S3 state bucket; treat state as tier-0                                  | open     |
-| INF-06 | High     | DB password in Terraform state via `random_password`             | RDS `manage_master_user_password` + Secrets Manager JSON secret                | done     |
-| INF-07 | Medium   | Staging API auto-deploy on image push                            | ECS Express image updates via CI (`deploy-aws`); Terraform ignores image drift | accepted |
-| INF-08 | Medium   | ECR mutable tags in production                                   | `IMMUTABLE` tags; deploy by digest or unique version                           | open     |
-| INF-09 | Medium   | Infra apply uses `-auto-approve` without IaC-enforced approval   | Require GitHub Environment reviewers for staging/production                    | open     |
-| INF-10 | Medium   | Manual staging infra from any ref without admin gate             | Add admin check or restrict `workflow_dispatch` permissions                    | open     |
-| INF-11 | Low      | Bootstrap local state not in remote backend                      | Back up `infra/bootstrap/terraform.tfstate` securely                           | open     |
-| INF-12 | Low      | `terraform.tfvars` not gitignored                                | Add to `.gitignore`; keep `.example` committed                                 | open     |
+| ID     | Priority | Finding                                                          | Recommendation                                                                  | Status   |
+| ------ | -------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------- | -------- |
+| INF-01 | Critical | Terraform CI role has `iam:*`, `secretsmanager:*`, `s3:*` on `*` | Least-privilege policies per module; deny IAM user/key creation                 | open     |
+| INF-02 | Critical | OIDC trust `repo:ORG/REPO:*` for Terraform CI                    | Restrict `sub` to `main`, environments, named workflows                         | open     |
+| INF-03 | High     | Long-lived bootstrap access keys                                 | One-time bootstrap via SSO; delete keys after use                               | open     |
+| INF-04 | High     | `DATABASE_URL` duplicated in GitHub Secrets for migrations       | Use `DATABASE_SECRET_ARN` + Secrets Manager at runtime (see INF-06)             | done     |
+| INF-05 | High     | State bucket lacks bucket policy, KMS CMK, TLS-only deny         | Harden S3 state bucket; treat state as tier-0                                   | open     |
+| INF-06 | High     | DB password in Terraform state via `random_password`             | RDS `manage_master_user_password` + Secrets Manager JSON secret                 | done     |
+| INF-07 | Medium   | Staging API auto-deploy on image push                            | ECS Express image updates via CD (`_deploy-app`); Terraform ignores image drift | accepted |
+| INF-08 | Medium   | ECR mutable tags in production                                   | `IMMUTABLE` tags; deploy by digest or unique version                            | open     |
+| INF-09 | Medium   | Infra apply uses `-auto-approve` without IaC-enforced approval   | Require GitHub Environment reviewers for staging/production                     | open     |
+| INF-10 | Medium   | Manual staging infra from any ref without admin gate             | Add admin check or restrict `workflow_dispatch` permissions                     | open     |
+| INF-11 | Low      | Bootstrap local state not in remote backend                      | Back up `infra/bootstrap/terraform.tfstate` securely                            | open     |
+| INF-12 | Low      | `terraform.tfvars` not gitignored                                | Add to `.gitignore`; keep `.example` committed                                  | open     |
 
 ---
 

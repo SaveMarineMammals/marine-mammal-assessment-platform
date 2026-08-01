@@ -1,0 +1,97 @@
+# Reusable post-deploy verification: optional hibernate resume → readiness probe → live-verify.
+
+name: Verify environment
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: staging or production
+        required: true
+        type: string
+      mode:
+        description: live-verify mode (full or smoke)
+        required: true
+        type: string
+      resume_hibernate:
+        description: Resume staging if hibernated before probes
+        required: false
+        type: boolean
+        default: false
+      git_ref:
+        description: Git ref to checkout
+        required: false
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  verify:
+    name: Verify ${{ inputs.environment }} (${{ inputs.mode }})
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.git_ref != '' && inputs.git_ref || github.sha }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        shell: pwsh
+        run: pnpm install --frozen-lockfile
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: 1.9.8
+          terraform_wrapper: false
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_TERRAFORM_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION || 'us-east-1' }}
+
+      - name: Init Terraform state
+        shell: pwsh
+        run: |
+          pnpm exec tsx scripts/terraform-init.ts `
+            "infra/terraform/environments/${{ inputs.environment }}" `
+            "${{ secrets.TF_STATE_BUCKET }}" `
+            "${{ inputs.environment }}/terraform.tfstate" `
+            "${{ vars.AWS_REGION || 'us-east-1' }}" `
+            "${{ secrets.TF_LOCK_TABLE }}"
+
+      - name: Resume staging if hibernated
+        if: inputs.resume_hibernate
+        shell: pwsh
+        run: pnpm exec tsx scripts/staging-hibernate.ts resume
+
+      - name: Readiness probe (ALB / task health)
+        shell: pwsh
+        run: pnpm exec tsx scripts/terraform-smoke-test.ts ${{ inputs.environment }}
+
+      - name: Live functional verify
+        shell: pwsh
+        run: pnpm exec tsx scripts/live-verify.ts ${{ inputs.environment }} --mode ${{ inputs.mode }}
+
+      - name: Diagnose ECS Express (on failure)
+        if: failure() && inputs.environment == 'staging'
+        shell: pwsh
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+        run: |
+          $accountId = (aws sts get-caller-identity --query Account --output text).Trim()
+          pnpm exec tsx scripts/ecs-express-diagnose.ts mmap-staging-api $accountId $env:AWS_REGION
+        continue-on-error: true

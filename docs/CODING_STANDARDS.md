@@ -2,7 +2,7 @@
 
 This document defines how we write code in the Marine Mammal Assessment Platform (MMAP). It complements [CONTRIBUTING.md](../CONTRIBUTING.md) and [DEVELOPMENT.md](DEVELOPMENT.md).
 
-All contributors and automation (including AI agents) must follow these standards. CI enforces formatting, lint, tests, and build on every pull request.
+All contributors and automation (including AI agents) must follow these standards. CI enforces formatting, lint, CodeQL, tests, build, and Terraform plan on every pull request.
 
 ## Principles
 
@@ -157,11 +157,13 @@ Testing is **mandatory** for merged work. CI blocks PRs until all checks pass.
 
 ### CI gates (required on every PR)
 
-| Job         | Command                                       | Purpose                                     |
-| ----------- | --------------------------------------------- | ------------------------------------------- |
-| Quality     | `pnpm format:check`, `pnpm lint`, `pnpm test` | Style, lint, unit tests                     |
-| Build       | `pnpm build`                                  | Typecheck and production build all packages |
-| Integration | `pnpm test:integration` (with PostgreSQL)     | API sync + field sync path                  |
+| Job            | Command                                       | Purpose                                               |
+| -------------- | --------------------------------------------- | ----------------------------------------------------- |
+| Quality        | `pnpm format:check`, `pnpm lint`, `pnpm test` | Style, lint, unit tests                               |
+| CodeQL         | GitHub CodeQL (`javascript-typescript`)       | Static analysis                                       |
+| Build          | `pnpm build`                                  | Typecheck and production build all packages           |
+| Integration    | `pnpm test:integration` (with PostgreSQL)     | API sync + field sync path                            |
+| Terraform plan | Plan staging + production                     | Infra diff; warns on destroys (does not fail on them) |
 
 Run locally before opening a PR:
 

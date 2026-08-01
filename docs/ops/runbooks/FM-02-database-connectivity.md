@@ -30,7 +30,7 @@ The API persists sync batches and serves public dataset endpoints through a **Po
 | `503 Database unavailable`                      | `GET /v1/public/stats`, `/v1/public/assessments`                                          |
 | Sync batch persistence errors                   | API logs, `sync_audit` with `status: error`                                               |
 | ECS Express service / tasks unhealthy           | AWS Console → ECS → Express service; `scripts/ecs-express-diagnose.ts`                    |
-| Deploy job fails at **Run database migrations** | `.github/workflows/deploy-aws.yml`                                                        |
+| Deploy job fails at **Run database migrations** | `.github/workflows/_deploy-app.yml` (via CD / Release staging / Deploy AWS)               |
 | CloudWatch alarms                               | `mmap-{env}-ecs-cpu-high`, `mmap-{env}-rds-low-storage` ([AWS_INFRA.md](../AWS_INFRA.md)) |
 | Local: integration tests skip                   | Missing `DATABASE_URL` or Postgres not running                                            |
 
@@ -208,7 +208,7 @@ The API persists sync batches and serves public dataset endpoints through a **Po
 | URL normalization      | `apps/api/src/cli/database-url.ts`         |
 | RDS module             | `infra/terraform/modules/database/main.tf` |
 | ECS Express secrets    | `infra/terraform/modules/api/main.tf`      |
-| Deploy migrations step | `.github/workflows/deploy-aws.yml`         |
+| Deploy migrations step | `.github/workflows/_deploy-app.yml`        |
 | Env example            | `apps/api/.env.example`                    |
 | Deployment / restore   | [DEPLOYMENT.md](../DEPLOYMENT.md)          |
 | Secrets architecture   | [AWS_INFRA.md](../AWS_INFRA.md)            |

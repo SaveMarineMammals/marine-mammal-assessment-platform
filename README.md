@@ -154,7 +154,7 @@ marine-mammal-assessment/
 │   ├── schema/       # Assessment schemas and validators
 │   └── geo-time/     # UTC storage and local time display
 ├── docs/             # Requirements, plan, developer guide, protocols
-└── .github/          # CI workflow, issue and PR templates
+└── .github/          # CI/CD workflows, issue and PR templates
 ```
 
 ## Documentation

@@ -1,0 +1,131 @@
+# Reusable application deploy: static sites → ECR → migrate → ECS Express.
+#
+# Caller must grant contents:read and id-token:write. Uses GitHub Environment
+# secrets for the target environment (staging | production).
+
+name: Deploy app
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: Target GitHub/AWS environment
+        required: true
+        type: string
+      image_tag:
+        description: Docker/ECR image tag (defaults to short SHA)
+        required: false
+        type: string
+        default: ''
+      git_ref:
+        description: Git ref to checkout
+        required: false
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  AWS_REGION: us-east-1
+
+jobs:
+  deploy:
+    name: Deploy app (${{ inputs.environment }})
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    env:
+      ECR_REPOSITORY: mmap-${{ inputs.environment }}-api
+      IMAGE_TAG: ${{ inputs.image_tag != '' && inputs.image_tag || github.sha }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.git_ref != '' && inputs.git_ref || github.sha }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        shell: pwsh
+        run: pnpm install --frozen-lockfile
+
+      - name: Build static sites
+        shell: pwsh
+        run: |
+          pnpm --filter @mmap/web build
+          pnpm --filter @mmap/field build
+        env:
+          VITE_DOCS_URL: https://www.example.org/docs/manatee-v1
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Sync web static assets to S3
+        shell: pwsh
+        run: aws s3 sync apps/web/dist/ "s3://${{ secrets.WEB_STATIC_BUCKET }}/" --delete
+
+      - name: Sync field static assets to S3
+        shell: pwsh
+        run: aws s3 sync apps/field/dist/ "s3://${{ secrets.FIELD_STATIC_BUCKET }}/" --delete
+
+      - name: Invalidate CloudFront caches
+        shell: pwsh
+        env:
+          WEB_CLOUDFRONT_ID: ${{ secrets.WEB_CLOUDFRONT_ID }}
+          FIELD_CLOUDFRONT_ID: ${{ secrets.FIELD_CLOUDFRONT_ID }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:WEB_CLOUDFRONT_ID) -or [string]::IsNullOrWhiteSpace($env:FIELD_CLOUDFRONT_ID)) {
+            Write-Output "Skipping CloudFront invalidation (enable_cdn=false or CLOUDFRONT secrets unset)."
+            exit 0
+          }
+          aws cloudfront create-invalidation --distribution-id $env:WEB_CLOUDFRONT_ID --paths "/*"
+          aws cloudfront create-invalidation --distribution-id $env:FIELD_CLOUDFRONT_ID --paths "/*"
+
+      - name: Login to Amazon ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push API image
+        shell: pwsh
+        env:
+          ECR_REGISTRY: ${{ steps.ecr.outputs.registry }}
+        run: |
+          docker build -f apps/api/Dockerfile -t "$env:ECR_REGISTRY/$env:ECR_REPOSITORY:$env:IMAGE_TAG" .
+          docker push "$env:ECR_REGISTRY/$env:ECR_REPOSITORY:$env:IMAGE_TAG"
+
+      - name: Run database migrations
+        shell: pwsh
+        env:
+          DATABASE_SECRET_ARN: ${{ secrets.DATABASE_SECRET_ARN }}
+        run: |
+          $secret = aws secretsmanager get-secret-value `
+            --secret-id $env:DATABASE_SECRET_ARN `
+            --query SecretString `
+            --output text
+          $env:DATABASE_URL = $secret
+          pnpm --filter @mmap/api db:migrate
+
+      - name: Deploy API to ECS Express
+        uses: aws-actions/amazon-ecs-deploy-express-service@v1
+        env:
+          ECR_REGISTRY: ${{ steps.ecr.outputs.registry }}
+        with:
+          service-name: ${{ secrets.ECS_SERVICE_NAME }}
+          image: ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
+          execution-role-arn: ${{ secrets.ECS_EXECUTION_ROLE_ARN }}
+          infrastructure-role-arn: ${{ secrets.ECS_INFRASTRUCTURE_ROLE_ARN }}
+          container-port: '3001'
+          health-check-path: /v1/health
+          min-task-count: 1
+          max-task-count: 4

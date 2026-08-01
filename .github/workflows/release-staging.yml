@@ -1,0 +1,88 @@
+# Manual release to staging: terraform apply → app deploy → full live-verify.
+# Does not touch production.
+
+name: Release staging
+
+on:
+  workflow_dispatch:
+    inputs:
+      git_ref:
+        description: Branch, tag, or SHA to deploy from
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  resolve-ref:
+    name: Resolve git ref
+    runs-on: ubuntu-latest
+    outputs:
+      ref: ${{ steps.resolve.outputs.ref }}
+      sha: ${{ steps.resolve.outputs.sha }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.git_ref || github.ref }}
+
+      - name: Resolve SHA
+        id: resolve
+        shell: pwsh
+        run: |
+          $ref = if ([string]::IsNullOrWhiteSpace('${{ inputs.git_ref }}')) { '${{ github.ref }}' } else { '${{ inputs.git_ref }}' }
+          $sha = (git rev-parse HEAD).Trim()
+          "ref=$ref" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "sha=$sha" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          Write-Output "Deploying ref=$ref sha=$sha"
+
+  staging-infra:
+    name: Terraform apply (staging)
+    runs-on: ubuntu-latest
+    needs: resolve-ref
+    environment: staging
+    if: vars.TF_INFRA_ENABLED == 'true'
+    concurrency:
+      group: mmap-terraform
+      cancel-in-progress: false
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.resolve-ref.outputs.sha }}
+
+      - name: Terraform apply staging
+        uses: ./.github/actions/terraform
+        with:
+          working-directory: infra/terraform/environments/staging
+          command: apply
+          aws-role-arn: ${{ secrets.AWS_TERRAFORM_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION || 'us-east-1' }}
+          state-bucket: ${{ secrets.TF_STATE_BUCKET }}
+          state-key: staging/terraform.tfstate
+          lock-table: ${{ secrets.TF_LOCK_TABLE }}
+
+  staging-app:
+    name: Deploy app (staging)
+    needs: [resolve-ref, staging-infra]
+    if: vars.TF_INFRA_ENABLED == 'true'
+    uses: ./.github/workflows/_deploy-app.yml
+    with:
+      environment: staging
+      git_ref: ${{ needs.resolve-ref.outputs.sha }}
+      image_tag: ${{ needs.resolve-ref.outputs.sha }}
+    secrets: inherit
+
+  staging-verify:
+    name: Verify staging (full)
+    needs: [resolve-ref, staging-app]
+    if: vars.TF_INFRA_ENABLED == 'true'
+    uses: ./.github/workflows/_verify-env.yml
+    with:
+      environment: staging
+      mode: full
+      resume_hibernate: true
+      git_ref: ${{ needs.resolve-ref.outputs.sha }}
+    secrets: inherit
