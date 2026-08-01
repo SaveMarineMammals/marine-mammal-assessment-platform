@@ -8,37 +8,37 @@
 
 The API persists sync batches and serves public dataset endpoints through a **PostgreSQL** connection pool (`apps/api/src/db/pool.ts`). Locally and in CI, `DATABASE_URL` is a plain PostgreSQL URL. On AWS:
 
-- RDS uses `manage_master_user_password = true`; credentials live in **Secrets Manager** as JSON.
-- ECS Express injects that secret into the `DATABASE_URL` environment variable (secret ARN reference in `infra/terraform/modules/api/main.tf`).
-- The API and CLI normalize JSON to a connection string via `normalizeDatabaseUrl()` in `apps/api/src/cli/database-url.ts`.
-- The **deploy-aws** workflow fetches the same secret for migrations before API rollout.
+- RDS uses `manage_master_user_password = true`; credentials live in **Secrets Manager** as JSON (`username` / `password` only).
+- ECS Express injects that secret into `DATABASE_URL` and sets non-secret `DB_HOST`, `DB_PORT`, and `DB_NAME` (`infra/terraform/modules/api/main.tf`).
+- The API and CLI normalize JSON (+ `DB_*` env) to a connection string via `normalizeDatabaseUrl()` in `apps/api/src/cli/database-url.ts`.
+- Migrations run on API container startup before the process listens (not from GitHub Actions — RDS is private).
 
-**Who is affected:** All API consumers — field sync, public web dataset portal, admin routes, and deploy migrations.
+**Who is affected:** All API consumers — field sync, public web dataset portal, admin routes, and deploy-time schema updates.
 
 **What breaks:**
 
-- Missing or malformed `DATABASE_URL` → pool connection errors; public routes return **503** `{ "error": "Database unavailable" }`.
+- Missing or malformed `DATABASE_URL` / `DB_*` → pool connection errors; public routes return **503** `{ "error": "Database unavailable" }`.
 - RDS unreachable from ECS Express tasks (security group / subnet) → health may pass but sync/public DB routes fail.
-- Wrong `DATABASE_SECRET_ARN` in GitHub → migration step fails during deploy.
+- Wrong Secrets Manager ARN wired in Terraform → tasks fail to start or cannot authenticate.
 - Secret rotation without API redeploy → transient auth failures until tasks restart.
 - Staging hibernated (RDS stopped) → DB routes fail until `staging-hibernate.ts resume`.
 
 ## Detection
 
-| Signal                                          | Where                                                                                     |
-| ----------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| `503 Database unavailable`                      | `GET /v1/public/stats`, `/v1/public/assessments`                                          |
-| Sync batch persistence errors                   | API logs, `sync_audit` with `status: error`                                               |
-| ECS Express service / tasks unhealthy           | AWS Console → ECS → Express service; `scripts/ecs-express-diagnose.ts`                    |
-| Deploy job fails at **Run database migrations** | `.github/workflows/_deploy-app.yml` (via CD / Release staging / Deploy AWS)               |
-| CloudWatch alarms                               | `mmap-{env}-ecs-cpu-high`, `mmap-{env}-rds-low-storage` ([AWS_INFRA.md](../AWS_INFRA.md)) |
-| Local: integration tests skip                   | Missing `DATABASE_URL` or Postgres not running                                            |
+| Signal                                    | Where                                                                                     |
+| ----------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `503 Database unavailable`                | `GET /v1/public/stats`, `/v1/public/assessments`                                          |
+| Sync batch persistence errors             | API logs, `sync_audit` with `status: error`                                               |
+| ECS Express service / tasks unhealthy     | AWS Console → ECS → Express service; `scripts/ecs-express-diagnose.ts`                    |
+| Migration / DB connect errors on API boot | CloudWatch log group `/mmap-{env}/api`                                                    |
+| CloudWatch alarms                         | `mmap-{env}-ecs-cpu-high`, `mmap-{env}-rds-low-storage` ([AWS_INFRA.md](../AWS_INFRA.md)) |
+| Local: integration tests skip             | Missing `DATABASE_URL` or Postgres not running                                            |
 
 ## Prerequisites
 
 - AWS CLI configured (staging/production) with permission to read Secrets Manager and describe RDS/ECS
 - For local: Docker or native PostgreSQL on port 5432
-- GitHub environment secret `DATABASE_SECRET_ARN` matches Terraform output `database_secret_arn`
+- Terraform outputs: `database_secret_arn`, `db_endpoint` (and ECS task env `DB_*`)
 
 ## Diagnosis
 
@@ -102,7 +102,8 @@ The API persists sync batches and serves public dataset endpoints through a **Po
      --query SecretString --output text
    ```
 
-   Expect JSON with `username`, `password`, `host`, `port`, `dbname`. Do not log full output.
+   Expect JSON with `username` and `password` only (RDS-managed). Pair with `DB_HOST` /
+   `DB_PORT` / `DB_NAME` from Terraform/ECS. Do not log full output.
 
 5. **Test normalization locally**
 
@@ -127,15 +128,16 @@ The API persists sync batches and serves public dataset endpoints through a **Po
    pnpm exec tsx scripts/staging-hibernate.ts status
    ```
 
-7. **Compare GitHub secret to Terraform output**
+7. **Confirm Terraform wiring**
 
    Git Bash (after local terraform init):
 
    ```bash
    terraform -chdir=infra/terraform/environments/staging output -raw database_secret_arn
+   terraform -chdir=infra/terraform/environments/staging output -raw db_endpoint
    ```
 
-   Must match GitHub environment secret `DATABASE_SECRET_ARN`.
+   ECS task must reference that secret ARN for `DATABASE_URL` and the endpoint as `DB_HOST`.
 
 ## Resolution
 
@@ -163,11 +165,11 @@ The API persists sync batches and serves public dataset endpoints through a **Po
    - Copy `apps/api/.env.example` → `apps/api/.env` for local dev.
    - Docker Compose sets `DATABASE_URL` in `docker-compose.yml` for the `api` service.
 
-3. **Migration failure during deploy**
+3. **Migration failure on API startup**
 
-   - Confirm `DATABASE_SECRET_ARN` in GitHub environment (staging/production).
-   - Confirm deploy role can `secretsmanager:GetSecretValue` on that ARN.
-   - Re-run failed workflow job after fixing IAM or ARN mismatch.
+   - Confirm ECS task env has `DB_HOST` / `DB_PORT` / `DB_NAME` and `DATABASE_URL` secret ARN.
+   - Confirm execution role can `secretsmanager:GetSecretValue` on that ARN.
+   - Check CloudWatch `/mmap-{env}/api` for normalize/migrate errors; redeploy after fixing IAM or ARN mismatch.
 
 4. **ECS Express tasks cannot reach RDS**
 

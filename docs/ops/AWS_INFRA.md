@@ -271,15 +271,9 @@ sequenceDiagram
 
 **Production:** automatic CD promotion after staging full live-verify succeeds (smoke live-verify after production deploy).
 
-Database migrations run before API rollout. The deploy workflow reads **`DATABASE_SECRET_ARN`** (RDS-managed Secrets Manager secret) — not a plaintext URL in GitHub:
+Database migrations run on **API container startup** (before the process listens), so ECS health checks only pass after schema is applied. RDS is private, so GitHub-hosted runners cannot migrate directly.
 
-```powershell
-# _deploy-app.yml (simplified)
-$env:DATABASE_URL = aws secretsmanager get-secret-value --secret-id $env:DATABASE_SECRET_ARN ...
-pnpm --filter @mmap/api db:migrate
-```
-
-The API accepts either a PostgreSQL URL (local/CI) or RDS Secrets Manager JSON in `DATABASE_URL`. See `apps/api/src/cli/database-url.ts`.
+ECS injects the RDS-managed Secrets Manager JSON into `DATABASE_URL` and sets non-secret `DB_HOST` / `DB_PORT` / `DB_NAME`. The API merges them via `apps/api/src/cli/database-url.ts`. Local/CI use a plain PostgreSQL URL.
 
 Never commit database credentials to the repository or Terraform state.
 

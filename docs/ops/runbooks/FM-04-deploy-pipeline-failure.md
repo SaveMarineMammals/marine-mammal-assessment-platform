@@ -17,8 +17,8 @@ Deploy steps:
 1. Build `@mmap/web` and `@mmap/field` static sites
 2. `aws s3 sync` to web and field buckets; CloudFront invalidation `/*`
 3. Docker build/push API image to ECR (`mmap-{env}-api`, tag = git SHA)
-4. Fetch `DATABASE_SECRET_ARN` from Secrets Manager → run `pnpm --filter @mmap/api db:migrate`
-5. Deploy API to **ECS Express** (`aws-actions/amazon-ecs-deploy-express-service`)
+4. Deploy API to **ECS Express** (`aws-actions/amazon-ecs-deploy-express-service`)
+5. API container runs migrations on startup before listen / health checks
 6. Verify: readiness probe + `live-verify.ts` (`full` on staging, `smoke` on production)
 
 Triggers:
@@ -29,7 +29,9 @@ Triggers:
 
 Required GitHub **environment** secrets (from Terraform outputs — see [INFRA_PIPELINES.md](../INFRA_PIPELINES.md)):
 
-`AWS_DEPLOY_ROLE_ARN`, `DATABASE_SECRET_ARN`, `WEB_STATIC_BUCKET`, `FIELD_STATIC_BUCKET`, `WEB_CLOUDFRONT_ID`, `FIELD_CLOUDFRONT_ID`, `ECS_SERVICE_NAME`, `ECS_EXECUTION_ROLE_ARN`, `ECS_INFRASTRUCTURE_ROLE_ARN`
+`AWS_DEPLOY_ROLE_ARN`, `WEB_STATIC_BUCKET`, `FIELD_STATIC_BUCKET`, `WEB_CLOUDFRONT_ID`, `FIELD_CLOUDFRONT_ID`, `ECS_SERVICE_NAME`, `ECS_EXECUTION_ROLE_ARN`, `ECS_INFRASTRUCTURE_ROLE_ARN`
+
+Optional: `DATABASE_SECRET_ARN` (ops diagnosis; ECS loads the secret via Terraform, not the deploy workflow).
 
 **Who is affected:** End users see stale static assets and/or old API; field sync may hit schema mismatch if migrations failed but static deploy succeeded.
 
@@ -37,7 +39,7 @@ Required GitHub **environment** secrets (from Terraform outputs — see [INFRA_P
 
 - `pnpm build` failure (web/field)
 - OIDC / IAM — cannot assume deploy role, ECR push denied, S3 sync denied
-- Migration failure — DB schema not updated before new API expects new columns
+- Migration failure on API startup — new tasks never become healthy
 - ECR / ECS Express — image push fails or Express service not updated
 - CloudFront — invalidation fails or wrong distribution ID
 - Partial success — S3 updated but API/migrations failed → **split-brain** UI vs API
@@ -45,15 +47,15 @@ Required GitHub **environment** secrets (from Terraform outputs — see [INFRA_P
 
 ## Detection
 
-| Signal                                            | Where                                 |
-| ------------------------------------------------- | ------------------------------------- |
-| Red **CD** / **Release staging** / **Deploy AWS** | GitHub Actions                        |
-| Red **Verify** / live-verify failure              | `_verify-env.yml` / job logs          |
-| Static site new `version.json` but API old        | Field update banner vs sync errors    |
-| ECR push / docker build errors                    | Job log **Build and push API image**  |
-| Migration stderr                                  | Job log **Run database migrations**   |
-| ECS Express deploy action failure                 | Job log **Deploy API to ECS Express** |
-| CloudFront 404 on new routes                      | Missing invalidation or wrong bucket  |
+| Signal                                            | Where                                    |
+| ------------------------------------------------- | ---------------------------------------- |
+| Red **CD** / **Release staging** / **Deploy AWS** | GitHub Actions                           |
+| Red **Verify** / live-verify failure              | `_verify-env.yml` / job logs             |
+| Static site new `version.json` but API old        | Field update banner vs sync errors       |
+| ECR push / docker build errors                    | Job log **Build and push API image**     |
+| Migration / DB connect errors on boot             | ECS task logs (CloudWatch `/mmap-*/api`) |
+| ECS Express deploy action failure                 | Job log **Deploy API to ECS Express**    |
+| CloudFront 404 on new routes                      | Missing invalidation or wrong bucket     |
 
 ## Prerequisites
 
@@ -98,22 +100,22 @@ Required GitHub **environment** secrets (from Terraform outputs — see [INFRA_P
 
 5. **Isolate migration failures**
 
-   PowerShell (mirrors deploy job):
+   Migrations run inside the API container (private RDS is not reachable from
+   GitHub-hosted runners). Check ECS task logs for `normalizeDatabaseUrl` /
+   migration errors, and confirm the task has `DB_HOST` / `DB_PORT` / `DB_NAME`
+   plus the RDS Secrets Manager JSON in `DATABASE_URL`.
+
+   From a host that can reach RDS (bastion / ECS Exec), mirror runtime env:
 
    ```powershell
    $secret = aws secretsmanager get-secret-value `
      --secret-id $env:DATABASE_SECRET_ARN `
      --query SecretString --output text
    $env:DATABASE_URL = $secret
-   pnpm --filter @mmap/api db:migrate
-   ```
-
-   Git Bash:
-
-   ```bash
-   export DATABASE_URL=$(aws secretsmanager get-secret-value \
-     --secret-id "$DATABASE_SECRET_ARN" \
-     --query SecretString --output text)
+   $env:DB_HOST = (aws rds describe-db-instances --db-instance-identifier mmap-staging-postgres `
+     --query "DBInstances[0].Endpoint.Address" --output text)
+   $env:DB_PORT = "5432"
+   $env:DB_NAME = "mmap"
    pnpm --filter @mmap/api db:migrate
    ```
 

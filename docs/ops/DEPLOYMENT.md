@@ -45,7 +45,7 @@ Production promotes **automatically** after staging full live-verify succeeds on
 
 1. Prefer completing field UAT ([uat checklist](../uat/manatee-v1-checklist.md)) before merging high-risk changes.
 2. Merge to `main` with green PR CI.
-3. CD applies production Terraform, deploys the app (migrations before API rollout), then runs smoke live-verify.
+3. CD applies production Terraform, deploys the app (API runs migrations on container startup), then runs smoke live-verify.
 4. Smoke mode checks health, DB stats, public read paths, and CSV headers — **no mutating sync** (avoids polluting the public dataset).
 5. Update [../data/CHANGELOG.md](../data/CHANGELOG.md) if a dataset snapshot is published.
 
@@ -84,12 +84,12 @@ Actions → **Deploy AWS** → choose `staging` or `production`. Infra must alre
 
 ## Secrets rotation
 
-| Secret            | Location                                                            | Rotation                                                                 |
-| ----------------- | ------------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| RDS master user   | Secrets Manager (RDS-managed ARN → `DATABASE_SECRET_ARN` in GitHub) | Enable RDS secret rotation in AWS; redeploy API after rotation if needed |
-| `API_ADMIN_TOKEN` | Secrets Manager                                                     | Generate new token; update secret; redeploy API                          |
+| Secret            | Location                                                    | Rotation                                                                 |
+| ----------------- | ----------------------------------------------------------- | ------------------------------------------------------------------------ |
+| RDS master user   | Secrets Manager (RDS-managed; wired into ECS via Terraform) | Enable RDS secret rotation in AWS; redeploy API after rotation if needed |
+| `API_ADMIN_TOKEN` | Secrets Manager                                             | Generate new token; update secret; redeploy API                          |
 
-The database password is **not** stored in Terraform state or GitHub as a plain connection string. CI migrations fetch the RDS JSON secret at runtime; the API normalizes it to a PostgreSQL URL.
+The database password is **not** stored in Terraform state or GitHub as a plain connection string. ECS injects the RDS JSON secret plus `DB_HOST` / `DB_PORT` / `DB_NAME`; the API normalizes them to a PostgreSQL URL on startup (including migrations).
 
 Never store secrets in the repository or Terraform `.tfvars` committed to git.
 

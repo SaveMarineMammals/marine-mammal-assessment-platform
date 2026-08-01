@@ -134,6 +134,21 @@ output "db_instance_id" {
   value = aws_db_instance.main.id
 }
 
+output "db_endpoint" {
+  description = "RDS hostname (non-secret; pair with master user secret JSON)"
+  value       = aws_db_instance.main.address
+}
+
+output "db_port" {
+  description = "RDS port"
+  value       = aws_db_instance.main.port
+}
+
+output "db_name" {
+  description = "Initial database name"
+  value       = aws_db_instance.main.db_name
+}
+
 output "database_url_secret_arn" {
   description = "Secrets Manager ARN for the RDS-managed master user secret (JSON payload)"
   value       = aws_db_instance.main.master_user_secret[0].secret_arn

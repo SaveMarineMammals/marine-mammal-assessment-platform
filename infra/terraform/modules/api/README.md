@@ -20,6 +20,9 @@ ECR repository and ECS Express Mode service for the Fastify sync API.
 | `api_connector_sg_id`         | string            |                                                      |
 | `database_secret_arn`         | string            |                                                      |
 | `database_secret_kms_key_arn` | string (optional) |                                                      |
+| `db_host`                     | string            | RDS hostname → task `DB_HOST` (optional until set)   |
+| `db_port`                     | number            | Default `5432` → task `DB_PORT`                      |
+| `db_name`                     | string            | Default `mmap` → task `DB_NAME`                      |
 | `data_bucket_arn`             | string            |                                                      |
 | `cpu`                         | string            | Default env: `1024` (1 vCPU)                         |
 | `memory`                      | string            | Default env: `2048` (2 GiB)                          |

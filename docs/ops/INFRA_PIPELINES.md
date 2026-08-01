@@ -14,10 +14,10 @@ GitHub Actions workflows for AWS Terraform bootstrap, plan, progressive CD, and 
 
 Reusable workflows (called by CD / release / deploy):
 
-| Workflow                                                     | Role                                                                         |
-| ------------------------------------------------------------ | ---------------------------------------------------------------------------- |
-| [`_deploy-app.yml`](../../.github/workflows/_deploy-app.yml) | `turbo build --filter` web+field (and workspace deps), S3, ECR, migrate, ECS |
-| [`_verify-env.yml`](../../.github/workflows/_verify-env.yml) | Hibernate resume (staging), readiness probe, `live-verify` full or smoke     |
+| Workflow                                                     | Role                                                                     |
+| ------------------------------------------------------------ | ------------------------------------------------------------------------ |
+| [`_deploy-app.yml`](../../.github/workflows/_deploy-app.yml) | `turbo build --filter` web+field (and workspace deps), S3, ECR, ECS      |
+| [`_verify-env.yml`](../../.github/workflows/_verify-env.yml) | Hibernate resume (staging), readiness probe, `live-verify` full or smoke |
 
 ## One-time setup
 
@@ -35,7 +35,7 @@ After the first Terraform apply per environment, add GitHub secrets from `terraf
 
 | Secret                        | Terraform output                   | Notes                                      |
 | ----------------------------- | ---------------------------------- | ------------------------------------------ |
-| `DATABASE_SECRET_ARN`         | `database_secret_arn`              |                                            |
+| `DATABASE_SECRET_ARN`         | `database_secret_arn`              | Optional (ops); ECS loads via Terraform    |
 | `AWS_DEPLOY_ROLE_ARN`         | `github_deploy_role_arn`           |                                            |
 | `ECS_SERVICE_NAME`            | `ecs_service_name`                 |                                            |
 | `ECS_EXECUTION_ROLE_ARN`      | `ecs_execution_role_arn`           |                                            |

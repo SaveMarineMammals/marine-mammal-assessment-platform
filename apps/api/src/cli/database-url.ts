@@ -2,18 +2,47 @@
 export interface RdsMasterUserSecret {
   username: string;
   password: string;
-  host: string;
-  port: number;
-  dbname: string;
+  host?: string;
+  port?: number;
+  dbname?: string;
 }
 
 const DATABASE_URL_FLAGS = new Set(['--database-url', '-d']);
 
 export const DATABASE_URL_USAGE =
-  'Set DATABASE_URL in the environment (PostgreSQL URL or RDS Secrets Manager JSON), or pass --database-url <url> (or -d <url>).';
+  'Set DATABASE_URL in the environment (PostgreSQL URL or RDS Secrets Manager JSON), or pass --database-url <url> (or -d <url>). When the JSON has only username/password, also set DB_HOST, DB_NAME, and optionally DB_PORT.';
 
 function encodePostgresComponent(value: string): string {
   return encodeURIComponent(value);
+}
+
+function resolveRdsConnectionFields(parsed: RdsMasterUserSecret): {
+  username: string;
+  password: string;
+  host: string;
+  port: number;
+  dbname: string;
+} {
+  const host = parsed.host?.trim() || process.env.DB_HOST?.trim() || '';
+  const dbname = parsed.dbname?.trim() || process.env.DB_NAME?.trim() || '';
+  const portFromEnv = process.env.DB_PORT?.trim();
+  const port =
+    parsed.port ??
+    (portFromEnv && Number.isFinite(Number(portFromEnv)) ? Number(portFromEnv) : 5432);
+
+  if (!parsed.username || !parsed.password || !host || !dbname) {
+    throw new Error(
+      'DATABASE_URL JSON is missing required RDS secret fields (need username, password, and host/dbname from JSON or DB_HOST/DB_NAME).',
+    );
+  }
+
+  return {
+    username: parsed.username,
+    password: parsed.password,
+    host,
+    port,
+    dbname,
+  };
 }
 
 /** Convert a PostgreSQL URL or RDS Secrets Manager JSON secret into a connection string. */
@@ -30,12 +59,8 @@ export function normalizeDatabaseUrl(raw: string): string {
     throw new Error('DATABASE_URL looks like JSON but could not be parsed as an RDS secret.');
   }
 
-  if (!parsed.username || !parsed.password || !parsed.host || !parsed.dbname) {
-    throw new Error('DATABASE_URL JSON is missing required RDS secret fields.');
-  }
-
-  const port = parsed.port ?? 5432;
-  return `postgresql://${encodePostgresComponent(parsed.username)}:${encodePostgresComponent(parsed.password)}@${parsed.host}:${port}/${parsed.dbname}`;
+  const fields = resolveRdsConnectionFields(parsed);
+  return `postgresql://${encodePostgresComponent(fields.username)}:${encodePostgresComponent(fields.password)}@${fields.host}:${fields.port}/${fields.dbname}`;
 }
 
 export function parseDatabaseUrlFromArgs(argv: string[]): string | undefined {

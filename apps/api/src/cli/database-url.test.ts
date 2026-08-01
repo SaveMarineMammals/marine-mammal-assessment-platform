@@ -1,18 +1,40 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   DATABASE_URL_USAGE,
+  normalizeDatabaseUrl,
   parseDatabaseUrlFromArgs,
   resolveDatabaseUrl,
 } from './database-url.js';
 
 describe('database-url CLI', () => {
   const originalDatabaseUrl = process.env.DATABASE_URL;
+  const originalDbHost = process.env.DB_HOST;
+  const originalDbPort = process.env.DB_PORT;
+  const originalDbName = process.env.DB_NAME;
 
   afterEach(() => {
     if (originalDatabaseUrl === undefined) {
       delete process.env.DATABASE_URL;
     } else {
       process.env.DATABASE_URL = originalDatabaseUrl;
+    }
+
+    if (originalDbHost === undefined) {
+      delete process.env.DB_HOST;
+    } else {
+      process.env.DB_HOST = originalDbHost;
+    }
+
+    if (originalDbPort === undefined) {
+      delete process.env.DB_PORT;
+    } else {
+      process.env.DB_PORT = originalDbPort;
+    }
+
+    if (originalDbName === undefined) {
+      delete process.env.DB_NAME;
+    } else {
+      process.env.DB_NAME = originalDbName;
     }
   });
 
@@ -76,5 +98,32 @@ describe('database-url CLI', () => {
     expect(parseDatabaseUrlFromArgs(['node', 'migrate.ts', '-d', json])).toBe(
       'postgresql://mmap:secret@localhost:5432/mmap',
     );
+  });
+
+  it('fills host/dbname/port from DB_* env when RDS JSON has only username/password', () => {
+    process.env.DB_HOST = 'mmap-staging-postgres.example.rds.amazonaws.com';
+    process.env.DB_PORT = '5432';
+    process.env.DB_NAME = 'mmap';
+    expect(
+      normalizeDatabaseUrl(
+        JSON.stringify({
+          username: 'mmap',
+          password: 'p@ss',
+        }),
+      ),
+    ).toBe('postgresql://mmap:p%40ss@mmap-staging-postgres.example.rds.amazonaws.com:5432/mmap');
+  });
+
+  it('throws when username/password JSON lacks DB_HOST/DB_NAME', () => {
+    delete process.env.DB_HOST;
+    delete process.env.DB_NAME;
+    expect(() =>
+      normalizeDatabaseUrl(
+        JSON.stringify({
+          username: 'mmap',
+          password: 'secret',
+        }),
+      ),
+    ).toThrow(/missing required RDS secret fields/);
   });
 });
