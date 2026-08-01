@@ -1,11 +1,12 @@
 # Deployment runbook
 
-Operator checklist for promoting MMAP to staging and production on AWS. See [AWS_INFRA.md](AWS_INFRA.md) for architecture.
+Operator checklist for promoting MMAP to staging and production on AWS. See [AWS_INFRA.md](AWS_INFRA.md) for architecture and [INFRA_PIPELINES.md](INFRA_PIPELINES.md) for workflow details.
 
 ## Prerequisites
 
 - AWS account with Terraform remote state bucket and lock table bootstrapped
 - GitHub environment secrets / OIDC role configured (`infra/terraform/modules/github-oidc`)
+- Repository variable `TF_INFRA_ENABLED=true`
 - Optional: Route 53 hosted zone + ACM certificate when using a custom `domain_name` (CloudFront default certificate is used when `domain_name` is empty)
 
 ## Staging deploy
@@ -14,32 +15,51 @@ Staging is **ephemeral by default** for cost control: destroy when idle, re-appl
 
 CloudFront is currently **optional** (`enable_cdn = false`) until the AWS account can create distributions. Live API testing uses `api_service_url` (ECS Express). See [Optional CloudFront](AWS_INFRA.md#optional-cloudfront-enable_cdn).
 
-1. Ensure staging infrastructure exists (`terraform apply` or Infra staging manual workflow). Cold start is typically 10–20 minutes.
-2. Merge application changes to `main`; CI passes (`pnpm validate` locally if needed).
-3. Trigger staging deploy (push to `main` or manual workflow).
-4. Verify:
-   - `terraform output -raw api_service_url` → `curl …/v1/health` returns `status: ok`
-   - When `enable_cdn = true`: field/web CloudFront URLs load; same-origin `/v1/health` works
-5. Run smoke sync against the live API (field app with `VITE_API_BASE_URL` pointing at Express if CDN is off, or same-origin when CDN is on).
-6. Check CloudWatch dashboard / alarms (should be green).
-7. When idle, either hibernate (`pnpm exec tsx scripts/staging-hibernate.ts hibernate`, ~$25/mo floor) or destroy staging infrastructure (~$0/mo; bootstrap remains).
+### Automatic (merge to `main`)
+
+1. Open a PR; required CI gates must pass (quality, CodeQL, build, integration, Terraform plan).
+2. Merge to `main`. The **CD** workflow runs quality gates again, then staging Terraform apply → app deploy → full live-verify.
+3. If staging verification fails, production is not started.
+4. When idle, either hibernate (`pnpm exec tsx scripts/staging-hibernate.ts hibernate`, ~$25/mo floor) or destroy staging infrastructure (~$0/mo; bootstrap remains).
+
+### Manual (feature branch or re-release)
+
+1. Actions → **Release staging** → Run workflow (optional `git_ref`).
+2. Cold start is typically 10–20 minutes for a fresh stack.
+3. Workflow applies infra, deploys the app, and runs full live-verify.
+
+### What full live-verify covers
+
+`pnpm exec tsx scripts/live-verify.ts staging --mode full`:
+
+- `/v1/health`, `/v1/public/stats` (DB), `/v1/public/meta`
+- `POST /v1/sync/batch` with fresh UUIDs + idempotent replay
+- Public assessment readback and CSV export containing the synced assessment
+- When `enable_cdn = true`: field `version.json` and same-origin `/v1/health`
+
+ALB/task readiness remains `terraform-smoke-test.ts` (retries) before live-verify.
 
 ## Production promotion
 
-1. Complete staging verification and field UAT sign-off ([uat checklist](../uat/manatee-v1-checklist.md)).
-2. Create annotated git tag: `git tag -a v1.0.0 -m "MMAP v1.0.0"` and push tag.
-3. GitHub Actions `deploy-aws` runs against production environment (approval gate recommended).
-4. Migrations run before API rollout (workflow step).
-5. Post-deploy verification (same as staging, production URLs).
-6. Update [../data/CHANGELOG.md](../data/CHANGELOG.md) if dataset snapshot published.
+Production promotes **automatically** after staging full live-verify succeeds on the same CD run (merge to `main`).
+
+1. Prefer completing field UAT ([uat checklist](../uat/manatee-v1-checklist.md)) before merging high-risk changes.
+2. Merge to `main` with green PR CI.
+3. CD applies production Terraform, deploys the app (migrations before API rollout), then runs smoke live-verify.
+4. Smoke mode checks health, DB stats, public read paths, and CSV headers — **no mutating sync** (avoids polluting the public dataset).
+5. Update [../data/CHANGELOG.md](../data/CHANGELOG.md) if a dataset snapshot is published.
+
+### Emergency app-only redeploy
+
+Actions → **Deploy AWS** → choose `staging` or `production`. Infra must already exist. Prefer **Release staging** or a fix-forward merge to `main` for normal releases.
 
 ## Rollback
 
-| Component          | Rollback action                                                   |
-| ------------------ | ----------------------------------------------------------------- |
-| API (ECS Express)  | Redeploy previous ECR image tag via `deploy-aws` / Express update |
-| Web / field static | Restore previous S3 version; CloudFront invalidation `/*`         |
-| Database           | Restore RDS snapshot (see below) — **last resort**                |
+| Component          | Rollback action                                                           |
+| ------------------ | ------------------------------------------------------------------------- |
+| API (ECS Express)  | Redeploy previous ECR image (SHA tag) via **Deploy AWS** / Express update |
+| Web / field static | Restore previous S3 version; CloudFront invalidation `/*`                 |
+| Database           | Restore RDS snapshot (see below) — **last resort**                        |
 
 ## Database backup & restore drill
 
@@ -55,11 +75,12 @@ CloudFront is currently **optional** (`enable_cdn = false`) until the AWS accoun
 
 ## Monitoring checks after deploy
 
-- [ ] `/v1/health` returns 200 from both CloudFront distributions
+- [ ] CD **Verify staging (full)** and **Verify production (smoke)** jobs green
+- [ ] `/v1/health` and `/v1/public/stats` return 200
 - [ ] CloudWatch alarms `mmap-{env}-ecs-cpu-high` and `mmap-{env}-rds-low-storage` in OK state
 - [ ] ECS Express service healthy / tasks running (unless hibernated)
 - [ ] RDS free storage above threshold
-- [ ] Field PWA `version.json` reflects new build (update prompt if applicable)
+- [ ] Field PWA `version.json` reflects new build when CDN is enabled
 
 ## Secrets rotation
 

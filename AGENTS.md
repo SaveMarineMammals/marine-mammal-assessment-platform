@@ -72,7 +72,7 @@ Or `pnpm validate:integration` after Postgres is up (pass `--database-url` as ab
 
 ### Windows (PowerShell and Git Bash)
 
-This repo has **no `.sh` files** and no bash-based git hooks. **Do not** create shell scripts or run bash-only syntax (`./script.sh`, `cp`, heredoc commits, `cat <<EOF`) for validation or tooling. Infrastructure helpers live in `scripts/terraform-*.ts` and `scripts/staging-hibernate.ts`, and run via `pnpm exec tsx` on PowerShell, Git Bash, or CI.
+This repo has **no `.sh` files** and no bash-based git hooks. **Do not** create shell scripts or run bash-only syntax (`./script.sh`, `cp`, heredoc commits, `cat <<EOF`) for validation or tooling. Infrastructure helpers live in `scripts/terraform-*.ts`, `scripts/live-verify.ts`, and `scripts/staging-hibernate.ts`, and run via `pnpm exec tsx` on PowerShell, Git Bash, or CI.
 
 **Git Bash is supported** for all `pnpm` commands. Set non-interactive installs when automating:
 
@@ -100,8 +100,10 @@ CI **must pass** before merge. Agents must add or update tests when behavior cha
 ### Required CI jobs
 
 - **Lint, format & unit tests** — `format:check`, `lint`, `test`
-- **Production build** — `build`
+- **CodeQL** — static analysis (`javascript-typescript`)
+- **Build all packages** — `pnpm build` (typecheck / compile)
 - **API & field sync integration** — `test:integration` with Postgres
+- **Terraform plan** — staging + production (skips successfully when `TF_INFRA_ENABLED` is unset)
 
 ### When to write tests
 
@@ -136,6 +138,7 @@ CI **must pass** before merge. Agents must add or update tests when behavior cha
 | Field protocol guide | `docs/protocols/manatee-v1-field-guide.md` (bundled in field app)           |
 | Public dataset API   | `apps/api/src/services/public-dataset.ts`                                   |
 | CI workflow          | `.github/workflows/ci.yml`                                                  |
+| CD workflow          | `.github/workflows/cd.yml`                                                  |
 | Branch protection    | `.github/rulesets/main-branch-protection.json`                              |
 
 ## Git and PR expectations

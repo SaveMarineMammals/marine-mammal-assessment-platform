@@ -129,11 +129,11 @@ See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for env files, per-package comman
 
 Every pull request runs [GitHub Actions CI](.github/workflows/ci.yml):
 
-| Job             | Checks                                           |
-| --------------- | ------------------------------------------------ |
-| **Quality**     | Prettier, ESLint, unit tests (`pnpm test`)       |
-| **Build**       | Production build for all packages (`pnpm build`) |
-| **Integration** | API sync + field sync path against PostgreSQL    |
+| Job             | Checks                                            |
+| --------------- | ------------------------------------------------- |
+| **Quality**     | Prettier, ESLint, unit tests (`pnpm test`)        |
+| **Build**       | Typecheck and compile all packages (`pnpm build`) |
+| **Integration** | API sync + field sync path against PostgreSQL     |
 
 Run the same gates locally before opening a PR:
 
@@ -154,7 +154,7 @@ marine-mammal-assessment/
 │   ├── schema/       # Assessment schemas and validators
 │   └── geo-time/     # UTC storage and local time display
 ├── docs/             # Requirements, plan, developer guide, protocols
-└── .github/          # CI workflow, issue and PR templates
+└── .github/          # CI/CD workflows, issue and PR templates
 ```
 
 ## Documentation

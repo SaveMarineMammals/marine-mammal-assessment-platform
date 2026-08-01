@@ -8,13 +8,13 @@
 
 MMAP infrastructure is managed with Terraform under `infra/terraform/`. Remote state lives in **S3** with locking via **DynamoDB** (`scripts/terraform-init.ts`). CI runs:
 
-| Workflow                    | Behavior                                                                     |
-| --------------------------- | ---------------------------------------------------------------------------- |
-| `ci.yml` → `terraform-plan` | Plans staging + production on PR/push to `main` when `TF_INFRA_ENABLED=true` |
-| `infra-deploy.yml`          | Applies staging → smoke test → production (main only)                        |
-| `infra-staging-manual.yml`  | Staging apply from any branch                                                |
+| Workflow                    | Behavior                                                                                |
+| --------------------------- | --------------------------------------------------------------------------------------- |
+| `ci.yml` → `terraform-plan` | Plans staging + production on PRs (after quality + CodeQL) when `TF_INFRA_ENABLED=true` |
+| `cd.yml`                    | Progressive staging apply → app → full verify → production apply → app → smoke          |
+| `release-staging.yml`       | Staging infra + app + full live-verify from any branch                                  |
 
-Applies use `-auto-approve` via `scripts/terraform-apply.ts`. State keys are isolated: `staging/terraform.tfstate` and `production/terraform.tfstate`. CI plans use `-lock=false` (no DynamoDB lock). Plan and apply workflows share the Actions concurrency group `mmap-terraform` so they never run in parallel.
+Applies use `-auto-approve` via `scripts/terraform-apply.ts`. State keys are isolated: `staging/terraform.tfstate` and `production/terraform.tfstate`. CI plans use `-lock=false` (no DynamoDB lock) and do not share the Actions concurrency group with applies. Apply jobs share `mmap-terraform` so concurrent applies never run in parallel.
 
 **Who is affected:** Operators blocked from shipping infra fixes; application deploy may depend on fresh outputs (buckets, CloudFront IDs, secret ARNs).
 
@@ -27,13 +27,13 @@ Applies use `-auto-approve` via `scripts/terraform-apply.ts`. State keys are iso
 
 ## Detection
 
-| Signal                                         | Where                          |
-| ---------------------------------------------- | ------------------------------ |
-| Red **Terraform plan** or **Infra deploy** job | GitHub Actions                 |
-| Log: `Error acquiring the state lock`          | Plan/apply logs                |
-| PR comment: ⚠️ **Terraform destroy detected**  | `ci.yml` github-script step    |
-| `terraform-smoke-test.ts` exit 1 after apply   | `infra-deploy.yml` verify jobs |
-| Local: `terraform plan` non-zero exit          | Operator workstation           |
+| Signal                                              | Where                        |
+| --------------------------------------------------- | ---------------------------- |
+| Red **Terraform plan** or **CD** terraform job      | GitHub Actions               |
+| Log: `Error acquiring the state lock`               | Plan/apply logs              |
+| PR comment: ⚠️ **Terraform destroy detected**       | `ci.yml` github-script step  |
+| `terraform-smoke-test.ts` / `live-verify.ts` exit 1 | `cd.yml` / `_verify-env.yml` |
+| Local: `terraform plan` non-zero exit               | Operator workstation         |
 
 ## Prerequisites
 
@@ -118,7 +118,7 @@ Applies use `-auto-approve` via `scripts/terraform-apply.ts`. State keys are iso
 
 1. **Stale state lock**
 
-   - Confirm no legitimate apply is running in GitHub Actions (check the `mmap-terraform` concurrency group — Infra deploy, Infra staging manual, or CI Terraform plan waiting/running).
+   - Confirm no legitimate apply is running in GitHub Actions (check the `mmap-terraform` concurrency group — CD terraform apply jobs or Release staging apply).
    - If a job was cancelled mid-apply, force-unlock **only after** verifying no active Terraform process:
 
      Git Bash:
@@ -143,28 +143,29 @@ Applies use `-auto-approve` via `scripts/terraform-apply.ts`. State keys are iso
 
    - Ensure the **`bootstrap`** environment has `AWS_BOOTSTRAP_ACCESS_KEY_ID` and `AWS_BOOTSTRAP_SECRET_ACCESS_KEY`, then re-run **Infra bootstrap**.
    - **Or** manually add `kms:*` to the `ManageProjectInfrastructure` statement on IAM role `mmap-terraform-ci` in the AWS console.
-   - Re-run **Infra staging (manual)** or **Infra deploy**.
+   - Re-run **Release staging** or merge to `main` to trigger **CD**.
 
 4. **Apply failure mid-run**
 
    - Read Terraform error; fix HCL or AWS quota.
    - Run `terraform plan` — Terraform may propose partial completion.
-   - For staging-only validation from a feature branch: **Infra staging (manual)** workflow.
+   - For staging-only validation from a feature branch: **Release staging** workflow.
 
 5. **Destroy planned unintentionally**
 
    - Do **not** merge until plan is understood.
    - Use `moved` blocks or `terraform state mv` for renames instead of destroy+create when possible.
-   - Production apply only runs from `main` after staging verify — use that gate.
+   - Production apply only runs from `main` after staging full live-verify — use that gate.
 
-6. **Smoke test failure after apply**
+6. **Smoke / live-verify failure after apply**
 
-   Infra deploy **Verify staging** resumes hibernation (`staging-hibernate.ts resume`) then runs `terraform-smoke-test.ts`, which probes `/v1/health` then `/` with retries (~5 minutes). Resume force-new-deploys when `running < desired` so stuck FAILED Express rollouts recover.
+   CD / Release staging **verify** resumes hibernation (`staging-hibernate.ts resume`), runs `terraform-smoke-test.ts` (ALB readiness), then `live-verify.ts` (functional checks). Resume force-new-deploys when `running < desired` so stuck FAILED Express rollouts recover.
 
    ```powershell
    pnpm exec tsx scripts/staging-hibernate.ts status
    pnpm exec tsx scripts/staging-hibernate.ts resume
    pnpm exec tsx scripts/terraform-smoke-test.ts staging
+   pnpm exec tsx scripts/live-verify.ts staging --mode full
    ```
 
    ALB **503** usually means no healthy tasks. Common causes:
@@ -327,15 +328,15 @@ Destroying staging schedules `mmap-staging/api-admin-token` for deletion (defaul
 
 - [ ] `terraform plan` exits 0 for staging (and production if applicable)
 - [ ] No unexpected `delete` actions in plan summary
-- [ ] GitHub **Terraform plan** / **Infra deploy** jobs green
-- [ ] `pnpm exec tsx scripts/terraform-smoke-test.ts staging` passes
+- [ ] GitHub **Terraform plan** / **CD** terraform jobs green
+- [ ] `pnpm exec tsx scripts/terraform-smoke-test.ts staging` and `live-verify.ts staging --mode full` pass
 - [ ] Terraform outputs match GitHub deploy secrets (`database_secret_arn`, bucket names, CloudFront IDs)
 
 ## Escalation / when to stop
 
 - **Stop** before `force-unlock` if an apply workflow is still **in progress** — wait or cancel cleanly first.
 - **Escalate** if production state may be corrupted — restore state from S3 versioning before further applies ([SECURITY_REMEDIATION.md](../SECURITY_REMEDIATION.md) INF-05).
-- **Do not** apply production from a feature branch; use manual staging workflow only.
+- **Do not** apply production from a feature branch; use **Release staging** only.
 - Broad IAM on Terraform CI role is a known finding (INF-01) — do not expand `*` policies as a quick fix.
 
 ## References
@@ -345,8 +346,9 @@ Destroying staging schedules `mmap-staging/api-admin-token` for deletion (defaul
 | Infra pipelines doc         | [INFRA_PIPELINES.md](../INFRA_PIPELINES.md)                                            |
 | Terraform composite action  | `.github/actions/terraform/action.yml`                                                 |
 | Init / plan / apply scripts | `scripts/terraform-init.ts`, `scripts/terraform-plan.ts`, `scripts/terraform-apply.ts` |
-| Progressive deploy workflow | `.github/workflows/infra-deploy.yml`                                                   |
-| Manual staging workflow     | `.github/workflows/infra-staging-manual.yml`                                           |
+| Progressive CD workflow     | `.github/workflows/cd.yml`                                                             |
+| Manual staging release      | `.github/workflows/release-staging.yml`                                                |
+| Live verify script          | `scripts/live-verify.ts`                                                               |
 | CI plan job                 | `.github/workflows/ci.yml` (`terraform-plan`)                                          |
 | Bootstrap                   | `infra/bootstrap/`, `.github/workflows/infra-bootstrap.yml`                            |
 | Operator quick start        | [infra/README.md](../../../infra/README.md)                                            |

@@ -1,15 +1,23 @@
 # Infrastructure CI/CD pipelines
 
-GitHub Actions workflows for AWS Terraform bootstrap, plan, and progressive deploy.
+GitHub Actions workflows for AWS Terraform bootstrap, plan, progressive CD, and manual staging release.
 
 ## Workflows
 
-| Workflow                                                                     | Trigger                               | Purpose                                                                                     |
-| ---------------------------------------------------------------------------- | ------------------------------------- | ------------------------------------------------------------------------------------------- |
-| [infra-bootstrap.yml](../../.github/workflows/infra-bootstrap.yml)           | Manual (`workflow_dispatch`)          | One-time S3 state bucket, DynamoDB lock table, Terraform OIDC role, ECS service-linked role |
-| [ci.yml](../../.github/workflows/ci.yml) → `terraform-plan`                  | PR + push to `main`                   | Plan staging & production; PR comment if destroys detected                                  |
-| [infra-deploy.yml](../../.github/workflows/infra-deploy.yml)                 | Push to `main` (infra paths) + manual | Apply staging → verify → apply production (main only)                                       |
-| [infra-staging-manual.yml](../../.github/workflows/infra-staging-manual.yml) | Manual                                | Apply **staging only** from any branch/ref                                                  |
+| Workflow                                                           | Trigger                      | Purpose                                                                                        |
+| ------------------------------------------------------------------ | ---------------------------- | ---------------------------------------------------------------------------------------------- |
+| [infra-bootstrap.yml](../../.github/workflows/infra-bootstrap.yml) | Manual (`workflow_dispatch`) | One-time S3 state bucket, DynamoDB lock table, Terraform OIDC role, ECS service-linked role    |
+| [ci.yml](../../.github/workflows/ci.yml)                           | Pull request → `main`        | Quality, CodeQL, build, integration, Terraform plan (staging + production); destroy warnings   |
+| [cd.yml](../../.github/workflows/cd.yml)                           | Push → `main`                | Progressive infra+app: staging apply → app → full live-verify → production apply → app → smoke |
+| [release-staging.yml](../../.github/workflows/release-staging.yml) | Manual                       | Staging infra+app+full live-verify from any branch/ref (does not touch production)             |
+| [deploy-aws.yml](../../.github/workflows/deploy-aws.yml)           | Manual                       | Emergency app-only redeploy to staging or production (infra must already exist)                |
+
+Reusable workflows (called by CD / release / deploy):
+
+| Workflow                                                     | Role                                                                     |
+| ------------------------------------------------------------ | ------------------------------------------------------------------------ |
+| [`_deploy-app.yml`](../../.github/workflows/_deploy-app.yml) | Build static sites, S3 sync, ECR push, migrate, ECS Express deploy       |
+| [`_verify-env.yml`](../../.github/workflows/_verify-env.yml) | Hibernate resume (staging), readiness probe, `live-verify` full or smoke |
 
 ## One-time setup
 
@@ -17,11 +25,11 @@ GitHub Actions workflows for AWS Terraform bootstrap, plan, and progressive depl
 
 Create environments in **Settings → Environments**:
 
-| Environment  | Protection                                             |
-| ------------ | ------------------------------------------------------ |
-| `bootstrap`  | Required reviewers: repository **admins only**         |
-| `staging`    | Optional reviewers; deploy secrets (see below)         |
-| `production` | Required reviewers recommended before production apply |
+| Environment  | Protection                                     |
+| ------------ | ---------------------------------------------- |
+| `bootstrap`  | Required reviewers: repository **admins only** |
+| `staging`    | Optional reviewers; deploy secrets (see below) |
+| `production` | Optional reviewers (CD promotes automatically) |
 
 After the first Terraform apply per environment, add GitHub secrets from `terraform output`:
 
@@ -56,9 +64,11 @@ Run **Infra bootstrap** from Actions (admin only). Copy outputs into repository 
 
 Bootstrap also creates **`AWSServiceRoleForECS`**, an account-wide prerequisite for ECS Express Gateway services. If that role already exists, import it into bootstrap state before re-running bootstrap (see [infra/bootstrap/README.md](../../infra/bootstrap/README.md)).
 
-### 3. Enable Terraform CI jobs
+### 3. Enable Terraform CI / CD jobs
 
 Set repository variable **`TF_INFRA_ENABLED`** = `true` (Settings → Secrets and variables → Actions → Variables).
+
+When unset, PR **Terraform plan** still succeeds (explicit skip) so the required status check does not block merges; CD deploy jobs are skipped.
 
 Optional variable **`AWS_REGION`** (default `us-east-1`).
 
@@ -66,53 +76,56 @@ Optional variable **`AWS_REGION`** (default `us-east-1`).
 
 - **Separate state files:** `staging/terraform.tfstate` and `production/terraform.tfstate` in the same S3 bucket
 - **Separate AWS resources:** all names prefixed with `mmap-staging` vs `mmap-production`
-- Staging apply (including manual from feature branches) never writes production state
+- Manual **Release staging** never writes production state
 
-## Progressive deploy flow
+## Progressive CD flow
 
 ```mermaid
 flowchart LR
-  merge[Merge to main] --> stg[Apply staging]
-  stg --> resume[Resume if hibernated]
-  resume --> smokeS[Smoke test staging]
-  smokeS --> prod[Apply production]
-  prod --> smokeP[Smoke test production]
+  merge[Merge to main] --> quality[Quality and CodeQL]
+  quality --> stgTf[Apply staging]
+  stgTf --> stgApp[Deploy staging app]
+  stgApp --> stgVerify[Full live-verify]
+  stgVerify --> prodTf[Apply production]
+  prodTf --> prodApp[Deploy production app]
+  prodApp --> prodSmoke[Smoke live-verify]
 ```
 
-Production apply runs **only** when:
+Production apply/deploy runs **only** when:
 
-- Trigger is `push` to `main` (or manual dispatch on `main`)
-- Staging apply and smoke test succeeded
+- Trigger is `push` to `main`
+- Quality, CodeQL, build, and integration succeeded
+- Staging apply, app deploy, and **full** live-verify succeeded
 - `TF_INFRA_ENABLED=true`
 
-**Verify staging** runs `staging-hibernate.ts resume` before smoke. Resume restores Auto Scaling, and if `running < desired` (stuck FAILED Express rollout), force-new-deploys and waits up to 5 minutes for a running task. Operators who want cost savings must re-run hibernate manually after deploy. The smoke script probes `/v1/health` then `/` with ~5 minutes of retries.
+**Staging verify** runs `staging-hibernate.ts resume`, then `terraform-smoke-test.ts` (ALB/task readiness), then `live-verify.ts staging --mode full` (health, DB stats, sync write/readback, CSV). Production uses `--mode smoke` (read paths only — no mutating sync).
 
 ## Plan locking and concurrency
 
-- **Plans do not acquire the DynamoDB state lock** — `scripts/terraform-plan.ts` passes `-lock=false`. Applies still lock normally.
-- **Plan and apply workflows serialize** via the shared GitHub Actions concurrency group `mmap-terraform` (`cancel-in-progress: false`) on:
-  - `ci.yml` → `terraform-plan` (job-level)
-  - `infra-deploy.yml` (workflow-level)
-  - `infra-staging-manual.yml` (workflow-level)
+- **Plans never acquire the DynamoDB state lock** — `scripts/terraform-plan.ts` always passes `-lock=false`. CI plan jobs do **not** use the `mmap-terraform` concurrency group, so they never queue behind or block applies.
+- **Applies serialize** via GitHub Actions concurrency group `mmap-terraform` (`cancel-in-progress: false`) on:
+  - `cd.yml` → staging/production terraform apply jobs
+  - `release-staging.yml` → staging terraform apply job
 
-That prevents the main-merge race where CI plan and Infra deploy both hit remote state at once. Plans may still wait behind an in-flight apply (and vice versa).
+A plan that runs during an apply may see mid-apply state; that is acceptable for PR review. Applies still take the DynamoDB lock normally.
 
 ## Destroy warnings
 
-On pull requests, CI runs `terraform plan` for **both** environments. If either plan includes `delete` actions, the workflow:
+On pull requests, CI runs `terraform plan` for **both** environments (after quality + CodeQL). If either plan includes `delete` actions, the workflow:
 
 1. Posts a warning comment on the PR
 2. Emits a GitHub Actions warning annotation
 
 The plan job does not fail solely because of destroys — review is human-driven.
 
-## Manual staging from a feature branch
+## Manual staging release
 
-1. Actions → **Infra staging (manual)** → Run workflow
+1. Actions → **Release staging** → Run workflow
 2. Optionally set **git_ref** to your branch name
-3. Only `staging/terraform.tfstate` is updated
+3. Applies staging Terraform, deploys the app, runs full live-verify
+4. Only `staging/terraform.tfstate` is updated; production is untouched
 
-Use this to validate infra changes before merging to `main`.
+Use this to validate infra+app changes before merging to `main`.
 
 ## Local operator commands
 
@@ -126,6 +139,10 @@ pnpm exec tsx scripts/terraform-init.ts `
   YOUR-LOCK-TABLE
 
 terraform -chdir=infra/terraform/environments/staging plan -var-file=terraform.tfvars
+
+# Post-deploy verification (after terraform init for the env)
+pnpm exec tsx scripts/terraform-smoke-test.ts staging
+pnpm exec tsx scripts/live-verify.ts staging --mode full
 ```
 
 Cut staging cost without destroying the stack (scales API to 0 tasks, stops RDS):
@@ -138,7 +155,7 @@ pnpm exec tsx scripts/staging-hibernate.ts resume
 
 See [AWS_INFRA.md](AWS_INFRA.md#hibernate-staging-scale-to-zero) for the ~$25/mo hibernated floor and caveats.
 
-All infra helper scripts are **TypeScript** (`scripts/terraform-*.ts`, `scripts/staging-hibernate.ts`) and run on Windows PowerShell and Linux CI — no bash required.
+All infra helper scripts are **TypeScript** (`scripts/terraform-*.ts`, `scripts/live-verify.ts`, `scripts/staging-hibernate.ts`) and run on Windows PowerShell and Linux CI — no bash required.
 
 ## Related
 

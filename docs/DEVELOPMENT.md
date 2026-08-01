@@ -166,8 +166,12 @@ pnpm --filter @mmap/field test:integration -- --database-url postgresql://mmap:m
 See [.github/workflows/ci.yml](../.github/workflows/ci.yml). Full style and testing policy: [CODING_STANDARDS.md](CODING_STANDARDS.md).
 
 1. **Quality** — Prettier, ESLint, unit tests
-2. **Build** — Full monorepo production build
-3. **Integration** — API + field sync tests against PostgreSQL
+2. **CodeQL** — Static analysis (`javascript-typescript`)
+3. **Build all packages** — Typecheck and compile the monorepo (`pnpm build`)
+4. **Integration** — API + field sync tests against PostgreSQL
+5. **Terraform plan** — Staging + production (after quality + CodeQL; skips successfully when `TF_INFRA_ENABLED` is unset)
+
+Merge to `main` triggers progressive **CD** (staging infra+app+full live-verify → production). See [ops/INFRA_PIPELINES.md](ops/INFRA_PIPELINES.md).
 
 Run the same checks locally before opening a PR:
 

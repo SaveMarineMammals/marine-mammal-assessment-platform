@@ -59,11 +59,19 @@
             "integration_id": 15368
           },
           {
-            "context": "Production build",
+            "context": "CodeQL",
+            "integration_id": 15368
+          },
+          {
+            "context": "Build all packages",
             "integration_id": 15368
           },
           {
             "context": "API & field sync integration",
+            "integration_id": 15368
+          },
+          {
+            "context": "Terraform plan",
             "integration_id": 15368
           }
         ]

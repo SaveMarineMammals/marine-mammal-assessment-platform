@@ -1,22 +1,22 @@
-name: CI
+# Progressive CD on merge to main: quality gates → staging infra+app+full verify →
+# production infra+app+smoke verify. Fully automatic after staging verification passes.
+
+name: CD
 
 on:
-  pull_request:
+  push:
     branches:
       - main
-    types:
-      - opened
-      - synchronize
-      - reopened
-      - ready_for_review
 
-# Cancel an in-flight run when new commits are pushed to the same PR.
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  group: cd-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
 
 permissions:
   contents: read
+  id-token: write
+  security-events: write
+  actions: read
 
 jobs:
   quality:
@@ -50,10 +50,6 @@ jobs:
   analyze:
     name: CodeQL
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      security-events: write
-      actions: read
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -135,82 +131,92 @@ jobs:
       - name: Integration tests
         run: pnpm test:integration -- --database-url postgresql://mmap:mmap@localhost:5432/mmap
 
-  terraform-plan:
-    name: Terraform plan
+  staging-infra:
+    name: Terraform apply (staging)
     runs-on: ubuntu-latest
-    needs: [quality, analyze]
-    # Plans use -lock=false (see scripts/terraform-plan.ts) and do not share the
-    # mmap-terraform concurrency group with applies — they must not block deploys.
-    permissions:
-      contents: read
-      id-token: write
-      pull-requests: write
+    needs: [quality, analyze, build, integration]
+    if: vars.TF_INFRA_ENABLED == 'true'
+    environment: staging
+    concurrency:
+      group: mmap-terraform
+      cancel-in-progress: false
     steps:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Skip when Terraform CI is disabled
-        if: vars.TF_INFRA_ENABLED != 'true'
-        run: |
-          echo "TF_INFRA_ENABLED is not true — skipping terraform plan (required check still reports success)."
-          echo "Set repository variable TF_INFRA_ENABLED=true after bootstrap to enable plans."
-
-      - name: Plan staging
-        id: plan-staging
-        if: vars.TF_INFRA_ENABLED == 'true'
+      - name: Terraform apply staging
         uses: ./.github/actions/terraform
         with:
           working-directory: infra/terraform/environments/staging
-          command: plan
+          command: apply
           aws-role-arn: ${{ secrets.AWS_TERRAFORM_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION || 'us-east-1' }}
           state-bucket: ${{ secrets.TF_STATE_BUCKET }}
           state-key: staging/terraform.tfstate
           lock-table: ${{ secrets.TF_LOCK_TABLE }}
 
-      - name: Plan production
-        id: plan-production
-        if: vars.TF_INFRA_ENABLED == 'true'
+  staging-app:
+    name: Deploy app (staging)
+    needs: staging-infra
+    if: vars.TF_INFRA_ENABLED == 'true'
+    uses: ./.github/workflows/_deploy-app.yml
+    with:
+      environment: staging
+      image_tag: ${{ github.sha }}
+    secrets: inherit
+
+  staging-verify:
+    name: Verify staging (full)
+    needs: staging-app
+    if: vars.TF_INFRA_ENABLED == 'true'
+    uses: ./.github/workflows/_verify-env.yml
+    with:
+      environment: staging
+      mode: full
+      resume_hibernate: true
+    secrets: inherit
+
+  production-infra:
+    name: Terraform apply (production)
+    runs-on: ubuntu-latest
+    needs: staging-verify
+    if: vars.TF_INFRA_ENABLED == 'true'
+    environment: production
+    concurrency:
+      group: mmap-terraform
+      cancel-in-progress: false
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Terraform apply production
         uses: ./.github/actions/terraform
         with:
           working-directory: infra/terraform/environments/production
-          command: plan
+          command: apply
           aws-role-arn: ${{ secrets.AWS_TERRAFORM_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION || 'us-east-1' }}
           state-bucket: ${{ secrets.TF_STATE_BUCKET }}
           state-key: production/terraform.tfstate
           lock-table: ${{ secrets.TF_LOCK_TABLE }}
 
-      - name: Warn on pull request when destroys are planned
-        if: >
-          vars.TF_INFRA_ENABLED == 'true' &&
-          github.event_name == 'pull_request' &&
-          (steps.plan-staging.outputs.destroy_detected == 'true' ||
-           steps.plan-production.outputs.destroy_detected == 'true')
-        uses: actions/github-script@v8
-        with:
-          script: |
-            const stagingDestroy = '${{ steps.plan-staging.outputs.destroy_detected }}' === 'true';
-            const productionDestroy = '${{ steps.plan-production.outputs.destroy_detected }}' === 'true';
+  production-app:
+    name: Deploy app (production)
+    needs: production-infra
+    if: vars.TF_INFRA_ENABLED == 'true'
+    uses: ./.github/workflows/_deploy-app.yml
+    with:
+      environment: production
+      image_tag: ${{ github.sha }}
+    secrets: inherit
 
-            const body = [
-              '⚠️ **Terraform destroy detected**',
-              '',
-              'This pull request plans resource **deletions** in AWS. Review carefully before merging.',
-              '',
-              '| Environment | Destroy planned |',
-              '| --- | --- |',
-              `| staging | ${stagingDestroy ? 'yes' : 'no'} |`,
-              `| production | ${productionDestroy ? 'yes' : 'no'} |`,
-              '',
-              'Production applies only run from `main` after staging verification, but production state is still planned here to catch cross-environment impact early.',
-            ].join('\n');
-
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              body,
-            });
-
-            core.warning('Terraform plan includes resource deletions.');
+  production-verify:
+    name: Verify production (smoke)
+    needs: production-app
+    if: vars.TF_INFRA_ENABLED == 'true'
+    uses: ./.github/workflows/_verify-env.yml
+    with:
+      environment: production
+      mode: smoke
+      resume_hibernate: false
+    secrets: inherit

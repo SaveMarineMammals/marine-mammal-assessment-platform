@@ -6,18 +6,26 @@
 
 ## Context
 
-Application artifacts deploy via **Deploy AWS** (`.github/workflows/deploy-aws.yml`):
+Application artifacts deploy via reusable **`_deploy-app.yml`**, called from:
+
+- **CD** (`.github/workflows/cd.yml`) on merge to `main` — progressive staging then production
+- **Release staging** (`.github/workflows/release-staging.yml`) — manual staging
+- **Deploy AWS** (`.github/workflows/deploy-aws.yml`) — emergency app-only redeploy
+
+Deploy steps:
 
 1. Build `@mmap/web` and `@mmap/field` static sites
 2. `aws s3 sync` to web and field buckets; CloudFront invalidation `/*`
-3. Docker build/push API image to ECR (`mmap-{env}-api`, tag = git ref)
+3. Docker build/push API image to ECR (`mmap-{env}-api`, tag = git SHA)
 4. Fetch `DATABASE_SECRET_ARN` from Secrets Manager → run `pnpm --filter @mmap/api db:migrate`
 5. Deploy API to **ECS Express** (`aws-actions/amazon-ecs-deploy-express-service`)
+6. Verify: readiness probe + `live-verify.ts` (`full` on staging, `smoke` on production)
 
 Triggers:
 
-- **Production:** push tag `v*`
-- **Staging/production:** manual `workflow_dispatch` with environment choice
+- **Staging + production:** push/merge to `main` (CD)
+- **Staging only:** manual **Release staging**
+- **Emergency app redeploy:** manual **Deploy AWS** with environment choice
 
 Required GitHub **environment** secrets (from Terraform outputs — see [INFRA_PIPELINES.md](../INFRA_PIPELINES.md)):
 
@@ -37,14 +45,15 @@ Required GitHub **environment** secrets (from Terraform outputs — see [INFRA_P
 
 ## Detection
 
-| Signal                                     | Where                                 |
-| ------------------------------------------ | ------------------------------------- |
-| Red **Deploy AWS** workflow                | GitHub Actions → Deploy AWS           |
-| Static site new `version.json` but API old | Field update banner vs sync errors    |
-| ECR push / docker build errors             | Job log **Build and push API image**  |
-| Migration stderr                           | Job log **Run database migrations**   |
-| ECS Express deploy action failure          | Job log **Deploy API to ECS Express** |
-| CloudFront 404 on new routes               | Missing invalidation or wrong bucket  |
+| Signal                                            | Where                                 |
+| ------------------------------------------------- | ------------------------------------- |
+| Red **CD** / **Release staging** / **Deploy AWS** | GitHub Actions                        |
+| Red **Verify** / live-verify failure              | `_verify-env.yml` / job logs          |
+| Static site new `version.json` but API old        | Field update banner vs sync errors    |
+| ECR push / docker build errors                    | Job log **Build and push API image**  |
+| Migration stderr                                  | Job log **Run database migrations**   |
+| ECS Express deploy action failure                 | Job log **Deploy API to ECS Express** |
+| CloudFront 404 on new routes                      | Missing invalidation or wrong bucket  |
 
 ## Prerequisites
 
@@ -74,7 +83,7 @@ Required GitHub **environment** secrets (from Terraform outputs — see [INFRA_P
 
 3. **Test OIDC role (from CI log or locally with assumed role)**
 
-   Common failures: wrong `AWS_DEPLOY_ROLE_ARN`, tag ref not allowed for production OIDC trust (`ref:refs/tags/v*`).
+   Common failures: wrong `AWS_DEPLOY_ROLE_ARN`, branch/ref not allowed for the environment OIDC trust (`ref:refs/heads/main`).
 
 4. **Isolate build failures**
 
@@ -181,14 +190,17 @@ Follow [DEPLOYMENT.md](../DEPLOYMENT.md) post-deploy checks:
 ## Escalation / when to stop
 
 - **Stop** if migrations partially applied — inspect `schema_migrations` / migration table before re-running.
-- **Escalate** if production tag deploy failed after migration succeeded but API rollback needed — coordinate DB compatibility.
-- Production deploys should use environment **approval gates** ([SECURITY_REMEDIATION.md](../SECURITY_REMEDIATION.md) INF-09).
+- **Escalate** if production CD deploy failed after migration succeeded but API rollback needed — coordinate DB compatibility.
+- Prefer fix-forward via merge to `main` (CD) over emergency production **Deploy AWS** unless urgently required.
 
 ## References
 
 | Resource                          | Path                                                                                                                                                                                 |
 | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Deploy workflow                   | `.github/workflows/deploy-aws.yml`                                                                                                                                                   |
+| Progressive CD                    | `.github/workflows/cd.yml`                                                                                                                                                           |
+| Reusable deploy                   | `.github/workflows/_deploy-app.yml`                                                                                                                                                  |
+| Live verify                       | `scripts/live-verify.ts`, `.github/workflows/_verify-env.yml`                                                                                                                        |
+| Emergency deploy                  | `.github/workflows/deploy-aws.yml`                                                                                                                                                   |
 | GitHub OIDC module                | `infra/terraform/modules/github-oidc/`                                                                                                                                               |
 | Staging outputs (secrets mapping) | `infra/terraform/environments/staging/outputs.tf`                                                                                                                                    |
 | Promotion checklist               | [DEPLOYMENT.md](../DEPLOYMENT.md)                                                                                                                                                    |
