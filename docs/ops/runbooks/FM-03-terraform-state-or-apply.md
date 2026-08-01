@@ -52,7 +52,7 @@ Applies use `-auto-approve` via `scripts/terraform-apply.ts`. State keys are iso
 
    - **Plan only fails** → usually config/provider/permissions; production may still be untouched.
    - **Staging apply fails** → production apply never runs (`needs: staging-apply`).
-   - **Verify staging fails** → smoke test could not reach ECS Express `api_service_url` from Terraform output.
+   - **Verify staging fails** → smoke test could not reach ECS Express `api_service_url` (often ALB **503** = no healthy tasks / hibernated).
 
 3. **Read the error class**
 
@@ -159,9 +159,23 @@ Applies use `-auto-approve` via `scripts/terraform-apply.ts`. State keys are iso
 
 6. **Smoke test failure after apply**
 
-   ```bash
+   Infra deploy **Verify staging** resumes hibernation (`staging-hibernate.ts resume`) then runs `terraform-smoke-test.ts`, which probes `/v1/health` then `/` with retries (~2 minutes).
+
+   ```powershell
+   pnpm exec tsx scripts/staging-hibernate.ts status
+   pnpm exec tsx scripts/staging-hibernate.ts resume
    pnpm exec tsx scripts/terraform-smoke-test.ts staging
    ```
+
+   ALB **503** usually means no healthy tasks (hibernated or stuck deployment). Check diagnose logs from the verify job, or:
+
+   ```powershell
+   pnpm exec tsx scripts/ecs-express-diagnose.ts mmap-staging-api ACCOUNT_ID us-east-1
+   ```
+
+   Placeholder nginx serves **200** on `/` until the real API image is deployed (`/v1/health`). If the URL is wrong, check `outputs.tf` and module.api `service_url`.
+
+   **Double `https://https://…` / `getaddrinfo EAI_AGAIN https`:** Express `ingress_paths[].endpoint` already includes the scheme. The api module must strip it before adding `https://` (see `local.ingress_host`). Re-apply or refresh outputs after that fix; the smoke test also normalizes a double scheme defensively.
 
 7. **Legacy App Runner resources still in state (`AccessDenied` on `apprunner:Describe*`)**
 
@@ -177,10 +191,6 @@ Applies use `-auto-approve` via `scripts/terraform-apply.ts`. State keys are iso
 
    - Networking module SGs use `lifecycle { ignore_changes = [description] }` to avoid accidental replacement.
    - If a failed apply left duplicate SGs, confirm RDS still uses the intended group in the AWS console, remove orphan SGs manually if needed, then re-run apply.
-
-   Smoke test hits ECS Express `api_service_url` root (placeholder image returns 200 on `/` until real API is deployed). If URL is wrong, check `outputs.tf` and module.api `service_url`.
-
-   **Double `https://https://…` / `getaddrinfo EAI_AGAIN https`:** Express `ingress_paths[].endpoint` already includes the scheme. The api module must strip it before adding `https://` (see `local.ingress_host`). Re-apply or refresh outputs after that fix; the smoke test also normalizes a double scheme defensively.
 
 9. **Skipped jobs**
 
@@ -282,7 +292,7 @@ Destroying staging schedules `mmap-staging/api-admin-token` for deletion (defaul
     | ---------------------------------- | -------------------------------------------------- | -------------------------------------------------------------------------------------- |
     | Deployment `IN_PROGRESS` for hours | ALB target group unhealthy (no ingress on task SG) | Ensure `api_connector` SG allows TCP **80–3001** from the VPC CIDR (networking module) |
     | Tasks never reach `RUNNING`        | Secrets injected before container start            | Placeholder image omits `DATABASE_URL` / `API_ADMIN_TOKEN`; re-apply after merge       |
-    | CI fails at exactly **30m**        | `wait_for_steady_state = true`                     | Module default is `false`; smoke test validates `/` after apply                        |
+    | CI fails at exactly **30m**        | `wait_for_steady_state = true`                     | Module default is `false`; smoke test validates `/v1/health` then `/` after apply      |
 
     **Diagnose** (with AWS credentials):
 

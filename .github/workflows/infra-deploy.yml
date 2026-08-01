@@ -11,6 +11,8 @@ on:
       - '.github/workflows/infra-deploy.yml'
       - '.github/actions/terraform/**'
       - 'scripts/terraform-*.ts'
+      - 'scripts/staging-hibernate.ts'
+      - 'scripts/ecs-express-diagnose.ts'
   workflow_dispatch:
 
 # Shared with CI terraform-plan and infra-staging-manual so Terraform never overlaps.
@@ -87,9 +89,24 @@ jobs:
             "${{ vars.AWS_REGION || 'us-east-1' }}" `
             "${{ secrets.TF_LOCK_TABLE }}"
 
+      # Hibernate scales Auto Scaling outside Terraform; no-op apply leaves desired=0.
+      - name: Resume staging if hibernated
+        shell: pwsh
+        run: pnpm exec tsx scripts/staging-hibernate.ts resume
+
       - name: Smoke test staging
         shell: pwsh
         run: pnpm exec tsx scripts/terraform-smoke-test.ts staging
+
+      - name: Diagnose ECS Express (on smoke failure)
+        if: failure()
+        shell: pwsh
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+        run: |
+          $accountId = (aws sts get-caller-identity --query Account --output text).Trim()
+          pnpm exec tsx scripts/ecs-express-diagnose.ts mmap-staging-api $accountId $env:AWS_REGION
+        continue-on-error: true
 
   production-apply:
     name: Terraform apply (production)
