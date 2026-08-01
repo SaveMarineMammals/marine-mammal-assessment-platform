@@ -120,6 +120,10 @@ jobs:
     name: Terraform plan
     runs-on: ubuntu-latest
     if: vars.TF_INFRA_ENABLED == 'true'
+    # Serialize with infra apply workflows so plan/apply never overlap on the lock table.
+    concurrency:
+      group: mmap-terraform
+      cancel-in-progress: false
     permissions:
       contents: read
       id-token: write

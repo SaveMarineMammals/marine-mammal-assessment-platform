@@ -15,6 +15,7 @@ const varFile = process.argv[3];
 const planArgs = [
   'plan',
   '-input=false',
+  '-lock=false',
   '-out=tfplan',
   '-no-color',
   ...resolveVarFile(workingDirectory, varFile),

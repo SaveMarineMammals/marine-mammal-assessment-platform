@@ -84,6 +84,16 @@ Production apply runs **only** when:
 - Staging apply and smoke test succeeded
 - `TF_INFRA_ENABLED=true`
 
+## Plan locking and concurrency
+
+- **Plans do not acquire the DynamoDB state lock** — `scripts/terraform-plan.ts` passes `-lock=false`. Applies still lock normally.
+- **Plan and apply workflows serialize** via the shared GitHub Actions concurrency group `mmap-terraform` (`cancel-in-progress: false`) on:
+  - `ci.yml` → `terraform-plan` (job-level)
+  - `infra-deploy.yml` (workflow-level)
+  - `infra-staging-manual.yml` (workflow-level)
+
+That prevents the main-merge race where CI plan and Infra deploy both hit remote state at once. Plans may still wait behind an in-flight apply (and vice versa).
+
 ## Destroy warnings
 
 On pull requests, CI runs `terraform plan` for **both** environments. If either plan includes `delete` actions, the workflow:

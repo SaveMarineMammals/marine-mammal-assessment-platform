@@ -14,13 +14,13 @@ MMAP infrastructure is managed with Terraform under `infra/terraform/`. Remote s
 | `infra-deploy.yml`          | Applies staging → smoke test → production (main only)                        |
 | `infra-staging-manual.yml`  | Staging apply from any branch                                                |
 
-Applies use `-auto-approve` via `scripts/terraform-apply.ts`. State keys are isolated: `staging/terraform.tfstate` and `production/terraform.tfstate`.
+Applies use `-auto-approve` via `scripts/terraform-apply.ts`. State keys are isolated: `staging/terraform.tfstate` and `production/terraform.tfstate`. CI plans use `-lock=false` (no DynamoDB lock). Plan and apply workflows share the Actions concurrency group `mmap-terraform` so they never run in parallel.
 
 **Who is affected:** Operators blocked from shipping infra fixes; application deploy may depend on fresh outputs (buckets, CloudFront IDs, secret ARNs).
 
 **What breaks:**
 
-- **State lock** — concurrent apply/plan or crashed runner leaves DynamoDB lock; subsequent runs fail with _Error acquiring the state lock_.
+- **State lock** — concurrent applies or a crashed runner leaves a DynamoDB lock; subsequent applies fail with _Error acquiring the state lock_. CI plans do not take the lock.
 - **Plan/apply errors** — invalid tfvars, AWS API limits, dependency drift, or missing bootstrap secrets.
 - **Destroy in plan** — CI posts PR warning; merging without review can delete resources.
 - **`TF_INFRA_ENABLED` not true** — Terraform jobs skipped silently.
@@ -118,7 +118,7 @@ Applies use `-auto-approve` via `scripts/terraform-apply.ts`. State keys are iso
 
 1. **Stale state lock**
 
-   - Confirm no legitimate apply is running in GitHub Actions (check `infra-deploy` concurrency group).
+   - Confirm no legitimate apply is running in GitHub Actions (check the `mmap-terraform` concurrency group — Infra deploy, Infra staging manual, or CI Terraform plan waiting/running).
    - If a job was cancelled mid-apply, force-unlock **only after** verifying no active Terraform process:
 
      Git Bash:
