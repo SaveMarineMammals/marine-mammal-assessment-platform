@@ -125,8 +125,10 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build shared packages and API
-        run: pnpm --filter @mmap/schema build && pnpm --filter @mmap/geo-time build && pnpm --filter @mmap/api build
+      # Turbo ^build compiles workspace deps of @mmap/api. Prefer --filter on the
+      # entrypoint package over hardcoding shared package names.
+      - name: Build API and workspace dependencies
+        run: pnpm turbo build --filter=@mmap/api
 
       - name: Integration tests
         run: pnpm test:integration -- --database-url postgresql://mmap:mmap@localhost:5432/mmap

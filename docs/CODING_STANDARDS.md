@@ -112,6 +112,15 @@ packages/
 docs/      — Requirements, protocols, UAT, this guide
 ```
 
+### Monorepo builds in CI/CD
+
+`turbo.json` `build.dependsOn: ["^build"]` builds `workspace:*` dependencies before each package. Workflows filter on **entrypoint apps**, not shared libs:
+
+- Static deploy: `pnpm turbo build --filter=@mmap/web --filter=@mmap/field` (see `_deploy-app.yml`)
+- Integration prep: `pnpm turbo build --filter=@mmap/api`
+
+When you add a new **shared** package, wire it with `"workspace:*"` in consumers only. When you add a new **deployable static app**, add a Turbo `--filter` (and S3/CloudFront steps) in `_deploy-app.yml`, and update [AGENTS.md](../AGENTS.md) package/filter tables. Do not hardcode `@mmap/schema` / `@mmap/geo-time` (or future shared packages) as sequential `pnpm --filter … build` steps in deploy or integration jobs.
+
 ### `@mmap/schema`
 
 - JSON Schema files under `packages/schema/schemas/`.

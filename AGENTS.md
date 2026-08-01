@@ -129,6 +129,26 @@ CI **must pass** before merge. Agents must add or update tests when behavior cha
 - **Same-origin API in dev** — Leave `VITE_API_BASE_URL` unset; Vite/nginx proxy `/v1`.
 - **Ports (local Docker)** — Web 5173, Field 5174, API 3001; web **dev** server uses 5175.
 
+## Monorepo builds and CI/CD filters
+
+Turborepo `build` uses `dependsOn: ["^build"]` (`turbo.json`): building an app compiles its `workspace:*` dependencies first. Deploy and integration jobs **filter on entrypoint packages**, not on a hardcoded list of shared libs.
+
+| Workflow step                           | Command                                                    |
+| --------------------------------------- | ---------------------------------------------------------- |
+| Deploy static sites (`_deploy-app.yml`) | `pnpm turbo build --filter=@mmap/web --filter=@mmap/field` |
+| Integration prep (CI/CD)                | `pnpm turbo build --filter=@mmap/api`                      |
+
+When adding or renaming packages, update pipelines as follows:
+
+| Change                                                              | Required updates                                                                                                                                   |
+| ------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| New **shared** package under `packages/` consumed via `workspace:*` | Declare the dep in consumer `package.json` only. Turbo `^build` picks it up — **do not** hardcode it in workflows.                                 |
+| New **static app** that must ship (S3/CloudFront)                   | Add `--filter=@mmap/<name>` to Build static sites in `_deploy-app.yml`; add sync/invalidation steps; update this table and the package list above. |
+| New **app** needed before integration tests                         | Point the integration build `--filter` at that entrypoint (or add another `--filter`); rely on `^build` for its deps.                              |
+| Package rename / remove from deploy                                 | Update every `--filter=@mmap/…` in `.github/workflows/` and the tables in this file.                                                               |
+
+**Do not** revive patterns like `pnpm --filter @mmap/schema build && pnpm --filter @mmap/geo-time build && …` in deploy or integration — they break when new workspace deps are added without a workflow edit.
+
 ## Common tasks
 
 | Task                 | Location                                                                    |
@@ -137,6 +157,7 @@ CI **must pass** before merge. Agents must add or update tests when behavior cha
 | Change sync payload  | `apps/api/src/services/sync-batch.ts`, `apps/field/src/sync/`               |
 | Field protocol guide | `docs/protocols/manatee-v1-field-guide.md` (bundled in field app)           |
 | Public dataset API   | `apps/api/src/services/public-dataset.ts`                                   |
+| App deploy workflow  | `.github/workflows/_deploy-app.yml`                                         |
 | CI workflow          | `.github/workflows/ci.yml`                                                  |
 | CD workflow          | `.github/workflows/cd.yml`                                                  |
 | Branch protection    | `.github/rulesets/main-branch-protection.json`                              |
@@ -151,6 +172,7 @@ CI **must pass** before merge. Agents must add or update tests when behavior cha
 ## Do not
 
 - Duplicate schema validation in apps instead of using `@mmap/schema`
+- Hardcode shared-package build lists in deploy/integration workflows (use Turbo `--filter` on entrypoints; see **Monorepo builds and CI/CD filters**)
 - Hardcode merge commits or bypass branch rules in instructions to users
 - Add heavy dependencies without clear need
 - Over-engineer abstractions for one-off logic
