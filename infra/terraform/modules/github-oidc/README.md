@@ -6,7 +6,8 @@ provider created by [bootstrap](../../../bootstrap/README.md) (`token.actions.gi
 ## Permissions
 
 - ECR push to `ecr_repository_arn`
-- ECS Express deploy (`UpdateExpressGatewayService`, `DescribeExpressGatewayService`, `PassRole`)
+- ECS Express deploy (actions required by `amazon-ecs-deploy-express-service`, including
+  `RegisterTaskDefinition`, `UpdateExpressGatewayService`, `PassRole`)
 - S3 sync to web/field static buckets
 - CloudFront invalidation (omitted when `cloudfront_distribution_ids` is empty / `enable_cdn = false`)
 
