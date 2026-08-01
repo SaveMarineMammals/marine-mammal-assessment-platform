@@ -159,7 +159,7 @@ Applies use `-auto-approve` via `scripts/terraform-apply.ts`. State keys are iso
 
 6. **Smoke test failure after apply**
 
-   Infra deploy **Verify staging** resumes hibernation (`staging-hibernate.ts resume`) then runs `terraform-smoke-test.ts`, which probes `/v1/health` then `/` with retries (~2 minutes).
+   Infra deploy **Verify staging** resumes hibernation (`staging-hibernate.ts resume`) then runs `terraform-smoke-test.ts`, which probes `/v1/health` then `/` with retries (~5 minutes). Resume force-new-deploys when `running < desired` so stuck FAILED Express rollouts recover.
 
    ```powershell
    pnpm exec tsx scripts/staging-hibernate.ts status
@@ -167,7 +167,15 @@ Applies use `-auto-approve` via `scripts/terraform-apply.ts`. State keys are iso
    pnpm exec tsx scripts/terraform-smoke-test.ts staging
    ```
 
-   ALB **503** usually means no healthy tasks (hibernated or stuck deployment). Check diagnose logs from the verify job, or:
+   ALB **503** usually means no healthy tasks. Common causes:
+
+   | Symptom                                                        | Likely cause                                                               | Fix                                                                            |
+   | -------------------------------------------------------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+   | Events: `account is currently blocked`                         | AWS account/EC2 verification block (new or flagged accounts)               | Complete verification in the AWS console; then `resume` / force-new-deployment |
+   | `desired=1 running=0`, rollout `FAILED` / `SCALE_UP … timeout` | Failed Express rollout left no tasks; desired-count alone does not recover | `staging-hibernate.ts resume` (forces new deployment)                          |
+   | Hibernated `min=0 desired=0`                                   | Cost hibernate                                                             | `staging-hibernate.ts resume`                                                  |
+
+   Check diagnose logs from the verify job, or:
 
    ```powershell
    pnpm exec tsx scripts/ecs-express-diagnose.ts mmap-staging-api ACCOUNT_ID us-east-1

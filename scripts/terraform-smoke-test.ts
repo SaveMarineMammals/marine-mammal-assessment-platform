@@ -5,8 +5,8 @@ import { captureTerraform, requireArg } from './terraform-lib.js';
 const environment = requireArg(2, 'staging or production');
 const rootDir = `infra/terraform/environments/${environment}`;
 
-/** Total wait ≈ 2 minutes for post-resume / post-apply task registration. */
-const MAX_ATTEMPTS = 12;
+/** Total wait ≈ 5 minutes for task start + ALB target health (Express canary bake). */
+const MAX_ATTEMPTS = 30;
 const RETRY_DELAY_MS = 10_000;
 
 if (!existsSync(rootDir)) {
@@ -74,7 +74,9 @@ for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
 
 if (!passedUrl) {
   console.error(`Health check failed after ${MAX_ATTEMPTS} attempts against ${apiUrl}`);
-  console.error('ALB 503 usually means no healthy tasks (hibernated or stuck deployment).');
+  console.error(
+    'ALB 503 usually means no healthy tasks (hibernated, stuck FAILED rollout, or account block).',
+  );
   if (environment === 'staging') {
     console.error('  pnpm exec tsx scripts/staging-hibernate.ts status');
     console.error('  pnpm exec tsx scripts/staging-hibernate.ts resume');

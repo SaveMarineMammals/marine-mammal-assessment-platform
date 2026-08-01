@@ -36,7 +36,7 @@ function awsJson(args: string[]): unknown {
   return JSON.parse(result.stdout) as unknown;
 }
 
-function awsText(args: string[]): void {
+function awsText(args: string[], options: { optional?: boolean } = {}): void {
   const result = spawnSync('aws', args, {
     encoding: 'utf8',
     shell: false,
@@ -45,12 +45,30 @@ function awsText(args: string[]): void {
 
   if (result.error) {
     console.error(result.error.message);
-    process.exit(1);
+    if (!options.optional) {
+      process.exit(1);
+    }
+    return;
   }
 
-  if (result.status !== 0) {
+  if (result.status !== 0 && !options.optional) {
     process.exit(result.status ?? 1);
   }
+}
+
+interface ExpressRevision {
+  healthCheckPath?: string;
+  primaryContainer?: { image?: string; containerPort?: number };
+  networkConfiguration?: { securityGroups?: string[]; subnets?: string[] };
+  ingressPaths?: Array<{ accessType?: string; endpoint?: string }>;
+  scalingTarget?: { minTaskCount?: number; maxTaskCount?: number };
+}
+
+interface ExpressService {
+  status?: { statusCode?: string; statusReason?: string };
+  currentDeployment?: string;
+  activeConfigurations?: ExpressRevision[];
+  activeServiceRevisions?: ExpressRevision[];
 }
 
 const serviceName = requireArg(2, 'Missing service name (e.g. mmap-staging-api).');
@@ -75,21 +93,13 @@ const describe = awsJson([
   '--region',
   region,
 ]) as {
-  expressGatewayService?: {
-    status?: { statusCode?: string; statusReason?: string };
-    currentDeployment?: string;
-    activeServiceRevisions?: Array<{
-      healthCheckPath?: string;
-      primaryContainer?: { image?: string; containerPort?: number };
-      networkConfiguration?: { securityGroups?: string[]; subnets?: string[] };
-      ingressPaths?: Array<{ accessType?: string; endpoint?: string }>;
-    }>;
-  };
+  service?: ExpressService;
+  expressGatewayService?: ExpressService;
 };
 
-const service = describe.expressGatewayService;
+const service = describe.service ?? describe.expressGatewayService;
 if (!service) {
-  console.error('No expressGatewayService in response.');
+  console.error('No Express service in describe-express-gateway-service response.');
   process.exit(1);
 }
 
@@ -99,11 +109,16 @@ if (service.status?.statusReason) {
 }
 console.log('Current deployment:', service.currentDeployment ?? '(none)');
 
-const revision = service.activeServiceRevisions?.[0];
+const revision =
+  service.activeConfigurations?.[0] ?? service.activeServiceRevisions?.[0] ?? undefined;
 if (revision) {
   console.log('Image:', revision.primaryContainer?.image ?? '(unknown)');
   console.log('Container port:', revision.primaryContainer?.containerPort ?? '(unknown)');
   console.log('Health check path:', revision.healthCheckPath ?? '(unknown)');
+  console.log(
+    'Scaling:',
+    `min=${revision.scalingTarget?.minTaskCount ?? '?'} max=${revision.scalingTarget?.maxTaskCount ?? '?'}`,
+  );
   console.log(
     'Security groups:',
     (revision.networkConfiguration?.securityGroups ?? []).join(', ') || '(none)',
@@ -114,40 +129,67 @@ if (revision) {
 }
 
 console.log('');
-console.log('--- Deployment resources (TEXT-ONLY, 60s max) ---');
-awsText([
+console.log('--- Classic ECS service counts / recent events ---');
+const classic = awsJson([
   'ecs',
-  'monitor-express-gateway-service',
-  '--service-arn',
-  serviceArn,
+  'describe-services',
+  '--cluster',
+  'default',
+  '--services',
+  serviceName,
   '--region',
   region,
-  '--resource-view',
-  'DEPLOYMENT',
-  '--mode',
-  'TEXT-ONLY',
-  '--monitor-timeout',
-  '60',
-]);
+]) as {
+  services?: Array<{
+    desiredCount?: number;
+    runningCount?: number;
+    pendingCount?: number;
+    deployments?: Array<{
+      status?: string;
+      rolloutState?: string;
+      rolloutStateReason?: string;
+      runningCount?: number;
+      desiredCount?: number;
+    }>;
+    events?: Array<{ createdAt?: string; message?: string }>;
+  }>;
+};
+
+const classicService = classic.services?.[0];
+if (classicService) {
+  console.log(
+    `desired=${classicService.desiredCount ?? 0} running=${classicService.runningCount ?? 0} pending=${classicService.pendingCount ?? 0}`,
+  );
+  for (const deployment of classicService.deployments ?? []) {
+    console.log(
+      `deployment ${deployment.status}: rollout=${deployment.rolloutState} running=${deployment.runningCount}/${deployment.desiredCount}`,
+    );
+    if (deployment.rolloutStateReason) {
+      console.log(`  ${deployment.rolloutStateReason}`);
+    }
+  }
+  for (const event of (classicService.events ?? []).slice(0, 5)) {
+    console.log(`event: ${event.message ?? ''}`);
+  }
+}
 
 console.log('');
-console.log('--- Recent container logs ---');
+console.log('--- Recent container logs (best-effort) ---');
 const logGroup = serviceName.replace(/-api$/, '').replace(/^mmap-/, '/mmap-');
 const resolvedLogGroup = `${logGroup}/api`;
 
-awsText([
-  'logs',
-  'tail',
-  resolvedLogGroup,
-  '--region',
-  region,
-  '--since',
-  '2h',
-  '--format',
-  'short',
-]);
+awsText(
+  ['logs', 'tail', resolvedLogGroup, '--region', region, '--since', '2h', '--format', 'short'],
+  { optional: true },
+);
 
 console.log('');
+console.log('If desired>0 and running=0 with FAILED SCALE_UP rollout:');
+console.log(
+  `  aws ecs update-service --cluster default --service ${serviceName} --desired-count 1 --force-new-deployment --region ${region}`,
+);
+console.log('Or: pnpm exec tsx scripts/staging-hibernate.ts resume');
+console.log('If events say "account is currently blocked", finish AWS account/EC2 verification.');
 console.log('If deployment is stuck >30m: cancel it in the ECS console or run');
 console.log(
   `  terraform -chdir=infra/terraform/environments/staging apply -replace='module.api.aws_ecs_express_gateway_service.express' -auto-approve`,

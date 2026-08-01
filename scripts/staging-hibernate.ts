@@ -199,6 +199,42 @@ function setDesiredCount(desiredCount: number): boolean {
   ]);
 }
 
+/** Stuck FAILED Express rollouts often ignore desired-count alone until a new deployment. */
+function forceNewDeployment(desiredCount: number): boolean {
+  return awsMutate('ECS force-new-deployment', [
+    'ecs',
+    'update-service',
+    '--cluster',
+    CLUSTER,
+    '--service',
+    SERVICE,
+    '--desired-count',
+    String(desiredCount),
+    '--force-new-deployment',
+  ]);
+}
+
+function sleepMs(ms: number): void {
+  spawnSync(
+    process.execPath,
+    ['-e', `Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ${ms})`],
+    { stdio: 'ignore', shell: false },
+  );
+}
+
+function waitForRunningTasks(minRunning: number, timeoutMs: number): boolean {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const ecs = readEcsState();
+    console.log(`  waiting for tasks: running=${ecs.runningCount} desired=${ecs.desiredCount}`);
+    if (ecs.runningCount >= minRunning) {
+      return true;
+    }
+    sleepMs(15_000);
+  }
+  return false;
+}
+
 function estimateMonthlyCost(ecs: EcsState, dbStatus: string | null): number {
   let total = 0;
 
@@ -320,10 +356,24 @@ function resume(): void {
       failed = !setMinCapacity(minTasks, scaling.maxCapacity) || failed;
     }
     failed = !setDesiredCount(minTasks) || failed;
+
+    // After account blocks or SCALE_UP timeouts, desired can be 1 while running stays 0
+    // until a new deployment is forced (setting desired alone is a no-op).
+    const afterScale = readEcsState();
+    if (afterScale.runningCount < minTasks) {
+      failed = !forceNewDeployment(minTasks) || failed;
+      if (!waitForRunningTasks(minTasks, 5 * 60_000)) {
+        console.error(`  Timed out waiting for ${minTasks} running ECS task(s).`);
+        console.error(
+          '  If events mention "account is currently blocked", complete AWS account verification.',
+        );
+        failed = true;
+      }
+    }
   }
 
   console.log('');
-  console.log('RDS takes several minutes to become available; API tasks may fail until then.');
+  console.log('RDS takes several minutes to become available; API health does not require RDS.');
   console.log('Check progress with: pnpm exec tsx scripts/staging-hibernate.ts status');
 
   if (failed) {
