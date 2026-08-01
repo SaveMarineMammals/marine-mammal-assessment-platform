@@ -13,8 +13,9 @@ on:
       - 'scripts/terraform-*.ts'
   workflow_dispatch:
 
+# Shared with CI terraform-plan and infra-staging-manual so Terraform never overlaps.
 concurrency:
-  group: infra-deploy-${{ github.ref }}
+  group: mmap-terraform
   cancel-in-progress: false
 
 permissions:

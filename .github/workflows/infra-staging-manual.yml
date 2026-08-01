@@ -10,6 +10,11 @@ on:
         required: false
         default: ''
 
+# Shared with CI terraform-plan and infra-deploy so Terraform never overlaps.
+concurrency:
+  group: mmap-terraform
+  cancel-in-progress: false
+
 permissions:
   contents: read
   id-token: write
