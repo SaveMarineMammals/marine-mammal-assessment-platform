@@ -101,7 +101,7 @@ CI **must pass** before merge. Agents must add or update tests when behavior cha
 
 - **Lint, format & unit tests** — `format:check`, `lint`, `test`
 - **CodeQL** — static analysis (`javascript-typescript`)
-- **Production build** — `build`
+- **Build all packages** — `pnpm build` (typecheck / compile)
 - **API & field sync integration** — `test:integration` with Postgres
 - **Terraform plan** — staging + production (skips successfully when `TF_INFRA_ENABLED` is unset)
 

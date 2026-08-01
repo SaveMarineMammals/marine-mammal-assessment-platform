@@ -129,11 +129,11 @@ See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for env files, per-package comman
 
 Every pull request runs [GitHub Actions CI](.github/workflows/ci.yml):
 
-| Job             | Checks                                           |
-| --------------- | ------------------------------------------------ |
-| **Quality**     | Prettier, ESLint, unit tests (`pnpm test`)       |
-| **Build**       | Production build for all packages (`pnpm build`) |
-| **Integration** | API sync + field sync path against PostgreSQL    |
+| Job             | Checks                                            |
+| --------------- | ------------------------------------------------- |
+| **Quality**     | Prettier, ESLint, unit tests (`pnpm test`)        |
+| **Build**       | Typecheck and compile all packages (`pnpm build`) |
+| **Integration** | API sync + field sync path against PostgreSQL     |
 
 Run the same gates locally before opening a PR:
 

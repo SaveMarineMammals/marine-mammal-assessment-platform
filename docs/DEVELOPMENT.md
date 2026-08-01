@@ -167,7 +167,7 @@ See [.github/workflows/ci.yml](../.github/workflows/ci.yml). Full style and test
 
 1. **Quality** — Prettier, ESLint, unit tests
 2. **CodeQL** — Static analysis (`javascript-typescript`)
-3. **Build** — Full monorepo production build
+3. **Build all packages** — Typecheck and compile the monorepo (`pnpm build`)
 4. **Integration** — API + field sync tests against PostgreSQL
 5. **Terraform plan** — Staging + production (after quality + CodeQL; skips successfully when `TF_INFRA_ENABLED` is unset)
 

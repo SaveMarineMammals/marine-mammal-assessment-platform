@@ -157,13 +157,13 @@ Testing is **mandatory** for merged work. CI blocks PRs until all checks pass.
 
 ### CI gates (required on every PR)
 
-| Job            | Command                                       | Purpose                                               |
-| -------------- | --------------------------------------------- | ----------------------------------------------------- |
-| Quality        | `pnpm format:check`, `pnpm lint`, `pnpm test` | Style, lint, unit tests                               |
-| CodeQL         | GitHub CodeQL (`javascript-typescript`)       | Static analysis                                       |
-| Build          | `pnpm build`                                  | Typecheck and production build all packages           |
-| Integration    | `pnpm test:integration` (with PostgreSQL)     | API sync + field sync path                            |
-| Terraform plan | Plan staging + production                     | Infra diff; warns on destroys (does not fail on them) |
+| Job                | Command                                       | Purpose                                               |
+| ------------------ | --------------------------------------------- | ----------------------------------------------------- |
+| Quality            | `pnpm format:check`, `pnpm lint`, `pnpm test` | Style, lint, unit tests                               |
+| CodeQL             | GitHub CodeQL (`javascript-typescript`)       | Static analysis                                       |
+| Build all packages | `pnpm build`                                  | Typecheck and compile all packages                    |
+| Integration        | `pnpm test:integration` (with PostgreSQL)     | API sync + field sync path                            |
+| Terraform plan     | Plan staging + production                     | Infra diff; warns on destroys (does not fail on them) |
 
 Run locally before opening a PR:
 

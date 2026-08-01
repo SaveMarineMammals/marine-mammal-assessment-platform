@@ -32,7 +32,7 @@ After changing required checks (or after the first CI run on a pull request), co
 
 - `Lint, format & unit tests`
 - `CodeQL`
-- `Production build`
+- `Build all packages`
 - `API & field sync integration`
 - `Terraform plan`
 
