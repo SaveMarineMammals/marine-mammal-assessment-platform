@@ -12,6 +12,7 @@ interface PlanJson {
 const workingDirectory = requireArg(2, 'working directory');
 const varFile = process.argv[3];
 
+// CI/CD plans must never acquire the remote DynamoDB state lock; applies still lock.
 const planArgs = [
   'plan',
   '-input=false',
@@ -22,6 +23,7 @@ const planArgs = [
 ];
 runTerraform(planArgs, { cwd: workingDirectory });
 
+// Reads the local plan artifact only (no remote state lock).
 const planJson = captureTerraform(['show', '-json', 'tfplan'], { cwd: workingDirectory });
 const planJsonPath = join(workingDirectory, 'plan.json');
 writeFileSync(planJsonPath, planJson, 'utf8');

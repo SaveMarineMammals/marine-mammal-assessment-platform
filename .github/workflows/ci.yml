@@ -139,10 +139,8 @@ jobs:
     name: Terraform plan
     runs-on: ubuntu-latest
     needs: [quality, analyze]
-    # Serialize with CD apply workflows so plan/apply never overlap on the lock table.
-    concurrency:
-      group: mmap-terraform
-      cancel-in-progress: false
+    # Plans use -lock=false (see scripts/terraform-plan.ts) and do not share the
+    # mmap-terraform concurrency group with applies — they must not block deploys.
     permissions:
       contents: read
       id-token: write

@@ -102,13 +102,12 @@ Production apply/deploy runs **only** when:
 
 ## Plan locking and concurrency
 
-- **Plans do not acquire the DynamoDB state lock** — `scripts/terraform-plan.ts` passes `-lock=false`. Applies still lock normally.
-- **Plan and apply serialize** via the shared GitHub Actions concurrency group `mmap-terraform` (`cancel-in-progress: false`) on:
-  - `ci.yml` → `terraform-plan` (job-level)
+- **Plans never acquire the DynamoDB state lock** — `scripts/terraform-plan.ts` always passes `-lock=false`. CI plan jobs do **not** use the `mmap-terraform` concurrency group, so they never queue behind or block applies.
+- **Applies serialize** via GitHub Actions concurrency group `mmap-terraform` (`cancel-in-progress: false`) on:
   - `cd.yml` → staging/production terraform apply jobs
   - `release-staging.yml` → staging terraform apply job
 
-That prevents races where CI plan and CD apply both hit remote state at once. Plans may still wait behind an in-flight apply (and vice versa).
+A plan that runs during an apply may see mid-apply state; that is acceptable for PR review. Applies still take the DynamoDB lock normally.
 
 ## Destroy warnings
 

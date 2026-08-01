@@ -14,7 +14,7 @@ MMAP infrastructure is managed with Terraform under `infra/terraform/`. Remote s
 | `cd.yml`                    | Progressive staging apply → app → full verify → production apply → app → smoke          |
 | `release-staging.yml`       | Staging infra + app + full live-verify from any branch                                  |
 
-Applies use `-auto-approve` via `scripts/terraform-apply.ts`. State keys are isolated: `staging/terraform.tfstate` and `production/terraform.tfstate`. CI plans use `-lock=false` (no DynamoDB lock). Plan and apply workflows share the Actions concurrency group `mmap-terraform` so they never run in parallel.
+Applies use `-auto-approve` via `scripts/terraform-apply.ts`. State keys are isolated: `staging/terraform.tfstate` and `production/terraform.tfstate`. CI plans use `-lock=false` (no DynamoDB lock) and do not share the Actions concurrency group with applies. Apply jobs share `mmap-terraform` so concurrent applies never run in parallel.
 
 **Who is affected:** Operators blocked from shipping infra fixes; application deploy may depend on fresh outputs (buckets, CloudFront IDs, secret ARNs).
 
@@ -118,7 +118,7 @@ Applies use `-auto-approve` via `scripts/terraform-apply.ts`. State keys are iso
 
 1. **Stale state lock**
 
-   - Confirm no legitimate apply is running in GitHub Actions (check the `mmap-terraform` concurrency group — CD terraform jobs, Release staging apply, or CI Terraform plan waiting/running).
+   - Confirm no legitimate apply is running in GitHub Actions (check the `mmap-terraform` concurrency group — CD terraform apply jobs or Release staging apply).
    - If a job was cancelled mid-apply, force-unlock **only after** verifying no active Terraform process:
 
      Git Bash:
