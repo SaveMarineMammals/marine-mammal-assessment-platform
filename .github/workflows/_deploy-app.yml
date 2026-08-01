@@ -57,11 +57,11 @@ jobs:
         shell: pwsh
         run: pnpm install --frozen-lockfile
 
+      # Turbo ^build compiles workspace deps (schema, geo-time, …). Add a --filter for
+      # each new static app that should ship; do not hardcode shared package names.
       - name: Build static sites
         shell: pwsh
-        run: |
-          pnpm --filter @mmap/web build
-          pnpm --filter @mmap/field build
+        run: pnpm turbo build --filter=@mmap/web --filter=@mmap/field
         env:
           VITE_DOCS_URL: https://www.example.org/docs/manatee-v1
 

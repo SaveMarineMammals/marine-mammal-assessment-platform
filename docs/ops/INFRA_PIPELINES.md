@@ -14,10 +14,10 @@ GitHub Actions workflows for AWS Terraform bootstrap, plan, progressive CD, and 
 
 Reusable workflows (called by CD / release / deploy):
 
-| Workflow                                                     | Role                                                                     |
-| ------------------------------------------------------------ | ------------------------------------------------------------------------ |
-| [`_deploy-app.yml`](../../.github/workflows/_deploy-app.yml) | Build static sites, S3 sync, ECR push, migrate, ECS Express deploy       |
-| [`_verify-env.yml`](../../.github/workflows/_verify-env.yml) | Hibernate resume (staging), readiness probe, `live-verify` full or smoke |
+| Workflow                                                     | Role                                                                         |
+| ------------------------------------------------------------ | ---------------------------------------------------------------------------- |
+| [`_deploy-app.yml`](../../.github/workflows/_deploy-app.yml) | `turbo build --filter` web+field (and workspace deps), S3, ECR, migrate, ECS |
+| [`_verify-env.yml`](../../.github/workflows/_verify-env.yml) | Hibernate resume (staging), readiness probe, `live-verify` full or smoke     |
 
 ## One-time setup
 

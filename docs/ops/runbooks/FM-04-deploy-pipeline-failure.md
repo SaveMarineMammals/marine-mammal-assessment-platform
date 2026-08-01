@@ -91,8 +91,8 @@ Required GitHub **environment** secrets (from Terraform outputs — see [INFRA_P
 
    ```bash
    pnpm install --frozen-lockfile
-   pnpm --filter @mmap/web build
-   pnpm --filter @mmap/field build
+   # Same as _deploy-app.yml (Turbo ^build pulls workspace deps)
+   pnpm turbo build --filter=@mmap/web --filter=@mmap/field
    pnpm build
    ```
 
