@@ -73,7 +73,8 @@ Optional variable **`AWS_REGION`** (default `us-east-1`).
 ```mermaid
 flowchart LR
   merge[Merge to main] --> stg[Apply staging]
-  stg --> smokeS[Smoke test staging]
+  stg --> resume[Resume if hibernated]
+  resume --> smokeS[Smoke test staging]
   smokeS --> prod[Apply production]
   prod --> smokeP[Smoke test production]
 ```
@@ -83,6 +84,8 @@ Production apply runs **only** when:
 - Trigger is `push` to `main` (or manual dispatch on `main`)
 - Staging apply and smoke test succeeded
 - `TF_INFRA_ENABLED=true`
+
+**Verify staging** runs `staging-hibernate.ts resume` before smoke so a hibernated stack (desired/min tasks at 0) does not fail the gate after a no-op Terraform apply. Operators who want cost savings must re-run hibernate manually after deploy. The smoke script probes `/v1/health` then `/` with ~2 minutes of retries.
 
 ## Plan locking and concurrency
 
