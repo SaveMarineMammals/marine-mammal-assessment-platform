@@ -7,6 +7,18 @@ output "database_secret_kms_key_arn" {
   value = module.database.database_secret_kms_key_arn
 }
 
+output "db_endpoint" {
+  value = module.database.db_endpoint
+}
+
+output "db_port" {
+  value = module.database.db_port
+}
+
+output "db_name" {
+  value = module.database.db_name
+}
+
 output "enable_cdn" {
   description = "Whether CloudFront distributions are provisioned"
   value       = var.enable_cdn

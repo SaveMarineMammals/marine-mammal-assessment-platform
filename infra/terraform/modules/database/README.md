@@ -13,19 +13,16 @@ RDS creates and rotates the master user secret in **AWS Secrets Manager**. Terra
 
 ## Secret format
 
-The secret ARN (output `database_url_secret_arn`) contains JSON:
+The RDS-managed secret ARN (output `database_url_secret_arn`) contains JSON with credentials only:
 
 ```json
 {
   "username": "mmap",
-  "password": "...",
-  "host": "...",
-  "port": 5432,
-  "dbname": "mmap"
+  "password": "..."
 }
 ```
 
-ECS Express injects this JSON into the `DATABASE_URL` task secret. The API (`apps/api/src/cli/database-url.ts`) normalizes it to a PostgreSQL connection string at runtime.
+ECS Express injects that JSON into the `DATABASE_URL` task secret and sets non-secret `DB_HOST`, `DB_PORT`, and `DB_NAME` from Terraform outputs. The API (`apps/api/src/cli/database-url.ts`) merges them into a PostgreSQL connection string at runtime.
 
 Local development and CI continue to use a plain `DATABASE_URL` connection string (`postgresql://mmap:mmap@localhost:5432/mmap`).
 
@@ -38,6 +35,9 @@ Enabled in application migrations (`CREATE EXTENSION IF NOT EXISTS postgis`), no
 | Name                          | Description                     |
 | ----------------------------- | ------------------------------- |
 | `db_instance_id`              | RDS instance identifier         |
+| `db_endpoint`                 | RDS hostname (non-secret)       |
+| `db_port`                     | RDS port                        |
+| `db_name`                     | Initial database name           |
 | `database_url_secret_arn`     | RDS-managed Secrets Manager ARN |
 | `database_secret_kms_key_arn` | KMS key for the master secret   |
 

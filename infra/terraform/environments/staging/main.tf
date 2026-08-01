@@ -53,6 +53,9 @@ module "api" {
   api_connector_sg_id         = module.networking.api_connector_security_group_id
   database_secret_arn         = module.database.database_url_secret_arn
   database_secret_kms_key_arn = module.database.database_secret_kms_key_arn
+  db_host                     = module.database.db_endpoint
+  db_port                     = module.database.db_port
+  db_name                     = module.database.db_name
   data_bucket_arn             = module.storage.data_bucket_arn
   cpu                         = var.api_cpu
   memory                      = var.api_memory

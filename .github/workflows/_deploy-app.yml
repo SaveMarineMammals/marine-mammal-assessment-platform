@@ -1,4 +1,6 @@
-# Reusable application deploy: static sites → ECR → migrate → ECS Express.
+# Reusable application deploy: static sites → ECR → ECS Express.
+# Database migrations run on API container startup (private RDS is not reachable
+# from GitHub-hosted runners).
 #
 # Caller must grant contents:read and id-token:write. Uses GitHub Environment
 # secrets for the target environment (staging | production).
@@ -101,21 +103,10 @@ jobs:
         env:
           ECR_REGISTRY: ${{ steps.ecr.outputs.registry }}
         run: |
-          docker build -f apps/api/Dockerfile -t "$env:ECR_REGISTRY/$env:ECR_REPOSITORY:$env:IMAGE_TAG" .
-          docker push "$env:ECR_REGISTRY/$env:ECR_REPOSITORY:$env:IMAGE_TAG"
+          docker build -f apps/api/Dockerfile -t "${env:ECR_REGISTRY}/${env:ECR_REPOSITORY}:${env:IMAGE_TAG}" .
+          docker push "${env:ECR_REGISTRY}/${env:ECR_REPOSITORY}:${env:IMAGE_TAG}"
 
-      - name: Run database migrations
-        shell: pwsh
-        env:
-          DATABASE_SECRET_ARN: ${{ secrets.DATABASE_SECRET_ARN }}
-        run: |
-          $secret = aws secretsmanager get-secret-value `
-            --secret-id $env:DATABASE_SECRET_ARN `
-            --query SecretString `
-            --output text
-          $env:DATABASE_URL = $secret
-          pnpm --filter @mmap/api db:migrate
-
+      # Migrations run in apps/api on container start (before listen / health checks).
       - name: Deploy API to ECS Express
         uses: aws-actions/amazon-ecs-deploy-express-service@v1
         env:

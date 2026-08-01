@@ -22,6 +22,21 @@ variable "database_secret_kms_key_arn" {
   type    = string
   default = ""
 }
+variable "db_host" {
+  description = "RDS hostname injected as DB_HOST (non-secret)"
+  type        = string
+  default     = ""
+}
+variable "db_port" {
+  description = "RDS port injected as DB_PORT"
+  type        = number
+  default     = 5432
+}
+variable "db_name" {
+  description = "Database name injected as DB_NAME"
+  type        = string
+  default     = "mmap"
+}
 variable "data_bucket_arn" { type = string }
 variable "cpu" { type = string }
 variable "memory" { type = string }
@@ -296,6 +311,30 @@ resource "aws_ecs_express_gateway_service" "express" {
       content {
         name  = "PUBLIC_PSEUDONYMIZE_NAMES"
         value = "false"
+      }
+    }
+
+    dynamic "environment" {
+      for_each = !local.using_placeholder_image && var.db_host != "" ? [1] : []
+      content {
+        name  = "DB_HOST"
+        value = var.db_host
+      }
+    }
+
+    dynamic "environment" {
+      for_each = !local.using_placeholder_image && var.db_host != "" ? [1] : []
+      content {
+        name  = "DB_PORT"
+        value = tostring(var.db_port)
+      }
+    }
+
+    dynamic "environment" {
+      for_each = !local.using_placeholder_image && var.db_host != "" ? [1] : []
+      content {
+        name  = "DB_NAME"
+        value = var.db_name
       }
     }
 
