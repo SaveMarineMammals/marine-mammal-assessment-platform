@@ -66,11 +66,17 @@ data "aws_iam_policy_document" "deploy" {
   statement {
     effect = "Allow"
     actions = [
+      "ecs:CreateCluster",
+      "ecs:RegisterTaskDefinition",
+      "ecs:CreateExpressGatewayService",
       "ecs:UpdateExpressGatewayService",
       "ecs:DescribeExpressGatewayService",
+      "ecs:DescribeClusters",
       "ecs:DescribeServices",
       "ecs:DescribeServiceDeployments",
       "ecs:ListServiceDeployments",
+      "ecs:TagResource",
+      "ecs:UntagResource",
       "iam:PassRole",
     ]
     resources = ["*"]
