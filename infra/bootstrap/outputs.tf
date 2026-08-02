@@ -27,3 +27,23 @@ output "github_actions_secrets" {
     AWS_REGION             = var.aws_region
   }
 }
+
+output "public_domain" {
+  description = "Root public domain when enable_public_domain is true; otherwise empty"
+  value       = local.manage_public_domain ? var.public_domain : ""
+}
+
+output "hosted_zone_id" {
+  description = "Route 53 hosted zone ID for the public domain (copy into staging/production tfvars)"
+  value       = local.manage_public_domain ? aws_route53_zone.public[0].zone_id : ""
+}
+
+output "name_servers" {
+  description = "Set these as custom DNS name servers at the registrar (e.g. Namecheap)"
+  value       = local.manage_public_domain ? aws_route53_zone.public[0].name_servers : []
+}
+
+output "acm_certificate_arn" {
+  description = "Shared ACM certificate ARN (apex + wildcard) in us-east-1 for CloudFront"
+  value       = local.manage_public_domain ? aws_acm_certificate_validation.public[0].certificate_arn : ""
+}

@@ -27,6 +27,24 @@ variable "field_subdomain" {
   default     = "field-staging"
 }
 
+variable "hosted_zone_id" {
+  description = "Route 53 hosted zone ID from bootstrap (required when domain_name is set)"
+  type        = string
+  default     = ""
+}
+
+variable "acm_certificate_arn" {
+  description = "Shared ACM certificate ARN from bootstrap (required when domain_name is set)"
+  type        = string
+  default     = ""
+}
+
+variable "enable_apex_redirect" {
+  description = "Add apex alias and 301 redirect to web_subdomain (production www canonical)"
+  type        = bool
+  default     = false
+}
+
 variable "github_repository" {
   description = "GitHub repo slug for OIDC deploy role"
   type        = string

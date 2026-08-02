@@ -26,3 +26,15 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "enable_public_domain" {
+  description = "Create a Route 53 hosted zone for public_domain and issue a shared ACM cert (apex + wildcard). Domain must already be registered at an external registrar (e.g. Namecheap)."
+  type        = bool
+  default     = false
+}
+
+variable "public_domain" {
+  description = "Root public domain managed by bootstrap (e.g. savemarinemammals.com)"
+  type        = string
+  default     = "savemarinemammals.com"
+}

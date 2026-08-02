@@ -4,7 +4,7 @@ Tracked findings from the MMAP security review. Update **Status** as work comple
 
 **Legend:** `open` · `in_progress` · `done` · `accepted` (risk acknowledged)
 
-Last updated: 2026-06-15
+Last updated: 2026-08-02
 
 ---
 
@@ -34,7 +34,7 @@ Last updated: 2026-06-15
 | NET-01 | Critical | No WAF on CloudFront `/v1/*`                  | AWS WAF rate limits + managed rules on API paths                                                       | open     |
 | NET-02 | High     | ECS task SG allows all egress                 | Acceptable for public-subnet tasks (IGW to AWS APIs); avoid re-adding interface VPC endpoints for cost | accepted |
 | NET-03 | High     | `/v1/admin/*` reachable via public CloudFront | Block admin paths at edge; internal-only admin origin                                                  | open     |
-| NET-04 | Medium   | No HSTS / security headers at CloudFront      | Response headers policy when custom domains enabled                                                    | open     |
+| NET-04 | Medium   | No HSTS / security headers at CloudFront      | Response headers policy when custom domains enabled                                                    | done     |
 | NET-05 | Medium   | Production RDS single-AZ                      | Enable Multi-AZ for production                                                                         | open     |
 | NET-06 | Medium   | CloudWatch alarms without SNS actions         | Wire alarms to SNS/PagerDuty                                                                           | open     |
 | NET-07 | Low      | No VPC Flow Logs                              | Enable flow logs on private subnets for audit                                                          | open     |

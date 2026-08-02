@@ -1,0 +1,51 @@
+function handler(event) {
+  var request = event.request;
+  var uri = request.uri;
+  var apexDomain = '${apex_domain}';
+  var canonicalHost = '${canonical_host}';
+
+  if (apexDomain) {
+    var hostHeader = request.headers.host && request.headers.host.value;
+    var host = hostHeader ? hostHeader.toLowerCase().split(':')[0] : '';
+    if (host === apexDomain) {
+      var params = [];
+      for (var key in request.querystring) {
+        if (Object.prototype.hasOwnProperty.call(request.querystring, key)) {
+          var qsEntry = request.querystring[key];
+          if (qsEntry.multiValue) {
+            for (var i = 0; i < qsEntry.multiValue.length; i++) {
+              params.push(key + '=' + qsEntry.multiValue[i].value);
+            }
+          } else {
+            params.push(key + '=' + qsEntry.value);
+          }
+        }
+      }
+      var queryString = params.length > 0 ? '?' + params.join('&') : '';
+      return {
+        statusCode: 301,
+        statusDescription: 'Moved Permanently',
+        headers: {
+          location: { value: 'https://' + canonicalHost + uri + queryString },
+        },
+      };
+    }
+  }
+
+  if (uri.indexOf('/v1/') === 0 || uri.indexOf('/openapi') === 0) {
+    return request;
+  }
+
+  // Pass through real assets (have a file extension in the last path segment).
+  if (/\/[^/]+\.[^/]+$/.test(uri)) {
+    return request;
+  }
+
+  if (uri === '/field/app' || uri.indexOf('/field/app/') === 0) {
+    request.uri = '/field/app/index.html';
+    return request;
+  }
+
+  request.uri = '/index.html';
+  return request;
+}

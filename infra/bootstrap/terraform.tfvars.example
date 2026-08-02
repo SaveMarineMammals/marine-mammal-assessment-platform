@@ -1,0 +1,14 @@
+aws_region        = "us-east-1"
+github_repository = "SaveMarineMammals/marine-mammal-assessment-platform"
+
+tags = {
+  CostCenter = "mmap-bootstrap"
+}
+
+# --- Public DNS (Route 53 hosted zone + shared ACM) ---
+# Register the domain at an external registrar (e.g. Namecheap), then enable this
+# and point the registrar's custom name servers at terraform output name_servers.
+# See infra/bootstrap/README.md.
+
+enable_public_domain = false
+public_domain        = "savemarinemammals.com"

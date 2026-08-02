@@ -19,6 +19,21 @@ variable "field_subdomain" {
   type    = string
   default = ""
 }
+variable "hosted_zone_id" {
+  description = "Route 53 hosted zone ID from bootstrap (required when domain_name is set)"
+  type        = string
+  default     = ""
+}
+variable "acm_certificate_arn" {
+  description = "ACM certificate ARN in us-east-1 from bootstrap (required when domain_name is set)"
+  type        = string
+  default     = ""
+}
+variable "enable_apex_redirect" {
+  description = "When true, add the apex domain as a CloudFront alias and 301 redirect to web_subdomain"
+  type        = bool
+  default     = false
+}
 variable "web_bucket_id" { type = string }
 variable "field_bucket_id" { type = string }
 variable "api_service_url" { type = string }
@@ -30,6 +45,20 @@ locals {
   api_host          = replace(replace(var.api_service_url, "https://", ""), "/", "")
   site_host         = local.use_custom_domain ? local.site_fqdn : aws_cloudfront_distribution.site.domain_name
   site_url          = "https://${local.site_host}"
+  aliases = local.use_custom_domain ? concat(
+    [local.site_fqdn],
+    var.enable_apex_redirect ? [var.domain_name] : []
+  ) : []
+  apex_domain_for_redirect = local.use_custom_domain && var.enable_apex_redirect ? var.domain_name : ""
+}
+
+check "custom_domain_deps" {
+  assert {
+    condition = !local.use_custom_domain || (
+      var.hosted_zone_id != "" && var.acm_certificate_arn != ""
+    )
+    error_message = "hosted_zone_id and acm_certificate_arn are required when domain_name is set (from bootstrap outputs)."
+  }
 }
 
 data "aws_cloudfront_cache_policy" "caching_optimized" {
@@ -51,18 +80,49 @@ resource "aws_cloudfront_origin_access_control" "static" {
   signing_protocol                  = "sigv4"
 }
 
+resource "aws_cloudfront_response_headers_policy" "security" {
+  count = local.use_custom_domain ? 1 : 0
+
+  name    = "${var.name_prefix}-security-headers"
+  comment = "HSTS and baseline security headers for custom domains"
+
+  security_headers_config {
+    strict_transport_security {
+      access_control_max_age_sec = 31536000
+      include_subdomains         = true
+      preload                    = true
+      override                   = true
+    }
+    content_type_options {
+      override = true
+    }
+    frame_options {
+      frame_option = "DENY"
+      override     = true
+    }
+    referrer_policy {
+      referrer_policy = "strict-origin-when-cross-origin"
+      override        = true
+    }
+  }
+}
+
 resource "aws_cloudfront_function" "spa_router" {
   name    = "${var.name_prefix}-spa-router"
   runtime = "cloudfront-js-2.0"
-  comment = "SPA fallback for web (/) and field PWA (/field/app/)"
+  comment = "SPA fallback for web (/) and field PWA (/field/app/); optional apex→www redirect"
   publish = true
-  code    = file("${path.module}/spa-router.js")
+  code = templatefile("${path.module}/spa-router.js.tftpl", {
+    apex_domain    = local.apex_domain_for_redirect
+    canonical_host = local.site_fqdn
+  })
 }
 
 resource "aws_cloudfront_distribution" "site" {
   enabled             = true
   comment             = "${var.name_prefix} web + field PWA"
   default_root_object = "index.html"
+  aliases             = local.aliases
   tags                = var.tags
 
   origin {
@@ -96,6 +156,9 @@ resource "aws_cloudfront_distribution" "site" {
     viewer_protocol_policy = "redirect-to-https"
     compress               = true
     cache_policy_id        = data.aws_cloudfront_cache_policy.caching_optimized.id
+    response_headers_policy_id = (
+      local.use_custom_domain ? aws_cloudfront_response_headers_policy.security[0].id : null
+    )
 
     function_association {
       event_type   = "viewer-request"
@@ -104,25 +167,31 @@ resource "aws_cloudfront_distribution" "site" {
   }
 
   ordered_cache_behavior {
-    path_pattern           = "/v1/*"
-    allowed_methods        = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-    cached_methods         = ["GET", "HEAD"]
-    target_origin_id       = "api"
-    viewer_protocol_policy = "https-only"
-    compress               = true
+    path_pattern             = "/v1/*"
+    allowed_methods          = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+    cached_methods           = ["GET", "HEAD"]
+    target_origin_id         = "api"
+    viewer_protocol_policy   = "https-only"
+    compress                 = true
     cache_policy_id          = data.aws_cloudfront_cache_policy.caching_disabled.id
     origin_request_policy_id = data.aws_cloudfront_origin_request_policy.all_viewer_except_host.id
+    response_headers_policy_id = (
+      local.use_custom_domain ? aws_cloudfront_response_headers_policy.security[0].id : null
+    )
   }
 
   ordered_cache_behavior {
-    path_pattern           = "/openapi*"
-    allowed_methods        = ["GET", "HEAD", "OPTIONS"]
-    cached_methods         = ["GET", "HEAD"]
-    target_origin_id       = "api"
-    viewer_protocol_policy = "https-only"
-    compress               = true
+    path_pattern             = "/openapi*"
+    allowed_methods          = ["GET", "HEAD", "OPTIONS"]
+    cached_methods           = ["GET", "HEAD"]
+    target_origin_id         = "api"
+    viewer_protocol_policy   = "https-only"
+    compress                 = true
     cache_policy_id          = data.aws_cloudfront_cache_policy.caching_disabled.id
     origin_request_policy_id = data.aws_cloudfront_origin_request_policy.all_viewer_except_host.id
+    response_headers_policy_id = (
+      local.use_custom_domain ? aws_cloudfront_response_headers_policy.security[0].id : null
+    )
   }
 
   ordered_cache_behavior {
@@ -133,6 +202,9 @@ resource "aws_cloudfront_distribution" "site" {
     viewer_protocol_policy = "redirect-to-https"
     compress               = true
     cache_policy_id        = data.aws_cloudfront_cache_policy.caching_optimized.id
+    response_headers_policy_id = (
+      local.use_custom_domain ? aws_cloudfront_response_headers_policy.security[0].id : null
+    )
 
     function_association {
       event_type   = "viewer-request"
@@ -148,6 +220,9 @@ resource "aws_cloudfront_distribution" "site" {
     viewer_protocol_policy = "redirect-to-https"
     compress               = true
     cache_policy_id        = data.aws_cloudfront_cache_policy.caching_optimized.id
+    response_headers_policy_id = (
+      local.use_custom_domain ? aws_cloudfront_response_headers_policy.security[0].id : null
+    )
 
     function_association {
       event_type   = "viewer-request"
@@ -161,8 +236,48 @@ resource "aws_cloudfront_distribution" "site" {
     }
   }
 
-  viewer_certificate {
-    cloudfront_default_certificate = true
+  dynamic "viewer_certificate" {
+    for_each = local.use_custom_domain ? [1] : []
+    content {
+      acm_certificate_arn      = var.acm_certificate_arn
+      ssl_support_method       = "sni-only"
+      minimum_protocol_version = "TLSv1.2_2021"
+    }
+  }
+
+  dynamic "viewer_certificate" {
+    for_each = local.use_custom_domain ? [] : [1]
+    content {
+      cloudfront_default_certificate = true
+    }
+  }
+}
+
+resource "aws_route53_record" "site_a" {
+  for_each = toset(local.aliases)
+
+  zone_id = var.hosted_zone_id
+  name    = each.value
+  type    = "A"
+
+  alias {
+    name                   = aws_cloudfront_distribution.site.domain_name
+    zone_id                = aws_cloudfront_distribution.site.hosted_zone_id
+    evaluate_target_health = false
+  }
+}
+
+resource "aws_route53_record" "site_aaaa" {
+  for_each = toset(local.aliases)
+
+  zone_id = var.hosted_zone_id
+  name    = each.value
+  type    = "AAAA"
+
+  alias {
+    name                   = aws_cloudfront_distribution.site.domain_name
+    zone_id                = aws_cloudfront_distribution.site.hosted_zone_id
+    evaluate_target_health = false
   }
 }
 
