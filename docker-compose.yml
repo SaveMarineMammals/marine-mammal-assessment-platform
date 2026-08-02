@@ -46,7 +46,8 @@ services:
       MINIO_ACCESS_KEY: minioadmin
       MINIO_SECRET_KEY: minioadmin
       API_ADMIN_TOKEN: dev-admin-token
-      CORS_ORIGIN: http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174
+      # 5173 = Docker site; 5174/5175 = Vite HMR for field/web
+      CORS_ORIGIN: http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174,http://localhost:5175,http://127.0.0.1:5175
       PUBLIC_PSEUDONYMIZE_NAMES: 'false'
     ports:
       - '3001:3001'
@@ -62,6 +63,7 @@ services:
       retries: 5
       start_period: 15s
 
+  # Mission site + field PWA in one nginx image (same shape as CloudFront).
   web:
     build:
       context: .
@@ -71,26 +73,9 @@ services:
     depends_on:
       api:
         condition: service_healthy
-      field:
-        condition: service_healthy
     healthcheck:
-      test: ['CMD', 'curl', '-f', 'http://localhost/docs/manatee-v1']
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
-
-  field:
-    build:
-      context: .
-      dockerfile: apps/field/Dockerfile
-    ports:
-      - '5174:80'
-    depends_on:
-      api:
-        condition: service_healthy
-    healthcheck:
-      test: ['CMD', 'curl', '-f', 'http://localhost/field/app/']
+      test:
+        ['CMD-SHELL', 'curl -f http://localhost/ && curl -f http://localhost/field/app/ || exit 1']
       interval: 10s
       timeout: 5s
       retries: 5

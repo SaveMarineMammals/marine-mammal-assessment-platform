@@ -49,14 +49,14 @@ Production and Docker use **same-origin** `/v1` (nginx or CloudFront path behavi
    curl -s http://localhost:3001/v1/health | head -c 200
 
    # Docker field PWA (same-origin /v1 proxy via nginx)
-   curl -s http://localhost:5174/v1/health | head -c 200
+   curl -s http://localhost:5173/v1/health | head -c 200
    ```
 
    PowerShell:
 
    ```powershell
    Invoke-RestMethod http://localhost:3001/v1/health
-   Invoke-RestMethod http://localhost:5174/v1/health
+   Invoke-RestMethod http://localhost:5173/v1/health
    ```
 
    Expected: JSON with `"status":"ok"`.

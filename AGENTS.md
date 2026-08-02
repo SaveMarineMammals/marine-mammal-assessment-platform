@@ -128,7 +128,7 @@ CI **must pass** before merge. Agents must add or update tests when behavior cha
 - **Single schema source** — Validation rules live in `@mmap/schema`; API and field must use them.
 - **UTC in storage** — Timestamps stored as UTC ISO strings; display local time via `@mmap/geo-time`.
 - **Same-origin API in dev** — Leave `VITE_API_BASE_URL` unset; Vite/nginx proxy `/v1`.
-- **Ports (local Docker)** — Web 5173, Field 5174, API 3001; web **dev** server uses 5175.
+- **Ports (local Docker)** — Site (web + field) 5173, API 3001; Vite field HMR 5174, web HMR 5175.
 
 ## Monorepo builds and CI/CD filters
 

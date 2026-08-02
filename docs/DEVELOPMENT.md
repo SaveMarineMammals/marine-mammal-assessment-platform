@@ -35,12 +35,12 @@ Runs PostgreSQL, MinIO, API, field PWA, and public web together:
 docker compose up -d --build
 ```
 
-| Service      | URL                                                                 |
-| ------------ | ------------------------------------------------------------------- |
-| Public web   | http://localhost:5173                                               |
-| Field PWA    | http://localhost:5173/field/app/ (gateway) or http://localhost:5174 |
-| API health   | http://localhost:3001/v1/health                                     |
-| OpenAPI docs | http://localhost:3001/docs                                          |
+| Service      | URL                              |
+| ------------ | -------------------------------- |
+| Public web   | http://localhost:5173            |
+| Field PWA    | http://localhost:5173/field/app/ |
+| API health   | http://localhost:3001/v1/health  |
+| OpenAPI docs | http://localhost:3001/docs       |
 
 Seed demo data for the public dataset portal:
 

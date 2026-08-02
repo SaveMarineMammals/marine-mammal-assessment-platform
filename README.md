@@ -20,9 +20,8 @@ flowchart TB
   end
 
   subgraph host [localhost — Docker Compose]
-    subgraph frontends [Static frontends nginx]
-      Web["Public web :5173<br/>Field PWA /field/app/"]
-      Field["Field container<br/>:5174 (also via web)"]
+    subgraph frontends [Static nginx :5173]
+      Site["Mission site / + Field PWA /field/app/"]
     end
 
     API["Sync & public API<br/>Fastify :3001"]
@@ -36,17 +35,15 @@ flowchart TB
     Brand["@mmap/brand<br/>tokens & fonts"]
   end
 
-  Biologist --> Web
-  Biologist --> Field
-  Researcher --> Web
+  Biologist --> Site
+  Researcher --> Site
 
-  Field -->|"IndexedDB offline queue"| Field
-  Field -->|"/v1/sync/batch"| API
-  Field -->|"/help/protocol in-app guide"| Field
+  Site -->|"IndexedDB offline queue"| Site
+  Site -->|"/v1/sync/batch"| API
+  Site -->|"/help/protocol in-app guide"| Site
 
-  Web -->|"/v1/public/* dataset exports"| API
-  Web -->|"/docs/* field guide"| Web
-  Web -->|"/field/app/"| Field
+  Site -->|"/v1/public/* dataset exports"| API
+  Site -->|"/docs/* field guide"| Site
 
   API --> PG
   API --> MinIO
@@ -87,15 +84,15 @@ cd marine-mammal-assessment
 docker compose up -d --build
 ```
 
-| Service       | URL                                       |
-| ------------- | ----------------------------------------- |
-| Field app     | http://localhost:5173/field/app/ or :5174 |
-| Public web    | http://localhost:5173                     |
-| API health    | http://localhost:3001/v1/health           |
-| API OpenAPI   | http://localhost:3001/docs                |
-| PostgreSQL    | `localhost:5432` (user/pass/db: `mmap`)   |
-| MinIO API     | http://localhost:9000                     |
-| MinIO console | http://localhost:9001                     |
+| Service       | URL                                     |
+| ------------- | --------------------------------------- |
+| Field app     | http://localhost:5173/field/app/        |
+| Public web    | http://localhost:5173                   |
+| API health    | http://localhost:3001/v1/health         |
+| API OpenAPI   | http://localhost:3001/docs              |
+| PostgreSQL    | `localhost:5432` (user/pass/db: `mmap`) |
+| MinIO API     | http://localhost:9000                   |
+| MinIO console | http://localhost:9001                   |
 
 Seed demo data for the public dataset:
 
@@ -120,11 +117,13 @@ pnpm --filter @mmap/api db:seed -- --database-url postgresql://mmap:mmap@localho
 pnpm dev
 ```
 
-| App   | Dev URL                                     |
-| ----- | ------------------------------------------- |
-| Field | http://localhost:5173/field/app/ (or :5174) |
-| Web   | http://localhost:5175                       |
-| API   | http://localhost:3001                       |
+| App   | Dev URL                          |
+| ----- | -------------------------------- |
+| Field | http://localhost:5174 (Vite HMR) |
+| Web   | http://localhost:5175 (Vite HMR) |
+| API   | http://localhost:3001            |
+
+Docker Compose serves both frontends on one host: http://localhost:5173 and http://localhost:5173/field/app/.
 
 See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for env files, per-package commands, integration tests, and troubleshooting.
 
