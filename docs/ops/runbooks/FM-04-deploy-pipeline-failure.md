@@ -148,6 +148,12 @@ Optional: `API_CORS_ORIGIN` (comma-separated; empty OK).
    - OIDC module must allow this repo/ref ([AWS_INFRA.md](../AWS_INFRA.md)).
    - Re-run workflow after secret fix.
 
+2b. **CloudFront `CreateInvalidation` AccessDenied**
+
+- Staging/production CDN replace changes `web_cloudfront_distribution_id`. Deploy IAM only allows the **new** id; a stale `WEB_CLOUDFRONT_ID` environment secret causes AccessDenied.
+- Fix: set `WEB_CLOUDFRONT_ID` from `terraform output -raw web_cloudfront_distribution_id`, then re-run deploy.
+- Progressive CD passes the id from the terraform apply job into `_deploy-app` so the same run does not depend on a stale secret; still update the secret for **Deploy AWS** / emergency redeploys.
+
 3. **Migration failed**
 
    - Fix schema migration SQL in `apps/api` migrations.

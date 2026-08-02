@@ -142,11 +142,14 @@ jobs:
     concurrency:
       group: mmap-terraform
       cancel-in-progress: false
+    outputs:
+      web_cloudfront_id: ${{ steps.tf.outputs.web_cloudfront_id }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
 
       - name: Terraform apply staging
+        id: tf
         uses: ./.github/actions/terraform
         with:
           working-directory: infra/terraform/environments/staging
@@ -165,6 +168,7 @@ jobs:
     with:
       environment: staging
       image_tag: ${{ github.sha }}
+      web_cloudfront_id: ${{ needs.staging-infra.outputs.web_cloudfront_id }}
     secrets: inherit
 
   staging-verify:
@@ -187,11 +191,14 @@ jobs:
     concurrency:
       group: mmap-terraform
       cancel-in-progress: false
+    outputs:
+      web_cloudfront_id: ${{ steps.tf.outputs.web_cloudfront_id }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
 
       - name: Terraform apply production
+        id: tf
         uses: ./.github/actions/terraform
         with:
           working-directory: infra/terraform/environments/production
@@ -210,6 +217,7 @@ jobs:
     with:
       environment: production
       image_tag: ${{ github.sha }}
+      web_cloudfront_id: ${{ needs.production-infra.outputs.web_cloudfront_id }}
     secrets: inherit
 
   production-verify:
