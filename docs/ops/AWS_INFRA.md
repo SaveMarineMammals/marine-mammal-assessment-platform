@@ -117,27 +117,28 @@ Do **not** add NAT gateways (~$32/mo each) unless tasks move to private subnets.
 | Deletion protection | off                                       | on                                        |
 | Backup retention    | 7 days                                    | 30 days                                   |
 
-## Optional CloudFront (`enable_cdn`)
+## CloudFront (`enable_cdn`)
 
-New or unverified AWS accounts are often blocked from creating CloudFront distributions
-until account verification completes. That blocks a full Terraform apply if CDN is
-required.
+Staging and production set `enable_cdn = true` so a **single** distribution serves the
+mission site at `/` and the field PWA at `/field/app/`, with same-origin `/v1`.
 
-**Workaround:** set `enable_cdn = false` in environment `terraform.tfvars` (current
-default for staging and production). Terraform still provisions networking, RDS, ECS
-Express, S3, monitoring, and the deploy role. Skip `module.cdn`.
+New or unverified AWS accounts are sometimes blocked from creating CloudFront
+distributions. If apply fails on distribution create, temporarily set
+`enable_cdn = false` in that environment’s `terraform.tfvars`. Terraform still
+provisions networking, RDS, ECS Express, S3, monitoring, and the deploy role
+(skips `module.cdn`).
 
 | Capability                    | With `enable_cdn = false`                                               |
 | ----------------------------- | ----------------------------------------------------------------------- |
 | Live API + RDS + sync testing | Yes — use `terraform output -raw api_service_url`                       |
 | ECR image deploy / migrations | Yes                                                                     |
 | S3 static sync                | Yes (artifacts only; no public CloudFront URL)                          |
-| Same-origin field/web on AWS  | No — enable CDN after verification                                      |
+| Same-origin field/web on AWS  | No — re-enable CDN after verification                                   |
 | Browser field app → live API  | Set `VITE_API_BASE_URL` to the Express URL and `cors_origins` in tfvars |
 
-When verification is done:
+After CDN is enabled (or re-enabled):
 
-1. Set `enable_cdn = true` in `terraform.tfvars`
+1. Confirm `enable_cdn = true` in `terraform.tfvars`
 2. `terraform apply`
 3. Store `WEB_CLOUDFRONT_ID` GitHub secret from `web_cloudfront_distribution_id` (single distribution)
 4. Prefer same-origin field/web URLs (`/field/app/`); leave `VITE_API_BASE_URL` unset for production builds

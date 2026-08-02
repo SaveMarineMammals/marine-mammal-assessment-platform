@@ -13,7 +13,7 @@ Operator checklist for promoting MMAP to staging and production on AWS. See [AWS
 
 Staging is **ephemeral by default** for cost control: destroy when idle, re-apply when needed. See [AWS_INFRA.md — Ephemeral staging](AWS_INFRA.md#ephemeral-staging). Local Docker covers day-to-day development.
 
-CloudFront is optional via `enable_cdn` (see [Optional CloudFront](AWS_INFRA.md#optional-cloudfront-enable_cdn)). When enabled, a **single** distribution serves the mission site at `/` and the field PWA at `/field/app/`, with same-origin `/v1`. Live API testing can also use `api_service_url` (ECS Express) directly.
+CloudFront is enabled in staging and production via `enable_cdn = true` (see [CloudFront](AWS_INFRA.md#cloudfront-enable_cdn)). A **single** distribution serves the mission site at `/` and the field PWA at `/field/app/`, with same-origin `/v1`. Live API testing can also use `api_service_url` (ECS Express) directly.
 
 ### Automatic (merge to `main`)
 
