@@ -1,10 +1,22 @@
 environment              = "production"
 aws_region               = "us-east-1"
 domain_name              = ""
+web_subdomain            = "www"
+hosted_zone_id           = ""
+acm_certificate_arn      = ""
+enable_apex_redirect     = true
 enable_cdn               = true
 github_repository        = "SaveMarineMammals/marine-mammal-assessment-platform"
 db_instance_class        = "db.t4g.small"
 db_backup_retention_days = 30
+
+# After bootstrap domain registration + ACM validation:
+# domain_name         = "savemarinemammals.com"
+# hosted_zone_id      = "Zxxxxxxxxxxxx"          # terraform -chdir=infra/bootstrap output -raw hosted_zone_id
+# acm_certificate_arn = "arn:aws:acm:us-east-1:..." # terraform -chdir=infra/bootstrap output -raw acm_certificate_arn
+# Canonical: https://www.savemarinemammals.com
+# Apex https://savemarinemammals.com → 301 to www
+# Field: https://www.savemarinemammals.com/field/app
 
 tags = {
   CostCenter = "mmap-production"

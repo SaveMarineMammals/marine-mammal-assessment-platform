@@ -7,7 +7,34 @@ Operator checklist for promoting MMAP to staging and production on AWS. See [AWS
 - AWS account with Terraform remote state bucket and lock table bootstrapped
 - GitHub environment secrets / OIDC role configured (`infra/terraform/modules/github-oidc`)
 - Repository variable `TF_INFRA_ENABLED=true`
-- Optional: Route 53 hosted zone + ACM certificate when using a custom `domain_name` (CloudFront default certificate is used when `domain_name` is empty)
+- **Custom domain (production-ready URLs):** enable `savemarinemammals.com` in bootstrap, then wire
+  staging/production (see [Custom domain](#custom-domain-savemarinemammalscom) below). Until then,
+  leave `domain_name = ""` to use CloudFront default `*.cloudfront.net` hostnames.
+
+## Custom domain (`savemarinemammals.com`)
+
+Apply order — do not set env `domain_name` until bootstrap ACM is `ISSUED`.
+
+1. **Bootstrap** ([`infra/bootstrap/README.md`](../../infra/bootstrap/README.md)):
+   - Set `enable_public_domain = true` and fill `domain_contact` in `terraform.tfvars`
+   - `terraform apply` (registers domain, hosted zone, apex + wildcard ACM in us-east-1)
+   - Copy outputs: `hosted_zone_id`, `acm_certificate_arn`
+2. **Staging** `terraform.tfvars`:
+   - `domain_name = "savemarinemammals.com"`, `web_subdomain = "staging"`,
+     `enable_apex_redirect = false`, plus zone id and cert ARN from bootstrap
+   - Apply → verify `https://staging.savemarinemammals.com`, `/field/app`, `/v1/health`
+3. **Production** `terraform.tfvars`:
+   - `domain_name = "savemarinemammals.com"`, `web_subdomain = "www"`,
+     `enable_apex_redirect = true`, plus the same zone id and cert ARN
+   - Apply → verify `https://www.savemarinemammals.com`, apex **301** to www, field path, `/v1`
+4. Run `live-verify` against the new `web_url` Terraform outputs
+
+| Environment | Canonical URL                           | Notes                                        |
+| ----------- | --------------------------------------- | -------------------------------------------- |
+| Staging     | `https://staging.savemarinemammals.com` | Field at `/field/app`                        |
+| Production  | `https://www.savemarinemammals.com`     | `https://savemarinemammals.com` → 301 to www |
+
+ACM for CloudFront-integrated use is free. Domain registration is ~$16/yr; hosted zone $0.50/mo.
 
 ## Staging deploy
 

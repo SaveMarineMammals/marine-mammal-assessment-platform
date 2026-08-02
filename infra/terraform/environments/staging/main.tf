@@ -7,6 +7,7 @@ locals {
   })
   computed_cors = length(var.cors_origins) > 0 ? var.cors_origins : compact([
     var.domain_name != "" ? "https://${var.web_subdomain}.${var.domain_name}" : null,
+    var.domain_name != "" && var.enable_apex_redirect ? "https://${var.domain_name}" : null,
   ])
 }
 
@@ -72,14 +73,17 @@ module "cdn" {
     aws.us_east_1 = aws.us_east_1
   }
 
-  name_prefix     = local.name_prefix
-  domain_name     = var.domain_name
-  web_subdomain   = var.web_subdomain
-  field_subdomain = var.field_subdomain
-  web_bucket_id   = module.storage.web_bucket_id
-  field_bucket_id = module.storage.field_bucket_id
-  api_service_url = module.api.service_url
-  tags            = local.common_tags
+  name_prefix          = local.name_prefix
+  domain_name          = var.domain_name
+  web_subdomain        = var.web_subdomain
+  field_subdomain      = var.field_subdomain
+  hosted_zone_id       = var.hosted_zone_id
+  acm_certificate_arn  = var.acm_certificate_arn
+  enable_apex_redirect = var.enable_apex_redirect
+  web_bucket_id        = module.storage.web_bucket_id
+  field_bucket_id      = module.storage.field_bucket_id
+  api_service_url      = module.api.service_url
+  tags                 = local.common_tags
 }
 
 module "monitoring" {

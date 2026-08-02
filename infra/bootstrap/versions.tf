@@ -17,6 +17,12 @@ provider "aws" {
   region = var.aws_region
 }
 
+# Route 53 Domains and CloudFront ACM certificates must use us-east-1.
+provider "aws" {
+  alias  = "us_east_1"
+  region = "us-east-1"
+}
+
 data "aws_caller_identity" "current" {}
 
 data "aws_partition" "current" {}

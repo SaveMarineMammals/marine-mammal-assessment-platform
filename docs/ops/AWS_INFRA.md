@@ -12,11 +12,12 @@ flowchart TB
   end
 
   subgraph dns [Route 53]
-    SiteDNS[staging.example.org]
+    ProdWWW[www.savemarinemammals.com]
+    StagingDNS[staging.savemarinemammals.com]
   end
 
   subgraph edge [CloudFront + ACM]
-    SiteCF[Single distribution]
+    SiteCF[Single distribution per env]
   end
 
   subgraph static [S3 origins]
@@ -38,9 +39,10 @@ flowchart TB
     AdminSecret[API_ADMIN_TOKEN]
   end
 
-  FieldUser --> SiteDNS
-  PublicUser --> SiteDNS
-  SiteDNS --> SiteCF
+  FieldUser --> StagingDNS
+  PublicUser --> ProdWWW
+  StagingDNS --> SiteCF
+  ProdWWW --> SiteCF
   SiteCF -->|"/"| WebBucket
   SiteCF -->|"/field/app/*"| FieldBucket
   SiteCF -->|"/v1/*"| API
@@ -82,11 +84,11 @@ flowchart TB
 
 ### Why CloudFront path routing for `/v1`
 
-Docker/nginx today proxies `/v1` to the API so browsers use same-origin requests. Replicate that at the edge:
+Docker/nginx today proxies `/v1` to the API so browsers use same-origin requests. Replicate that at the edge on a **single** hostname per environment:
 
-- `field.example.org/*` → S3 (field PWA)
-- `field.example.org/v1/*` → ECS Express API origin
-- Same pattern for the public web distribution
+- `www.savemarinemammals.com/` (or staging host) → S3 web
+- `…/field/app/*` → S3 field PWA
+- `…/v1/*` → ECS Express API origin
 
 Leave `VITE_API_BASE_URL` **unset** in field/web production builds so the app continues to call relative `/v1/...` URLs.
 
@@ -226,8 +228,12 @@ docs/ops/
   - Default behavior → S3 web bucket (`/`, `/app`, `/docs`, …)
   - `/field/app` and `/field/app/*` → S3 field bucket (keys under `field/app/`)
   - `/v1/*` and `/openapi*` → ECS Express API origin (HTTPS only)
-  - CloudFront Function SPA fallback for web and field deep links
-- Default CloudFront certificate when `domain_name` is empty; ACM + Route 53 only when a custom domain is configured
+  - CloudFront Function SPA fallback for web and field deep links; production apex → www 301
+  - Response headers policy (HSTS) when a custom domain is configured
+- Default CloudFront certificate when `domain_name` is empty
+- When `domain_name` is set: shared bootstrap ACM (apex + wildcard), Route 53 aliases
+  - Staging: `staging.savemarinemammals.com`
+  - Production: `www.savemarinemammals.com` (canonical); apex redirects to www
 
 ### `monitoring`
 
