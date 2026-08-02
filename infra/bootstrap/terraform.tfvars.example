@@ -5,24 +5,10 @@ tags = {
   CostCenter = "mmap-bootstrap"
 }
 
-# --- Public domain (Route 53 Domains + shared ACM) ---
-# Registration is billed (~$16/yr for .com) and non-refundable.
-# Set enable_public_domain = true and fill domain_contact before apply.
-# Do not commit real contact PII — keep it in local terraform.tfvars or CI secrets.
+# --- Public DNS (Route 53 hosted zone + shared ACM) ---
+# Register the domain at an external registrar (e.g. Namecheap), then enable this
+# and point the registrar's custom name servers at terraform output name_servers.
+# See infra/bootstrap/README.md.
 
 enable_public_domain = false
 public_domain        = "savemarinemammals.com"
-
-# domain_contact = {
-#   address_line_1    = "123 Example St"
-#   city              = "Belize City"
-#   contact_type      = "COMPANY" # PERSON | COMPANY | ASSOCIATION | PUBLIC_BODY | RESELLER
-#   country_code      = "BZ"
-#   email             = "ops@example.com"
-#   first_name        = "Ops"
-#   last_name         = "Team"
-#   organization_name = "Save Marine Mammals"
-#   phone_number      = "+501.5551234" # +[country].[number]
-#   state             = "BZ"
-#   zip_code          = "00000"
-# }

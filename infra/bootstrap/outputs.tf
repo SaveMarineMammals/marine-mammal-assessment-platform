@@ -35,12 +35,12 @@ output "public_domain" {
 
 output "hosted_zone_id" {
   description = "Route 53 hosted zone ID for the public domain (copy into staging/production tfvars)"
-  value       = local.manage_public_domain ? aws_route53domains_domain.public[0].hosted_zone_id : ""
+  value       = local.manage_public_domain ? aws_route53_zone.public[0].zone_id : ""
 }
 
 output "name_servers" {
-  description = "Authoritative name servers for the public domain hosted zone"
-  value       = local.manage_public_domain ? data.aws_route53_zone.public[0].name_servers : []
+  description = "Set these as custom DNS name servers at the registrar (e.g. Namecheap)"
+  value       = local.manage_public_domain ? aws_route53_zone.public[0].name_servers : []
 }
 
 output "acm_certificate_arn" {

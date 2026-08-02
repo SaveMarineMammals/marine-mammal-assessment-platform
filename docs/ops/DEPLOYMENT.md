@@ -13,11 +13,15 @@ Operator checklist for promoting MMAP to staging and production on AWS. See [AWS
 
 ## Custom domain (`savemarinemammals.com`)
 
-Apply order — do not set env `domain_name` until bootstrap ACM is `ISSUED`.
+Domain is registered at **Namecheap** (or another registrar). Bootstrap creates the Route 53
+hosted zone + ACM cert; you point Namecheap custom nameservers at Route 53. Do not set env
+`domain_name` until bootstrap ACM is `ISSUED`.
 
 1. **Bootstrap** ([`infra/bootstrap/README.md`](../../infra/bootstrap/README.md)):
-   - Set `enable_public_domain = true` and fill `domain_contact` in `terraform.tfvars`
-   - `terraform apply` (registers domain, hosted zone, apex + wildcard ACM in us-east-1)
+   - Set `enable_public_domain = true` in `terraform.tfvars`
+   - `terraform apply -target=aws_route53_zone.public` then copy `name_servers`
+   - In Namecheap → Domain List → Manage → **Custom DNS**, paste the four Route 53 NS hosts
+   - `terraform apply` (ACM DNS validation + shared apex/wildcard cert in us-east-1)
    - Copy outputs: `hosted_zone_id`, `acm_certificate_arn`
 2. **Staging** `terraform.tfvars`:
    - `domain_name = "savemarinemammals.com"`, `web_subdomain = "staging"`,
@@ -34,7 +38,8 @@ Apply order — do not set env `domain_name` until bootstrap ACM is `ISSUED`.
 | Staging     | `https://staging.savemarinemammals.com` | Field at `/field/app`                        |
 | Production  | `https://www.savemarinemammals.com`     | `https://savemarinemammals.com` → 301 to www |
 
-ACM for CloudFront-integrated use is free. Domain registration is ~$16/yr; hosted zone $0.50/mo.
+ACM for CloudFront-integrated use is free. Hosted zone is $0.50/mo; registration stays on
+Namecheap’s pricing.
 
 ## Staging deploy
 

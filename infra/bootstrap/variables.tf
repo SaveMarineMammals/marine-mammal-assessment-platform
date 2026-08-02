@@ -28,7 +28,7 @@ variable "tags" {
 }
 
 variable "enable_public_domain" {
-  description = "Register public_domain via Route 53 Domains and issue a shared ACM cert (apex + wildcard). Billed and non-refundable."
+  description = "Create a Route 53 hosted zone for public_domain and issue a shared ACM cert (apex + wildcard). Domain must already be registered at an external registrar (e.g. Namecheap)."
   type        = bool
   default     = false
 }
@@ -37,24 +37,4 @@ variable "public_domain" {
   description = "Root public domain managed by bootstrap (e.g. savemarinemammals.com)"
   type        = string
   default     = "savemarinemammals.com"
-}
-
-variable "domain_contact" {
-  description = "Registrant/admin/tech contact for Route 53 Domains. Required when enable_public_domain is true. Do not commit real PII."
-  type = object({
-    address_line_1    = string
-    address_line_2    = optional(string)
-    city              = string
-    contact_type      = string
-    country_code      = string
-    email             = string
-    first_name        = string
-    last_name         = string
-    organization_name = optional(string)
-    phone_number      = string
-    state             = string
-    zip_code          = string
-  })
-  default   = null
-  sensitive = true
 }
