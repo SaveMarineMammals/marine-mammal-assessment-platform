@@ -42,6 +42,12 @@ ECR repository and ECS Express Mode service for the Fastify sync API.
 | `ecs_execution_role_arn`      | Task execution role for CI deploy                  |
 | `ecs_infrastructure_role_arn` | Express infrastructure role for CI                 |
 
-Initial apply uses a public nginx placeholder image until the deploy pipeline publishes the API image to ECR. Terraform ignores subsequent image changes (CI updates Express directly).
+Initial apply uses a public nginx placeholder image until the application deploy pipeline
+publishes the API image to ECR. Terraform ignores subsequent `primary_container` and
+`health_check_path` changes so CI (`amazon-ecs-deploy-express-service`) can own image,
+port, health path, env, and secrets without the next `terraform apply` reverting them.
+
+Deploy must pass the full container env + Secrets Manager ARNs — an image-only Express
+update replaces the primary container config and would otherwise drop database secrets.
 
 To cut staging cost without destroying the stack, see `scripts/staging-hibernate.ts` ([AWS_INFRA.md](../../../../docs/ops/AWS_INFRA.md#hibernate-staging-scale-to-zero)).

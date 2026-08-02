@@ -282,40 +282,30 @@ resource "aws_ecs_express_gateway_service" "express" {
       value = "0.0.0.0"
     }
 
-    dynamic "environment" {
-      for_each = local.using_placeholder_image ? [] : [1]
-      content {
-        name  = "NODE_ENV"
-        value = "production"
-      }
+    # Always attach API runtime config (even with the nginx placeholder image) so the
+    # first CI image rollout already has secrets/DB_* available. Nginx ignores them.
+    environment {
+      name  = "NODE_ENV"
+      value = "production"
+    }
+
+    environment {
+      name  = "CORS_ORIGIN"
+      value = join(",", var.cors_origins)
+    }
+
+    environment {
+      name  = "MINIO_ENDPOINT"
+      value = ""
+    }
+
+    environment {
+      name  = "PUBLIC_PSEUDONYMIZE_NAMES"
+      value = "false"
     }
 
     dynamic "environment" {
-      for_each = local.using_placeholder_image ? [] : [1]
-      content {
-        name  = "CORS_ORIGIN"
-        value = join(",", var.cors_origins)
-      }
-    }
-
-    dynamic "environment" {
-      for_each = local.using_placeholder_image ? [] : [1]
-      content {
-        name  = "MINIO_ENDPOINT"
-        value = ""
-      }
-    }
-
-    dynamic "environment" {
-      for_each = local.using_placeholder_image ? [] : [1]
-      content {
-        name  = "PUBLIC_PSEUDONYMIZE_NAMES"
-        value = "false"
-      }
-    }
-
-    dynamic "environment" {
-      for_each = !local.using_placeholder_image && var.db_host != "" ? [1] : []
+      for_each = var.db_host != "" ? [1] : []
       content {
         name  = "DB_HOST"
         value = var.db_host
@@ -323,7 +313,7 @@ resource "aws_ecs_express_gateway_service" "express" {
     }
 
     dynamic "environment" {
-      for_each = !local.using_placeholder_image && var.db_host != "" ? [1] : []
+      for_each = var.db_host != "" ? [1] : []
       content {
         name  = "DB_PORT"
         value = tostring(var.db_port)
@@ -331,27 +321,21 @@ resource "aws_ecs_express_gateway_service" "express" {
     }
 
     dynamic "environment" {
-      for_each = !local.using_placeholder_image && var.db_host != "" ? [1] : []
+      for_each = var.db_host != "" ? [1] : []
       content {
         name  = "DB_NAME"
         value = var.db_name
       }
     }
 
-    dynamic "secret" {
-      for_each = local.using_placeholder_image ? [] : [1]
-      content {
-        name       = "DATABASE_URL"
-        value_from = var.database_secret_arn
-      }
+    secret {
+      name       = "DATABASE_URL"
+      value_from = var.database_secret_arn
     }
 
-    dynamic "secret" {
-      for_each = local.using_placeholder_image ? [] : [1]
-      content {
-        name       = "API_ADMIN_TOKEN"
-        value_from = aws_secretsmanager_secret.admin_token.arn
-      }
+    secret {
+      name       = "API_ADMIN_TOKEN"
+      value_from = aws_secretsmanager_secret.admin_token.arn
     }
   }
 
@@ -377,8 +361,12 @@ resource "aws_ecs_express_gateway_service" "express" {
 
   lifecycle {
     replace_triggered_by = [terraform_data.express_subnet_set]
+    # CI owns image/port/health/env after the first app deploy (amazon-ecs-deploy-express-service).
+    # Ignoring the whole primary_container + health path prevents Terraform from reverting
+    # the API image back to the nginx bootstrap placeholder on subsequent applies.
     ignore_changes = [
-      primary_container[0].image,
+      primary_container,
+      health_check_path,
     ]
   }
 }
@@ -423,6 +411,10 @@ output "ecs_execution_role_arn" {
 
 output "ecs_infrastructure_role_arn" {
   value = aws_iam_role.ecs_infrastructure.arn
+}
+
+output "ecs_task_role_arn" {
+  value = aws_iam_role.ecs_task.arn
 }
 
 output "admin_token_secret_arn" {

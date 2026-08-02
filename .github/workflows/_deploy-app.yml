@@ -107,6 +107,8 @@ jobs:
           docker push "${env:ECR_REGISTRY}/${env:ECR_REPOSITORY}:${env:IMAGE_TAG}"
 
       # Migrations run in apps/api on container start (before listen / health checks).
+      # Pass full env + secrets: UpdateExpressGatewayService replaces primary-container
+      # config, so image-only updates wipe Terraform-provisioned secrets and leave nginx.
       - name: Deploy API to ECS Express
         uses: aws-actions/amazon-ecs-deploy-express-service@v1
         env:
@@ -116,7 +118,54 @@ jobs:
           image: ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
           execution-role-arn: ${{ secrets.ECS_EXECUTION_ROLE_ARN }}
           infrastructure-role-arn: ${{ secrets.ECS_INFRASTRUCTURE_ROLE_ARN }}
+          task-role-arn: ${{ secrets.ECS_TASK_ROLE_ARN }}
           container-port: '3001'
           health-check-path: /v1/health
+          cpu: '1024'
+          memory: '2048'
+          log-group: /mmap-${{ inputs.environment }}/api
+          log-stream-prefix: ecs
           min-task-count: 1
           max-task-count: 4
+          environment-variables: |
+            [
+              {"name": "PORT", "value": "3001"},
+              {"name": "HOST", "value": "0.0.0.0"},
+              {"name": "NODE_ENV", "value": "production"},
+              {"name": "CORS_ORIGIN", "value": "${{ secrets.API_CORS_ORIGIN }}"},
+              {"name": "MINIO_ENDPOINT", "value": ""},
+              {"name": "PUBLIC_PSEUDONYMIZE_NAMES", "value": "false"},
+              {"name": "DB_HOST", "value": "${{ secrets.DB_HOST }}"},
+              {"name": "DB_PORT", "value": "${{ secrets.DB_PORT }}"},
+              {"name": "DB_NAME", "value": "${{ secrets.DB_NAME }}"}
+            ]
+          secrets: |
+            [
+              {"name": "DATABASE_URL", "valueFrom": "${{ secrets.DATABASE_SECRET_ARN }}"},
+              {"name": "API_ADMIN_TOKEN", "valueFrom": "${{ secrets.API_ADMIN_TOKEN_SECRET_ARN }}"}
+            ]
+
+      - name: Wait for API health
+        shell: pwsh
+        env:
+          API_SERVICE_URL: ${{ secrets.API_SERVICE_URL }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:API_SERVICE_URL)) {
+            throw "API_SERVICE_URL secret is required (terraform output api_service_url)."
+          }
+          $healthUrl = "$($env:API_SERVICE_URL.TrimEnd('/'))/v1/health"
+          $deadline = (Get-Date).AddMinutes(10)
+          do {
+            try {
+              $response = Invoke-WebRequest -Uri $healthUrl -UseBasicParsing -TimeoutSec 10
+              if ($response.StatusCode -eq 200) {
+                Write-Output "Healthy: $healthUrl"
+                exit 0
+              }
+              Write-Output "HTTP $($response.StatusCode) from $healthUrl"
+            } catch {
+              Write-Output "Not ready: $($_.Exception.Message)"
+            }
+            Start-Sleep -Seconds 15
+          } while ((Get-Date) -lt $deadline)
+          throw "Timed out waiting for $healthUrl"

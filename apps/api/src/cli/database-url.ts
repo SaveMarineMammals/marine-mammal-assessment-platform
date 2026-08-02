@@ -60,7 +60,8 @@ export function normalizeDatabaseUrl(raw: string): string {
   }
 
   const fields = resolveRdsConnectionFields(parsed);
-  return `postgresql://${encodePostgresComponent(fields.username)}:${encodePostgresComponent(fields.password)}@${fields.host}:${fields.port}/${fields.dbname}`;
+  // RDS requires TLS (`pg_hba.conf` rejects "no encryption"). Local plain URLs are unchanged.
+  return `postgresql://${encodePostgresComponent(fields.username)}:${encodePostgresComponent(fields.password)}@${fields.host}:${fields.port}/${fields.dbname}?sslmode=require`;
 }
 
 export function parseDatabaseUrlFromArgs(argv: string[]): string | undefined {

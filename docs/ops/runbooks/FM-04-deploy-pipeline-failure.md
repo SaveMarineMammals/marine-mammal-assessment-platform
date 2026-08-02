@@ -29,9 +29,9 @@ Triggers:
 
 Required GitHub **environment** secrets (from Terraform outputs — see [INFRA_PIPELINES.md](../INFRA_PIPELINES.md)):
 
-`AWS_DEPLOY_ROLE_ARN`, `WEB_STATIC_BUCKET`, `FIELD_STATIC_BUCKET`, `WEB_CLOUDFRONT_ID`, `FIELD_CLOUDFRONT_ID`, `ECS_SERVICE_NAME`, `ECS_EXECUTION_ROLE_ARN`, `ECS_INFRASTRUCTURE_ROLE_ARN`
+`AWS_DEPLOY_ROLE_ARN`, `DATABASE_SECRET_ARN`, `API_ADMIN_TOKEN_SECRET_ARN`, `DB_HOST`, `DB_PORT`, `DB_NAME`, `API_SERVICE_URL`, `WEB_STATIC_BUCKET`, `FIELD_STATIC_BUCKET`, `WEB_CLOUDFRONT_ID`, `FIELD_CLOUDFRONT_ID`, `ECS_SERVICE_NAME`, `ECS_EXECUTION_ROLE_ARN`, `ECS_INFRASTRUCTURE_ROLE_ARN`, `ECS_TASK_ROLE_ARN`
 
-Optional: `DATABASE_SECRET_ARN` (ops diagnosis; ECS loads the secret via Terraform, not the deploy workflow).
+Optional: `API_CORS_ORIGIN` (comma-separated; empty OK).
 
 **Who is affected:** End users see stale static assets and/or old API; field sync may hit schema mismatch if migrations failed but static deploy succeeded.
 

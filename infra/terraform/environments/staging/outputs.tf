@@ -76,3 +76,11 @@ output "ecs_execution_role_arn" {
 output "ecs_infrastructure_role_arn" {
   value = module.api.ecs_infrastructure_role_arn
 }
+
+output "ecs_task_role_arn" {
+  value = module.api.ecs_task_role_arn
+}
+
+output "admin_token_secret_arn" {
+  value = module.api.admin_token_secret_arn
+}
