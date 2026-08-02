@@ -60,8 +60,9 @@ export function normalizeDatabaseUrl(raw: string): string {
   }
 
   const fields = resolveRdsConnectionFields(parsed);
-  // RDS requires TLS (`pg_hba.conf` rejects "no encryption"). Local plain URLs are unchanged.
-  return `postgresql://${encodePostgresComponent(fields.username)}:${encodePostgresComponent(fields.password)}@${fields.host}:${fields.port}/${fields.dbname}?sslmode=require`;
+  // RDS requires TLS. Use libpq-compatible `require` (encrypt, do not verify CA) so Node's
+  // `pg` does not treat require as verify-full against the Amazon RDS certificate chain.
+  return `postgresql://${encodePostgresComponent(fields.username)}:${encodePostgresComponent(fields.password)}@${fields.host}:${fields.port}/${fields.dbname}?uselibpqcompat=true&sslmode=require`;
 }
 
 export function parseDatabaseUrlFromArgs(argv: string[]): string | undefined {
