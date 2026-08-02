@@ -1,0 +1,61 @@
+/**
+ * Shared MMAP brand tokens.
+ * Apps set data-theme="light" (web) or data-theme="dark" (field) on <html>.
+ */
+:root {
+  --brand-ink: #0b1f2a;
+  --brand-teal: #0f6e8c;
+  --brand-teal-strong: #08465a;
+  --brand-cyan: #5ec4e6;
+  --brand-cyan-strong: #8edcf3;
+  --brand-focus: #ffb703;
+  --brand-aqua: #f4fbfd;
+  --brand-aqua-deep: #e2f3f8;
+
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+
+  --font-brand: 'Literata', Georgia, 'Times New Roman', serif;
+  --font-ui: 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --focus: var(--brand-focus);
+}
+
+html[data-theme='light'] {
+  color-scheme: light;
+  --bg: var(--brand-aqua);
+  --bg-deep: var(--brand-aqua-deep);
+  --surface: #ffffff;
+  --text: var(--brand-ink);
+  --text-muted: #3d6275;
+  --accent: var(--brand-teal);
+  --accent-strong: var(--brand-teal-strong);
+  --border: #b9d9e6;
+  --danger-bg: #fff1f0;
+  --danger-text: #9b1c1c;
+}
+
+html[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #07151d;
+  --surface: var(--brand-ink);
+  --surface-elevated: #123041;
+  --text: #e8f4f8;
+  --text-muted: #9ec6d6;
+  --accent: var(--brand-cyan);
+  --accent-strong: var(--brand-cyan-strong);
+  --border: #1f4a61;
+  --danger: #ff8a80;
+  --success: #7ee081;
+  --warning: #ffd166;
+}

@@ -29,7 +29,7 @@ Triggers:
 
 Required GitHub **environment** secrets (from Terraform outputs — see [INFRA_PIPELINES.md](../INFRA_PIPELINES.md)):
 
-`AWS_DEPLOY_ROLE_ARN`, `DATABASE_SECRET_ARN`, `API_ADMIN_TOKEN_SECRET_ARN`, `DB_HOST`, `DB_PORT`, `DB_NAME`, `API_SERVICE_URL`, `WEB_STATIC_BUCKET`, `FIELD_STATIC_BUCKET`, `WEB_CLOUDFRONT_ID`, `FIELD_CLOUDFRONT_ID`, `ECS_SERVICE_NAME`, `ECS_EXECUTION_ROLE_ARN`, `ECS_INFRASTRUCTURE_ROLE_ARN`, `ECS_TASK_ROLE_ARN`
+`AWS_DEPLOY_ROLE_ARN`, `DATABASE_SECRET_ARN`, `API_ADMIN_TOKEN_SECRET_ARN`, `DB_HOST`, `DB_PORT`, `DB_NAME`, `API_SERVICE_URL`, `WEB_STATIC_BUCKET`, `FIELD_STATIC_BUCKET`, `WEB_CLOUDFRONT_ID`, `ECS_SERVICE_NAME`, `ECS_EXECUTION_ROLE_ARN`, `ECS_INFRASTRUCTURE_ROLE_ARN`, `ECS_TASK_ROLE_ARN`
 
 Optional: `API_CORS_ORIGIN` (comma-separated; empty OK).
 
@@ -175,7 +175,6 @@ Optional: `API_CORS_ORIGIN` (comma-separated; empty OK).
 7. **CloudFront stale content**
 
    ```bash
-   aws cloudfront create-invalidation --distribution-id "$FIELD_CLOUDFRONT_ID" --paths "/*"
    aws cloudfront create-invalidation --distribution-id "$WEB_CLOUDFRONT_ID" --paths "/*"
    ```
 
@@ -183,7 +182,8 @@ Optional: `API_CORS_ORIGIN` (comma-separated; empty OK).
 
 Follow [DEPLOYMENT.md](../DEPLOYMENT.md) post-deploy checks:
 
-- [ ] `curl https://field-staging.<domain>/v1/health` → `"status":"ok"` (after real API image)
+- [ ] `curl https://<web_url>/v1/health` → `"status":"ok"` (after real API image)
+- [ ] `curl https://<web_url>/field/app/` → field PWA HTML
 - [ ] Field and web URLs load; `version.json` updated on field
 - [ ] Smoke sync: create assessment → sync → visible in API
 - [ ] CloudWatch `mmap-{env}-ecs-cpu-high` / `mmap-{env}-rds-low-storage` OK

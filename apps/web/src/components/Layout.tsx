@@ -1,5 +1,5 @@
 import { Link, NavLink } from 'react-router-dom';
-import { getGithubUrl } from '../lib/config.js';
+import { getFieldAppUrl, getGithubUrl } from '../lib/config.js';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -19,12 +19,12 @@ export function Layout({ children }: LayoutProps) {
           </Link>
           <nav className="site-nav" aria-label="Primary">
             <NavLink to="/">Home</NavLink>
-            <NavLink to="/app">Field App</NavLink>
-            <NavLink to="/docs">Docs</NavLink>
-            <NavLink to="/dataset">Dataset</NavLink>
-            <a href={getGithubUrl()} target="_blank" rel="noreferrer">
-              GitHub
+            <a className="site-nav__launch" href={getFieldAppUrl()}>
+              Field app
             </a>
+            <NavLink to="/app">Get started</NavLink>
+            <NavLink to="/docs">Guides</NavLink>
+            <NavLink to="/dataset">Dataset</NavLink>
           </nav>
         </div>
       </header>
@@ -34,12 +34,15 @@ export function Layout({ children }: LayoutProps) {
       <footer className="site-footer">
         <div className="site-footer__inner">
           <p>
-            Open source under Apache 2.0 · Dataset licensed CC BY 4.0 · Built for conservation
-            research
+            Built for conservation field teams · Open data under CC BY 4.0 · Software under Apache
+            2.0
           </p>
           <p>
-            <Link to="/docs">Documentation</Link> · <Link to="/dataset">Dataset</Link> ·{' '}
-            <a href={getGithubUrl()}>Contribute on GitHub</a>
+            <Link to="/docs">Guides</Link> · <Link to="/dataset">Dataset</Link> ·{' '}
+            <a href={getFieldAppUrl()}>Field app</a> ·{' '}
+            <a href={getGithubUrl()} target="_blank" rel="noreferrer">
+              Source on GitHub
+            </a>
           </p>
         </div>
       </footer>

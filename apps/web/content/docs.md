@@ -1,24 +1,22 @@
 ---
-title: Documentation
-description: Protocol guides, schema references, and API links.
+title: Guides
+description: Field workflow guides and where to find open data.
 ---
 
-## Protocol guides
+## For field teams
 
-- [Manatee v1 field guide](/docs/manatee-v1) — CMARI-style capture workflow for biologists
+- [Manatee field guide](/docs/manatee-v1) — capture workflow, measurement order, and safety notes used with CMARI-style Belize assessments
+- [Get started with the field app](/app) — install on a tablet and use it offline
+- [Open the field app](/field/app/) — start capturing assessments
 
-## Schema
+## What you can record
 
-- Protocol: `manatee_v1` version `1.0.0`
-- JSON Schema package: `@mmap/schema` in the monorepo
-- Measurement types: length, weight, internal/external temperature, blood pressure, heart rate, respiratory rate
+The manatee workflow covers common health measurements taken during capture and handling, including length, weight, temperatures, blood pressure, heart rate, and respiratory rate. Required fields and units are built into the forms so entries stay consistent across the team.
 
-## API
+## Open data
 
-- OpenAPI docs: linked from the [dataset portal](/dataset)
-- Sync endpoint (authenticated field clients): `POST /v1/sync/batch`
-- Public read API: `GET /v1/public/assessments`
+Synced assessments appear in the [public dataset](/dataset), where you can browse recent records and download exports for analysis or reporting. Data is shared under an open license (CC BY 4.0).
 
-## Contributing
+## Partners and contributors
 
-See the repository [Contributing guide](https://github.com/SaveMarineMammals/marine-mammal-assessment-platform/blob/main/CONTRIBUTING.md) for local setup, tests, and pull request expectations.
+Program partners and software contributors can find setup and contribution notes in the [GitHub repository](https://github.com/SaveMarineMammals/marine-mammal-assessment-platform).

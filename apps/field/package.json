@@ -12,6 +12,7 @@
     "lint": "eslint src"
   },
   "dependencies": {
+    "@mmap/brand": "workspace:*",
     "@mmap/geo-time": "workspace:*",
     "@mmap/schema": "workspace:*",
     "dexie": "^4.0.11",

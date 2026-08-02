@@ -49,14 +49,14 @@ Production and Docker use **same-origin** `/v1` (nginx or CloudFront path behavi
    curl -s http://localhost:3001/v1/health | head -c 200
 
    # Docker field PWA (same-origin /v1 proxy via nginx)
-   curl -s http://localhost:5174/v1/health | head -c 200
+   curl -s http://localhost:5173/v1/health | head -c 200
    ```
 
    PowerShell:
 
    ```powershell
    Invoke-RestMethod http://localhost:3001/v1/health
-   Invoke-RestMethod http://localhost:5174/v1/health
+   Invoke-RestMethod http://localhost:5173/v1/health
    ```
 
    Expected: JSON with `"status":"ok"`.
@@ -86,7 +86,8 @@ Production and Docker use **same-origin** `/v1` (nginx or CloudFront path behavi
 6. **For staging/production: check CloudFront `/v1` path**
 
    ```bash
-   curl -s "https://field-staging.<your-domain>/v1/health"
+   curl -s "https://<web_url>/v1/health"
+   curl -s "https://<web_url>/field/app/version.json"
    ```
 
    If the static site loads but `/v1/health` fails, the CDN API origin or ECS Express service is misconfigured. See [AWS_INFRA.md](../AWS_INFRA.md).

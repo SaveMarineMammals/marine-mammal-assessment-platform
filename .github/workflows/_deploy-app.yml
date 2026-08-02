@@ -65,7 +65,7 @@ jobs:
         shell: pwsh
         run: pnpm turbo build --filter=@mmap/web --filter=@mmap/field
         env:
-          VITE_DOCS_URL: https://www.example.org/docs/manatee-v1
+          VITE_DOCS_URL: /docs/manatee-v1
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v6
@@ -79,20 +79,18 @@ jobs:
 
       - name: Sync field static assets to S3
         shell: pwsh
-        run: aws s3 sync apps/field/dist/ "s3://${{ secrets.FIELD_STATIC_BUCKET }}/" --delete
+        run: aws s3 sync apps/field/dist/ "s3://${{ secrets.FIELD_STATIC_BUCKET }}/field/app/" --delete
 
       - name: Invalidate CloudFront caches
         shell: pwsh
         env:
           WEB_CLOUDFRONT_ID: ${{ secrets.WEB_CLOUDFRONT_ID }}
-          FIELD_CLOUDFRONT_ID: ${{ secrets.FIELD_CLOUDFRONT_ID }}
         run: |
-          if ([string]::IsNullOrWhiteSpace($env:WEB_CLOUDFRONT_ID) -or [string]::IsNullOrWhiteSpace($env:FIELD_CLOUDFRONT_ID)) {
-            Write-Output "Skipping CloudFront invalidation (enable_cdn=false or CLOUDFRONT secrets unset)."
+          if ([string]::IsNullOrWhiteSpace($env:WEB_CLOUDFRONT_ID)) {
+            Write-Output "Skipping CloudFront invalidation (enable_cdn=false or WEB_CLOUDFRONT_ID unset)."
             exit 0
           }
           aws cloudfront create-invalidation --distribution-id $env:WEB_CLOUDFRONT_ID --paths "/*"
-          aws cloudfront create-invalidation --distribution-id $env:FIELD_CLOUDFRONT_ID --paths "/*"
 
       - name: Login to Amazon ECR
         id: ecr

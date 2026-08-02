@@ -22,7 +22,7 @@ CI integration job sets `DATABASE_URL=postgresql://mmap:mmap@localhost:5432/mmap
 
 **What breaks:**
 
-- Docker not running or port **5432/3001/5173/5174** already in use
+- Docker not running or port **5432/3001/5173** already in use
 - Postgres container unhealthy (volume corruption, platform pull issues on Windows)
 - API container exits (migration failure, bad env)
 - Integration tests skip when `DATABASE_URL` unset and Postgres unreachable
@@ -42,7 +42,7 @@ CI integration job sets `DATABASE_URL=postgresql://mmap:mmap@localhost:5432/mmap
 
 - Docker Desktop running (Windows/macOS) or Docker Engine (Linux)
 - Node 20+, pnpm 9 (`packageManager` in root `package.json`)
-- No conflicting process on ports 5432, 3001, 5173, 5174, 9000
+- No conflicting process on ports 5432, 3001, 5173, 9000
 
 ## Diagnosis
 
@@ -70,7 +70,8 @@ CI integration job sets `DATABASE_URL=postgresql://mmap:mmap@localhost:5432/mmap
 
    ```bash
    curl -s http://localhost:3001/v1/health
-   curl -s http://localhost:5174/v1/health
+   curl -s http://localhost:5173/v1/health
+   curl -s -o /dev/null -w "%{http_code}\n" http://localhost:5173/field/app/
    ```
 
 4. **Check port conflicts (Windows)**
@@ -78,14 +79,14 @@ CI integration job sets `DATABASE_URL=postgresql://mmap:mmap@localhost:5432/mmap
    PowerShell:
 
    ```powershell
-   Get-NetTCPConnection -LocalPort 5432,3001,5173,5174 -ErrorAction SilentlyContinue |
+   Get-NetTCPConnection -LocalPort 5432,3001,5173 -ErrorAction SilentlyContinue |
      Select-Object LocalPort, OwningProcess
    ```
 
    Git Bash:
 
    ```bash
-   netstat -ano | grep -E '5432|3001|5173|5174'
+   netstat -ano | grep -E '5432|3001|5173'
    ```
 
 5. **Run integration tests with explicit URL**
@@ -181,7 +182,7 @@ CI integration job sets `DATABASE_URL=postgresql://mmap:mmap@localhost:5432/mmap
 - [ ] `curl http://localhost:3001/v1/health` returns OK
 - [ ] `pnpm test:integration -- --database-url postgresql://mmap:mmap@localhost:5432/mmap` passes
 - [ ] Optional: `pnpm validate:integration` passes after Postgres up
-- [ ] Field sync works against Docker API (`http://localhost:5174`, same-origin `/v1`)
+- [ ] Field sync works against Docker site (`http://localhost:5173/field/app/`, same-origin `/v1`)
 
 ## Escalation / when to stop
 

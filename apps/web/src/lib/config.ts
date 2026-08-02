@@ -10,13 +10,13 @@ export function getApiBaseUrl(): string {
 }
 
 export function getFieldAppUrl(): string {
-  return import.meta.env.VITE_FIELD_APP_URL?.trim() || 'http://localhost:5174';
+  return import.meta.env.VITE_FIELD_APP_URL?.trim() || '/field/app/';
 }
 
 export function getGithubUrl(): string {
   return (
     import.meta.env.VITE_GITHUB_URL?.trim() ||
-    'https://github.com/mmap-team/marine-mammal-assessment'
+    'https://github.com/SaveMarineMammals/marine-mammal-assessment-platform'
   );
 }
 

@@ -1,23 +1,10 @@
+@import '@mmap/brand/fonts.css';
+@import '@mmap/brand/tokens.css';
+
 :root {
-  color-scheme: light;
-  font-family:
-    'Segoe UI',
-    system-ui,
-    -apple-system,
-    sans-serif;
+  font-family: var(--font-ui);
   line-height: 1.6;
   font-size: 18px;
-  --bg: #f4fbfd;
-  --bg-deep: #e2f3f8;
-  --surface: #ffffff;
-  --text: #0b1f2a;
-  --text-muted: #3d6275;
-  --accent: #0f6e8c;
-  --accent-strong: #08465a;
-  --border: #b9d9e6;
-  --focus: #ffb703;
-  --danger-bg: #fff1f0;
-  --danger-text: #9b1c1c;
 }
 
 * {
@@ -94,6 +81,7 @@ button:focus-visible,
 
 .brand__title {
   display: block;
+  font-family: var(--font-brand);
   font-size: 1.1rem;
   font-weight: 700;
 }
@@ -137,8 +125,18 @@ button:focus-visible,
 
 .page-header h1 {
   margin: 0.35rem 0 0.75rem;
+  font-family: var(--font-brand);
   font-size: clamp(1.8rem, 4vw, 2.5rem);
   line-height: 1.15;
+}
+
+.site-nav a.site-nav__launch {
+  color: var(--accent-strong);
+  border-bottom-color: transparent;
+}
+
+.site-nav a.site-nav__launch:hover {
+  border-bottom-color: var(--accent);
 }
 
 .eyebrow {

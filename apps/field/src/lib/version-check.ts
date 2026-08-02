@@ -7,9 +7,16 @@ export interface DeployVersionManifest {
   version: string;
 }
 
+export function deployVersionUrl(): string {
+  const base = import.meta.env.BASE_URL || '/';
+  return `${base}version.json`;
+}
+
 export async function fetchDeployVersion(fetchImpl: typeof fetch = fetch): Promise<string | null> {
   try {
-    const response = await fetchImpl(`/version.json?ts=${Date.now()}`, { cache: 'no-store' });
+    const response = await fetchImpl(`${deployVersionUrl()}?ts=${Date.now()}`, {
+      cache: 'no-store',
+    });
     if (!response.ok) {
       return null;
     }

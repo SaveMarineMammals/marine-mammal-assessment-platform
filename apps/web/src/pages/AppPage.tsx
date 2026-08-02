@@ -11,9 +11,14 @@ export function AppPage() {
         <h1>{page.title}</h1>
         {page.description ? <p className="lede">{page.description}</p> : null}
       </header>
-      <p>
-        Current field app URL: <a href={getFieldAppUrl()}>{getFieldAppUrl()}</a>
-      </p>
+      <section className="cta-row">
+        <a className="button button--primary" href={getFieldAppUrl()}>
+          Open field app
+        </a>
+        <a className="button button--secondary" href="/docs/manatee-v1">
+          Read field guide
+        </a>
+      </section>
       <MarkdownContent markdown={page.body} />
     </article>
   );

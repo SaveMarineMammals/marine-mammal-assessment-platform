@@ -1,4 +1,5 @@
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { getMissionSiteUrl } from '../../config.js';
 import { HelpLink } from '../HelpLink.js';
 import { useOnlineStatus } from '../../hooks/useOnlineStatus.js';
 import { useNavigationContext } from './NavigationContext.js';
@@ -28,9 +29,17 @@ export function AppTopBar() {
             ← Back
           </button>
         ) : null}
+        <span className="app-context-chip" title="MMAP Field">
+          Field
+        </span>
         <h1 className="app-top-bar__title">{title}</h1>
       </div>
       <div className="app-top-bar__end">
+        <div className="app-top-bar__context">
+          <a className="app-mission-link" href={getMissionSiteUrl()}>
+            Mission site
+          </a>
+        </div>
         <HelpLink from={pathname} className="app-top-bar__help" />
         <Link
           to="/sync"
