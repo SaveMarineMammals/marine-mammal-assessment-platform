@@ -1,4 +1,4 @@
-import { Pool, type PoolClient, type QueryResultRow } from 'pg';
+import { Pool, type PoolClient, type PoolConfig, type QueryResultRow } from 'pg';
 import { DATABASE_URL_USAGE, normalizeDatabaseUrl } from '../cli/database-url.js';
 
 let pool: Pool | null = null;
@@ -11,9 +11,21 @@ export function getDatabaseUrl(): string {
   return normalizeDatabaseUrl(url);
 }
 
+/** Build `pg` pool options; RDS URLs encrypt without requiring the Amazon CA bundle in-image. */
+export function buildPoolConfig(connectionString: string = getDatabaseUrl()): PoolConfig {
+  const wantsTls =
+    /[?&]sslmode=require\b/i.test(connectionString) ||
+    /\.rds\.amazonaws\.com\b/i.test(connectionString);
+
+  return {
+    connectionString,
+    ...(wantsTls ? { ssl: { rejectUnauthorized: false } } : {}),
+  };
+}
+
 export function getPool(): Pool {
   if (!pool) {
-    pool = new Pool({ connectionString: getDatabaseUrl() });
+    pool = new Pool(buildPoolConfig());
   }
   return pool;
 }
