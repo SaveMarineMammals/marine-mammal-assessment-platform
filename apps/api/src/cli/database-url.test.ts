@@ -83,7 +83,7 @@ describe('database-url CLI', () => {
       dbname: 'mmap',
     });
     expect(resolveDatabaseUrl(['node', 'migrate.ts'])).toBe(
-      'postgresql://mmap:p%40ss%3Aword@db.example.com:5432/mmap',
+      'postgresql://mmap:p%40ss%3Aword@db.example.com:5432/mmap?sslmode=require',
     );
   });
 
@@ -96,7 +96,7 @@ describe('database-url CLI', () => {
       dbname: 'mmap',
     });
     expect(parseDatabaseUrlFromArgs(['node', 'migrate.ts', '-d', json])).toBe(
-      'postgresql://mmap:secret@localhost:5432/mmap',
+      'postgresql://mmap:secret@localhost:5432/mmap?sslmode=require',
     );
   });
 
@@ -111,7 +111,9 @@ describe('database-url CLI', () => {
           password: 'p@ss',
         }),
       ),
-    ).toBe('postgresql://mmap:p%40ss@mmap-staging-postgres.example.rds.amazonaws.com:5432/mmap');
+    ).toBe(
+      'postgresql://mmap:p%40ss@mmap-staging-postgres.example.rds.amazonaws.com:5432/mmap?sslmode=require',
+    );
   });
 
   it('throws when username/password JSON lacks DB_HOST/DB_NAME', () => {
