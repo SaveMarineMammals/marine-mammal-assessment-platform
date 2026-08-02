@@ -33,6 +33,9 @@ outputs:
   destroy_detected:
     description: Whether the plan includes resource deletions
     value: ${{ steps.plan.outputs.destroy_detected }}
+  web_cloudfront_id:
+    description: Site CloudFront distribution id after apply (empty when enable_cdn=false)
+    value: ${{ steps.apply_outputs.outputs.web_cloudfront_id }}
 
 runs:
   using: composite
@@ -54,6 +57,7 @@ runs:
       uses: hashicorp/setup-terraform@v4
       with:
         terraform_version: 1.9.8
+        terraform_wrapper: false
 
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v6
@@ -83,3 +87,22 @@ runs:
       shell: pwsh
       run: |
         pnpm exec tsx scripts/terraform-apply.ts "${{ inputs.working-directory }}" "${{ inputs.var-file }}"
+
+    - name: Capture apply outputs
+      if: inputs.command == 'apply'
+      id: apply_outputs
+      shell: pwsh
+      run: |
+        $cwd = "${{ inputs.working-directory }}"
+        $enableCdn = ''
+        try {
+          $enableCdn = (terraform -chdir=$cwd output -raw enable_cdn).Trim()
+        } catch {
+          $enableCdn = 'false'
+        }
+        $id = ''
+        if ($enableCdn -eq 'true') {
+          $id = (terraform -chdir=$cwd output -raw web_cloudfront_distribution_id).Trim()
+        }
+        "web_cloudfront_id=$id" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+        Write-Output "web_cloudfront_id=$id (enable_cdn=$enableCdn)"

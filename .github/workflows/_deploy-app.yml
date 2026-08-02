@@ -24,6 +24,11 @@ on:
         required: false
         type: string
         default: ''
+      web_cloudfront_id:
+        description: CloudFront distribution id from terraform apply (preferred over secret)
+        required: false
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -84,12 +89,14 @@ jobs:
       - name: Invalidate CloudFront caches
         shell: pwsh
         env:
-          WEB_CLOUDFRONT_ID: ${{ secrets.WEB_CLOUDFRONT_ID }}
+          # Prefer id from the terraform apply job (avoids stale GitHub secrets after CDN replace).
+          WEB_CLOUDFRONT_ID: ${{ inputs.web_cloudfront_id || secrets.WEB_CLOUDFRONT_ID }}
         run: |
           if ([string]::IsNullOrWhiteSpace($env:WEB_CLOUDFRONT_ID)) {
             Write-Output "Skipping CloudFront invalidation (enable_cdn=false or WEB_CLOUDFRONT_ID unset)."
             exit 0
           }
+          Write-Output "Invalidating CloudFront distribution $($env:WEB_CLOUDFRONT_ID)"
           aws cloudfront create-invalidation --distribution-id $env:WEB_CLOUDFRONT_ID --paths "/*"
 
       - name: Login to Amazon ECR

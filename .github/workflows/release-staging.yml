@@ -47,6 +47,8 @@ jobs:
     concurrency:
       group: mmap-terraform
       cancel-in-progress: false
+    outputs:
+      web_cloudfront_id: ${{ steps.tf.outputs.web_cloudfront_id }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -54,6 +56,7 @@ jobs:
           ref: ${{ needs.resolve-ref.outputs.sha }}
 
       - name: Terraform apply staging
+        id: tf
         uses: ./.github/actions/terraform
         with:
           working-directory: infra/terraform/environments/staging
@@ -73,6 +76,7 @@ jobs:
       environment: staging
       git_ref: ${{ needs.resolve-ref.outputs.sha }}
       image_tag: ${{ needs.resolve-ref.outputs.sha }}
+      web_cloudfront_id: ${{ needs.staging-infra.outputs.web_cloudfront_id }}
     secrets: inherit
 
   staging-verify:
