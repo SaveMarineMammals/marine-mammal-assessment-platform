@@ -25,12 +25,12 @@ output "enable_cdn" {
 }
 
 output "web_url" {
-  description = "Public web URL (CloudFront when enable_cdn; empty otherwise)"
+  description = "Public site URL (CloudFront when enable_cdn; empty otherwise)"
   value       = var.enable_cdn ? module.cdn[0].web_url : ""
 }
 
 output "field_url" {
-  description = "Field PWA URL (CloudFront when enable_cdn; empty otherwise)"
+  description = "Field PWA URL on the same host (.../field/app when enable_cdn)"
   value       = var.enable_cdn ? module.cdn[0].field_url : ""
 }
 
@@ -52,13 +52,13 @@ output "field_static_bucket" {
 }
 
 output "web_cloudfront_distribution_id" {
-  description = "Empty when enable_cdn is false"
+  description = "Empty when enable_cdn is false. Single distribution serves web + field."
   value       = var.enable_cdn ? module.cdn[0].distribution_ids[0] : ""
 }
 
 output "field_cloudfront_distribution_id" {
-  description = "Empty when enable_cdn is false"
-  value       = var.enable_cdn ? module.cdn[0].distribution_ids[1] : ""
+  description = "Deprecated alias of web_cloudfront_distribution_id (single distribution)"
+  value       = var.enable_cdn ? module.cdn[0].distribution_ids[0] : ""
 }
 
 output "ecr_repository_url" {

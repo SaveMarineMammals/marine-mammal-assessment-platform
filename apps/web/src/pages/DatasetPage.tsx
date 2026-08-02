@@ -64,9 +64,9 @@ export function DatasetPage() {
   return (
     <article className="page">
       <header className="page-header">
-        <h1>Public Dataset</h1>
+        <h1>Public dataset</h1>
         <p className="lede">
-          Read-only exports of synced assessments and measurements. License:{' '}
+          Browse and download published assessments from field teams. License:{' '}
           {meta?.license ?? 'CC BY 4.0'}.
         </p>
       </header>
@@ -91,10 +91,12 @@ export function DatasetPage() {
             </strong>
           </div>
           <div className="stat-card">
-            <span className="stat-card__label">Schema</span>
+            <span className="stat-card__label">Protocol</span>
             <strong className="stat-card__value stat-card__value--small">
-              {MANATEE_V1_PROTOCOL} {MANATEE_V1_VERSION}
-              {stats.protocol_versions.length > 0 ? ` (${stats.protocol_versions.join(', ')})` : ''}
+              Manatee health assessment
+              {stats.protocol_versions.length > 0
+                ? ` (${stats.protocol_versions.join(', ')})`
+                : ` (${MANATEE_V1_PROTOCOL} ${MANATEE_V1_VERSION})`}
             </strong>
           </div>
         </section>
@@ -103,10 +105,11 @@ export function DatasetPage() {
       <section className="panel">
         <h2>Download</h2>
         <p className="hint">
-          Bulk exports include assessment metadata and flattened measurement rows.{' '}
+          Downloads include assessment details and measurement rows for analysis in a spreadsheet or
+          stats tools.{' '}
           {meta?.pseudonymization_enabled
-            ? 'Assessment names are pseudonymized in public exports.'
-            : 'Configure PUBLIC_PSEUDONYMIZE_NAMES on the API to pseudonymize names.'}
+            ? 'Animal or assessment names may be anonymized in public downloads.'
+            : null}
         </p>
         <div className="cta-row">
           <a className="button button--primary" href={getExportUrl('csv')}>
@@ -121,23 +124,23 @@ export function DatasetPage() {
             target="_blank"
             rel="noreferrer"
           >
-            API docs
+            Technical API reference
           </a>
         </div>
       </section>
 
       {records ? (
         <section className="panel">
-          <h2>Sample records</h2>
+          <h2>Recent assessments</h2>
           <p className="hint">
-            Page {records.page} · showing {records.items.length} of {records.total}
+            Showing {records.items.length} of {records.total}
           </p>
           <div className="table-wrap">
             <table>
               <thead>
                 <tr>
                   <th scope="col">Name</th>
-                  <th scope="col">Started (UTC)</th>
+                  <th scope="col">Started</th>
                   <th scope="col">Location</th>
                   <th scope="col">Measurements</th>
                 </tr>
@@ -146,7 +149,8 @@ export function DatasetPage() {
                 {records.items.length === 0 ? (
                   <tr>
                     <td colSpan={4}>
-                      No synced records yet. Seed the API or sync from the field app.
+                      No published assessments yet. After field teams sync, records will appear
+                      here.
                     </td>
                   </tr>
                 ) : (

@@ -1,31 +1,30 @@
 ---
-title: Field App
-description: Install and use the MMAP offline field PWA.
+title: Get started with the field app
+description: Install the tablet app for offline manatee assessments on the water.
 ---
 
-## Field PWA
+The field app is the tool you use during capture and handling. It runs in the browser on a tablet, works without internet, and lives next to this site at **[Open field app](/field/app/)**.
 
-The field app is a Progressive Web App optimized for tablets on boats and at dockside.
+## Install on a tablet
 
-### Development URL
+1. Open the [field app](/field/app/) in **Chrome** (Android) or **Safari** (iPad).
+2. While you still have a connection, open the app once so it can load fully.
+3. **Add it to your home screen** so it feels like a regular app:
+   - **iPad / iOS:** Share → _Add to Home Screen_
+   - **Android / Chrome:** Menu → _Install app_ or _Add to Home screen_
+4. Allow location access when asked—GPS is used when you start an assessment.
 
-During local development the app runs at [http://localhost:5174](http://localhost:5174).
+## On assessment day
 
-### Install on a tablet
+- Create a new assessment and enter measurements as the animal is handled.
+- If you go offline, the header shows **Offline** and how many records are waiting to sync.
+- When you regain Wi‑Fi or cell service, tap **Sync** (or wait—the app syncs on its own).
+- Use the in-app **protocol guide** if you need a refresher on measurement order or safety notes.
 
-1. Open the field app URL in **Chrome** or **Safari**.
-2. Complete an initial sync test while online (optional but recommended).
-3. **Install to home screen:**
-   - **iPad/iOS:** Share → _Add to Home Screen_
-   - **Android/Chrome:** Menu → _Install app_ or _Add to Home screen_
-4. Enable location permissions when prompted for GPS capture.
+## Before multi-day trips
 
-### Offline use
+In **Settings**, export a backup before you leave for several days in the field. You can import that backup later if a tablet is replaced or reset.
 
-- Create assessments and measurements without connectivity.
-- The header shows **Offline** and a pending sync count.
-- Tap **Sync Now** when Wi‑Fi or LTE returns, or wait for automatic sync.
+## Need the field guide?
 
-### Backup
-
-Use **Settings → Export Backup** before multi-day deployments. Import restores data after validating against the manatee v1 schema.
+See the [manatee field guide](/docs/manatee-v1) for the CMARI-style capture workflow, or open **Help** inside the field app while you work.

@@ -155,34 +155,41 @@ async function verifyCdnArtifacts(): Promise<void> {
     return;
   }
 
-  for (const [label, base] of [
-    ['field', fieldUrl],
-    ['web', webUrl],
-  ] as const) {
-    if (!base?.trim()) {
-      console.log(`Skipping ${label} CDN check (URL empty)`);
-      continue;
+  const siteOrigin = webUrl?.trim() ? normalizeHttpsUrl(webUrl) : '';
+  const fieldOrigin = fieldUrl?.trim() ? normalizeHttpsUrl(fieldUrl) : '';
+
+  if (siteOrigin) {
+    const healthUrl = `${siteOrigin}/v1/health`;
+    console.log(`Checking same-origin ${healthUrl} …`);
+    const health = await fetch(healthUrl);
+    if (!health.ok) {
+      throw new Error(`Same-origin /v1/health via CDN returned HTTP ${health.status}`);
     }
 
-    const origin = normalizeHttpsUrl(base);
-    const versionUrl = `${origin}/version.json`;
-    console.log(`Checking ${label} ${versionUrl} …`);
+    console.log(`Checking web ${siteOrigin}/ …`);
+    const webRoot = await fetch(`${siteOrigin}/`);
+    if (!webRoot.ok) {
+      throw new Error(`Web root returned HTTP ${webRoot.status}`);
+    }
+  } else {
+    console.log('Skipping web CDN check (URL empty)');
+  }
+
+  if (fieldOrigin) {
+    const versionUrl = `${fieldOrigin}/version.json`;
+    console.log(`Checking field ${versionUrl} …`);
     const response = await fetch(versionUrl);
     if (!response.ok) {
-      // web may not publish version.json; field does. Fail only for field.
-      if (label === 'field') {
-        throw new Error(`Field version.json returned HTTP ${response.status}`);
-      }
-      console.log(`Web version.json HTTP ${response.status} (optional) — continuing`);
-      continue;
+      throw new Error(`Field version.json returned HTTP ${response.status}`);
     }
 
-    const sameOriginHealth = `${origin}/v1/health`;
-    console.log(`Checking same-origin ${sameOriginHealth} …`);
-    const health = await fetch(sameOriginHealth);
-    if (!health.ok) {
-      throw new Error(`Same-origin /v1/health via ${label} CDN returned HTTP ${health.status}`);
+    console.log(`Checking field ${fieldOrigin}/ …`);
+    const fieldRoot = await fetch(`${fieldOrigin}/`);
+    if (!fieldRoot.ok) {
+      throw new Error(`Field PWA root returned HTTP ${fieldRoot.status}`);
     }
+  } else {
+    console.log('Skipping field CDN check (URL empty)');
   }
 }
 

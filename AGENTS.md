@@ -11,6 +11,7 @@ This file orients automated agents (Cursor, Copilot, CI bots, etc.) working in t
 | `apps/field`        | Offline PWA for biologists — IndexedDB, background sync, in-app protocol guide |
 | `apps/api`          | Fastify API — sync batch ingestion, public dataset endpoints, PostgreSQL       |
 | `apps/web`          | Public mission site, docs, read-only dataset portal                            |
+| `packages/brand`    | Shared brand tokens and typography (web light / field dark)                    |
 | `packages/schema`   | JSON Schema, Zod validators, form definitions, test fixtures                   |
 | `packages/geo-time` | UTC storage and local-time display from capture coordinates                    |
 
@@ -35,7 +36,7 @@ Full rules: [docs/CODING_STANDARDS.md](docs/CODING_STANDARDS.md).
 | Imports        | Relative imports use `.js` extension (`NodeNext`)                                                          |
 | Formatting     | Prettier — single quotes, semicolons, 100 cols, trailing commas                                            |
 | Lint           | ESLint at repo root; prefix unused vars with `_`                                                           |
-| Workspace deps | `"workspace:*"` for `@mmap/schema`, `@mmap/geo-time`                                                       |
+| Workspace deps | `"workspace:*"` for `@mmap/schema`, `@mmap/geo-time`, `@mmap/brand`                                        |
 | Scope          | Minimal diff; match existing patterns; no drive-by refactors                                               |
 | Comments       | Only for non-obvious logic; no narrating obvious code                                                      |
 | Schema changes | Update JSON Schema, Zod, fixtures, and tests together                                                      |
@@ -188,6 +189,7 @@ When adding or renaming packages, update pipelines as follows:
 | Document                                               | Purpose                                    |
 | ------------------------------------------------------ | ------------------------------------------ |
 | [docs/CODING_STANDARDS.md](docs/CODING_STANDARDS.md)   | Full style guide and testing policy        |
+| [docs/BRAND_AND_UX.md](docs/BRAND_AND_UX.md)           | Shared brand tokens and surface context    |
 | [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)             | Clone, build, test, troubleshoot           |
 | [docs/ops/FAILURE_MODES.md](docs/ops/FAILURE_MODES.md) | Incident triage and runbooks (FM-01–FM-05) |
 | [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md)           | Functional requirements                    |

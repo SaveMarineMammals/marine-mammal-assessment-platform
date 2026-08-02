@@ -9,16 +9,19 @@ WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json tsconfig.base.json ./
 COPY apps/web/package.json apps/web/
 COPY packages/schema/package.json packages/schema/
+COPY packages/brand/package.json packages/brand/
 
 RUN pnpm install --frozen-lockfile
 
 COPY apps/web apps/web
 COPY packages/schema packages/schema
+COPY packages/brand packages/brand
 COPY docs/protocols docs/protocols
 
 RUN pnpm install --frozen-lockfile
 
 RUN pnpm --filter @mmap/schema build \
+  && pnpm --filter @mmap/brand build \
   && pnpm --filter @mmap/web build
 
 FROM nginx:1.27-alpine

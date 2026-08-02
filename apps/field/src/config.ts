@@ -27,13 +27,20 @@ export const SYNC_BACKOFF_BASE_MS = 1_000;
 export function getDocsUrl(): string {
   // Prefer the in-app guide at /help/protocol. This URL is only for optional external links.
   const configured = import.meta.env.VITE_DOCS_URL?.trim();
-  if (configured?.startsWith('http')) {
+  if (configured) {
     return configured;
   }
   if (typeof window !== 'undefined') {
-    return `${window.location.protocol}//${window.location.hostname}:5173/docs/manatee-v1`;
+    return `${window.location.origin}/docs/manatee-v1`;
   }
-  return 'http://localhost:5173/docs/manatee-v1';
+  return '/docs/manatee-v1';
+}
+
+export function getMissionSiteUrl(): string {
+  if (typeof window !== 'undefined') {
+    return window.location.origin + '/';
+  }
+  return '/';
 }
 
 export function getApiBaseUrlDisplay(): string {

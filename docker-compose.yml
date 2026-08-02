@@ -71,6 +71,8 @@ services:
     depends_on:
       api:
         condition: service_healthy
+      field:
+        condition: service_healthy
     healthcheck:
       test: ['CMD', 'curl', '-f', 'http://localhost/docs/manatee-v1']
       interval: 10s
@@ -88,7 +90,7 @@ services:
       api:
         condition: service_healthy
     healthcheck:
-      test: ['CMD', 'curl', '-f', 'http://localhost/']
+      test: ['CMD', 'curl', '-f', 'http://localhost/field/app/']
       interval: 10s
       timeout: 5s
       retries: 5

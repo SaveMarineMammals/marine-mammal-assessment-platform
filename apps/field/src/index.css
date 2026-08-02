@@ -1,23 +1,10 @@
+@import '@mmap/brand/fonts.css';
+@import '@mmap/brand/tokens.css';
+
 :root {
-  color-scheme: dark;
-  font-family:
-    'Segoe UI',
-    system-ui,
-    -apple-system,
-    sans-serif;
+  font-family: var(--font-ui);
   line-height: 1.5;
   font-size: 18px;
-  --bg: #07151d;
-  --surface: #0b1f2a;
-  --surface-elevated: #123041;
-  --text: #e8f4f8;
-  --text-muted: #9ec6d6;
-  --accent: #5ec4e6;
-  --accent-strong: #8edcf3;
-  --danger: #ff8a80;
-  --success: #7ee081;
-  --warning: #ffd166;
-  --border: #1f4a61;
   --touch-min: 48px;
 }
 
@@ -111,6 +98,40 @@ select {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.app-top-bar__context {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+  margin-right: 0.25rem;
+}
+
+.app-context-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.75rem;
+  padding: 0 0.55rem;
+  border-radius: var(--radius-md);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--brand-ink);
+  background: var(--accent);
+}
+
+.app-mission-link {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.app-mission-link:hover {
+  color: var(--accent-strong);
 }
 
 .connectivity-indicator {

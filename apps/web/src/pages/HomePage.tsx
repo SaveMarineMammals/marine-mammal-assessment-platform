@@ -9,20 +9,20 @@ export function HomePage() {
   return (
     <article className="page hero">
       <header className="page-header">
-        <p className="eyebrow">Open source · Open data · Offline-first</p>
+        <p className="eyebrow">For field teams · Open data · Works offline</p>
         <h1>{page.title}</h1>
         {page.description ? <p className="lede">{page.description}</p> : null}
       </header>
       <section className="cta-row">
-        <Link className="button button--primary" to="/app">
-          Get the field app
+        <a className="button button--primary" href={getFieldAppUrl()}>
+          Open field app
+        </a>
+        <Link className="button button--secondary" to="/app">
+          How to install
         </Link>
-        <Link className="button button--secondary" to="/dataset">
+        <Link className="button button--ghost" to="/dataset">
           Browse dataset
         </Link>
-        <a className="button button--ghost" href={getFieldAppUrl()}>
-          Open field PWA
-        </a>
       </section>
       <MarkdownContent markdown={page.body} />
     </article>

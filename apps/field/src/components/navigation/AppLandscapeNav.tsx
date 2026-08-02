@@ -30,7 +30,9 @@ export function AppLandscapeNav() {
           </button>
         ) : null}
         <div>
-          <p className="app-landscape-nav__eyebrow">MMAP Field</p>
+          <p className="app-landscape-nav__eyebrow">
+            <span className="app-context-chip">Field</span>
+          </p>
           <p className="app-landscape-nav__context">{contextTitle}</p>
         </div>
       </div>

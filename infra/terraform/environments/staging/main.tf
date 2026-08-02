@@ -7,7 +7,6 @@ locals {
   })
   computed_cors = length(var.cors_origins) > 0 ? var.cors_origins : compact([
     var.domain_name != "" ? "https://${var.web_subdomain}.${var.domain_name}" : null,
-    var.domain_name != "" ? "https://${var.field_subdomain}.${var.domain_name}" : null,
   ])
 }
 
@@ -89,7 +88,7 @@ module "monitoring" {
   name_prefix      = local.name_prefix
   api_service_name = module.api.service_name
   db_instance_id   = module.database.db_instance_id
-  health_check_url = var.enable_cdn ? "${module.cdn[0].field_url}/v1/health" : "${module.api.service_url}/v1/health"
+  health_check_url = var.enable_cdn ? "${module.cdn[0].web_url}/v1/health" : "${module.api.service_url}/v1/health"
   tags             = local.common_tags
 }
 

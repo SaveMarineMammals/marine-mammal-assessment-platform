@@ -23,7 +23,7 @@ describe('fetchDeployVersion', () => {
     });
 
     await expect(fetchDeployVersion(fetchImpl)).resolves.toBe('0.0.0+nogit.20250614.130000');
-    expect(fetchImpl).toHaveBeenCalledWith(expect.stringMatching(/^\/version\.json\?ts=\d+$/), {
+    expect(fetchImpl).toHaveBeenCalledWith(expect.stringMatching(/\/version\.json\?ts=\d+$/), {
       cache: 'no-store',
     });
   });

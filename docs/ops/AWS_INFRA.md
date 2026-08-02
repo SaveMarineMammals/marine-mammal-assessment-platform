@@ -12,13 +12,11 @@ flowchart TB
   end
 
   subgraph dns [Route 53]
-    FieldDNS[field.example.org]
-    WebDNS[www.example.org]
+    SiteDNS[staging.example.org]
   end
 
   subgraph edge [CloudFront + ACM]
-    FieldCF[Field distribution]
-    WebCF[Web distribution]
+    SiteCF[Single distribution]
   end
 
   subgraph static [S3 origins]
@@ -40,6 +38,17 @@ flowchart TB
     AdminSecret[API_ADMIN_TOKEN]
   end
 
+  FieldUser --> SiteDNS
+  PublicUser --> SiteDNS
+  SiteDNS --> SiteCF
+  SiteCF -->|"/"| WebBucket
+  SiteCF -->|"/field/app/*"| FieldBucket
+  SiteCF -->|"/v1/*"| API
+  API --> RDS
+  API --> DataBucket
+  API --> DBSecret
+  API --> AdminSecret
+
   subgraph cicd [GitHub Actions]
     GHA[Build push deploy]
     OIDC[OIDC to AWS]
@@ -49,19 +58,6 @@ flowchart TB
     Logs[Log groups]
     Alarms[Alarms + dashboard]
   end
-
-  FieldUser --> FieldDNS --> FieldCF
-  PublicUser --> WebDNS --> WebCF
-
-  FieldCF -->|"/ except /v1/*"| FieldBucket
-  WebCF -->|"/ except /v1/*"| WebBucket
-  FieldCF -->|"/v1/*"| API
-  WebCF -->|"/v1/*"| API
-
-  API --> RDS
-  API --> DataBucket
-  API --> DBSecret
-  API --> AdminSecret
 
   GHA --> OIDC --> FieldBucket
   GHA --> WebBucket
@@ -143,11 +139,11 @@ When verification is done:
 
 1. Set `enable_cdn = true` in `terraform.tfvars`
 2. `terraform apply`
-3. Store `WEB_CLOUDFRONT_ID` / `FIELD_CLOUDFRONT_ID` GitHub secrets from outputs
-4. Prefer same-origin field/web URLs; leave `VITE_API_BASE_URL` unset for production builds
+3. Store `WEB_CLOUDFRONT_ID` GitHub secret from `web_cloudfront_distribution_id` (single distribution)
+4. Prefer same-origin field/web URLs (`/field/app/`); leave `VITE_API_BASE_URL` unset for production builds
 
 Smoke tests always hit `api_service_url` (works with or without CDN). Deploy skips
-CloudFront invalidation when those secrets are empty.
+CloudFront invalidation when `WEB_CLOUDFRONT_ID` is empty.
 
 ## Repository layout
 
@@ -217,7 +213,7 @@ docs/ops/
   - Image from ECR (CI updates image; Terraform ignores image drift after create)
   - Tasks in public subnets; security group allows RDS :5432
   - Secrets Manager refs for `DATABASE_URL` and `API_ADMIN_TOKEN`
-  - `CORS_ORIGIN` = field + web CloudFront URLs
+  - `CORS_ORIGIN` = site CloudFront URL (custom domain) when configured
   - Health check path `/v1/health`
   - Auto scaling: `min_task_count = 1` (use `staging-hibernate.ts` to override at runtime)
 - CloudWatch log group `/{name_prefix}/api` (e.g. `/mmap-staging/api`)
@@ -225,10 +221,11 @@ docs/ops/
 
 ### `cdn`
 
-- Two CloudFront distributions (web, field) with:
-  - Default behavior → S3 OAC origin
-  - `/v1/*` behavior → ECS Express origin (HTTPS only)
-  - `/openapi*` → API origin (web only)
+- One CloudFront distribution (web + field) with:
+  - Default behavior → S3 web bucket (`/`, `/app`, `/docs`, …)
+  - `/field/app` and `/field/app/*` → S3 field bucket (keys under `field/app/`)
+  - `/v1/*` and `/openapi*` → ECS Express API origin (HTTPS only)
+  - CloudFront Function SPA fallback for web and field deep links
 - Default CloudFront certificate when `domain_name` is empty; ACM + Route 53 only when a custom domain is configured
 
 ### `monitoring`

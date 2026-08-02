@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { MarkdownContent } from '../components/MarkdownContent.js';
-import { getOpenApiUrl } from '../lib/config.js';
+import { getFieldAppUrl, getOpenApiUrl } from '../lib/config.js';
 import { getContentPage } from '../lib/content.js';
 
 export function DocsPage() {
@@ -17,11 +17,17 @@ export function DocsPage() {
         <h2>Quick links</h2>
         <ul className="link-list">
           <li>
-            <Link to="/docs/manatee-v1">Manatee v1 field guide</Link>
+            <Link to="/docs/manatee-v1">Manatee field guide</Link>
+          </li>
+          <li>
+            <a href={getFieldAppUrl()}>Open field app</a>
+          </li>
+          <li>
+            <Link to="/app">Install on a tablet</Link>
           </li>
           <li>
             <a href={getOpenApiUrl()} target="_blank" rel="noreferrer">
-              API OpenAPI docs
+              Technical API reference
             </a>
           </li>
         </ul>
