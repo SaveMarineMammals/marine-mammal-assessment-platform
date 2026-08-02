@@ -92,17 +92,19 @@ runs:
       if: inputs.command == 'apply'
       id: apply_outputs
       shell: pwsh
+      # Composite actions leave bare $vars unexpanded; do not use terraform -chdir=$cwd.
+      working-directory: ${{ inputs.working-directory }}
       run: |
-        $cwd = "${{ inputs.working-directory }}"
-        $enableCdn = ''
-        try {
-          $enableCdn = (terraform -chdir=$cwd output -raw enable_cdn).Trim()
-        } catch {
+        $enableCdn = (terraform output -raw enable_cdn 2>$null | Out-String).Trim()
+        if ($LASTEXITCODE -ne 0) {
           $enableCdn = 'false'
         }
         $id = ''
         if ($enableCdn -eq 'true') {
-          $id = (terraform -chdir=$cwd output -raw web_cloudfront_distribution_id).Trim()
+          $id = (terraform output -raw web_cloudfront_distribution_id | Out-String).Trim()
+          if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($id)) {
+            throw "enable_cdn=true but web_cloudfront_distribution_id is missing"
+          }
         }
         "web_cloudfront_id=$id" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
         Write-Output "web_cloudfront_id=$id (enable_cdn=$enableCdn)"
