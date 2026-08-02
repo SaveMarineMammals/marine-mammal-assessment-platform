@@ -16,14 +16,7 @@ CloudFront. Domain registration stays at an external registrar (e.g. Namecheap).
   - ACM certificate in **us-east-1** covering apex + `*.savemarinemammals.com`
   - DNS validation records in the hosted zone
 
-## Run via GitHub Actions (recommended)
-
-1. Configure the **`bootstrap`** environment with admin-only reviewers.
-2. Add `AWS_BOOTSTRAP_ACCESS_KEY_ID` and `AWS_BOOTSTRAP_SECRET_ACCESS_KEY` to that environment.
-3. Run **Infra bootstrap** (`infra-bootstrap.yml`) as a repository admin.
-4. Copy outputs into repository secrets (see [docs/ops/INFRA_PIPELINES.md](../../docs/ops/INFRA_PIPELINES.md)).
-
-## Run locally (alternative)
+## Run locally
 
 Requires AWS credentials with permission to create S3, DynamoDB, IAM, Route 53, and ACM
 resources.
@@ -35,6 +28,8 @@ copy terraform.tfvars.example terraform.tfvars
 terraform init
 terraform apply
 ```
+
+Copy outputs into repository secrets (see [docs/ops/INFRA_PIPELINES.md](../../docs/ops/INFRA_PIPELINES.md)).
 
 Bootstrap uses **local state** stored in `infra/bootstrap/terraform.tfstate` — back up this
 file; it is not stored in S3.

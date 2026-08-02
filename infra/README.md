@@ -4,7 +4,7 @@ Terraform layout for staging and production. Full architecture: [docs/ops/AWS_IN
 
 ## Quick start (operators)
 
-1. **Bootstrap** — run [Infra bootstrap](../../.github/workflows/infra-bootstrap.yml) once (admin only). Creates remote state, the Terraform CI OIDC role, the account-wide `AWSServiceRoleForECS` service-linked role, and optionally a Route 53 hosted zone + shared ACM cert (`enable_public_domain`; domain registered at Namecheap). See [bootstrap/README.md](bootstrap/README.md) and [docs/ops/INFRA_PIPELINES.md](../docs/ops/INFRA_PIPELINES.md).
+1. **Bootstrap** — run Terraform locally in [`infra/bootstrap/`](bootstrap/) once (admin AWS credentials). Creates remote state, the Terraform CI OIDC role, the account-wide `AWSServiceRoleForECS` service-linked role, and optionally a Route 53 hosted zone + shared ACM cert (`enable_public_domain`; domain registered at Namecheap). See [bootstrap/README.md](bootstrap/README.md) and [docs/ops/INFRA_PIPELINES.md](../docs/ops/INFRA_PIPELINES.md).
 2. **Enable CI** — set repository variable `TF_INFRA_ENABLED=true` and add Terraform secrets from bootstrap outputs.
 3. **Custom domain** — after bootstrap DNS + ACM, set `domain_name`, `hosted_zone_id`, and `acm_certificate_arn` in staging/production tfvars (see [DEPLOYMENT.md](../docs/ops/DEPLOYMENT.md#custom-domain-savemarinemammalscom)).
 4. **Deploy** — merge to `main` for progressive CD (staging infra+app+verify → production), or use **Release staging** from a feature branch.

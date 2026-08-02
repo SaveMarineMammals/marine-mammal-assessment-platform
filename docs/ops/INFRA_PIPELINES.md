@@ -1,16 +1,15 @@
 # Infrastructure CI/CD pipelines
 
-GitHub Actions workflows for AWS Terraform bootstrap, plan, progressive CD, and manual staging release.
+GitHub Actions workflows for AWS Terraform plan, progressive CD, and manual staging release.
 
 ## Workflows
 
-| Workflow                                                           | Trigger                      | Purpose                                                                                        |
-| ------------------------------------------------------------------ | ---------------------------- | ---------------------------------------------------------------------------------------------- |
-| [infra-bootstrap.yml](../../.github/workflows/infra-bootstrap.yml) | Manual (`workflow_dispatch`) | One-time S3 state bucket, DynamoDB lock table, Terraform OIDC role, ECS service-linked role    |
-| [ci.yml](../../.github/workflows/ci.yml)                           | Pull request → `main`        | Quality, CodeQL, build, integration, Terraform plan (staging + production); destroy warnings   |
-| [cd.yml](../../.github/workflows/cd.yml)                           | Push → `main`                | Progressive infra+app: staging apply → app → full live-verify → production apply → app → smoke |
-| [release-staging.yml](../../.github/workflows/release-staging.yml) | Manual                       | Staging infra+app+full live-verify from any branch/ref (does not touch production)             |
-| [deploy-aws.yml](../../.github/workflows/deploy-aws.yml)           | Manual                       | Emergency app-only redeploy to staging or production (infra must already exist)                |
+| Workflow                                                           | Trigger               | Purpose                                                                                        |
+| ------------------------------------------------------------------ | --------------------- | ---------------------------------------------------------------------------------------------- |
+| [ci.yml](../../.github/workflows/ci.yml)                           | Pull request → `main` | Quality, CodeQL, build, integration, Terraform plan (staging + production); destroy warnings   |
+| [cd.yml](../../.github/workflows/cd.yml)                           | Push → `main`         | Progressive infra+app: staging apply → app → full live-verify → production apply → app → smoke |
+| [release-staging.yml](../../.github/workflows/release-staging.yml) | Manual                | Staging infra+app+full live-verify from any branch/ref (does not touch production)             |
+| [deploy-aws.yml](../../.github/workflows/deploy-aws.yml)           | Manual                | Emergency app-only redeploy to staging or production (infra must already exist)                |
 
 Reusable workflows (called by CD / release / deploy):
 
@@ -27,7 +26,6 @@ Create environments in **Settings → Environments**:
 
 | Environment  | Protection                                     |
 | ------------ | ---------------------------------------------- |
-| `bootstrap`  | Required reviewers: repository **admins only** |
 | `staging`    | Optional reviewers; deploy secrets (see below) |
 | `production` | Optional reviewers (CD promotes automatically) |
 
@@ -53,14 +51,17 @@ After the first Terraform apply per environment, add GitHub secrets from `terraf
 
 Do **not** store a plaintext `DATABASE_URL` in GitHub. After a CloudFront distribution is **replaced**, refresh `WEB_CLOUDFRONT_ID` (and drop obsolete `FIELD_CLOUDFRONT_ID` if present) or emergency **Deploy AWS** invalidation will `AccessDenied` against the old id.
 
-### 2. Bootstrap secrets (environment: `bootstrap`)
+### 2. Bootstrap (local Terraform)
 
-| Secret                            | Description                                                          |
-| --------------------------------- | -------------------------------------------------------------------- |
-| `AWS_BOOTSTRAP_ACCESS_KEY_ID`     | IAM user/role access key with permission to create S3, DynamoDB, IAM |
-| `AWS_BOOTSTRAP_SECRET_ACCESS_KEY` | Matching secret key                                                  |
+Run bootstrap **locally** with admin AWS credentials (see [infra/bootstrap/README.md](../../infra/bootstrap/README.md)). There is no GitHub Actions bootstrap workflow.
 
-Run **Infra bootstrap** from Actions (admin only). Copy outputs into repository secrets:
+```powershell
+cd infra/bootstrap
+terraform init
+terraform apply
+```
+
+Copy outputs into repository secrets:
 
 | Secret                   | From bootstrap output    |
 | ------------------------ | ------------------------ |
@@ -68,7 +69,7 @@ Run **Infra bootstrap** from Actions (admin only). Copy outputs into repository 
 | `TF_STATE_BUCKET`        | `terraform_state_bucket` |
 | `TF_LOCK_TABLE`          | `terraform_lock_table`   |
 
-Bootstrap also creates **`AWSServiceRoleForECS`**, an account-wide prerequisite for ECS Express Gateway services. If that role already exists, import it into bootstrap state before re-running bootstrap (see [infra/bootstrap/README.md](../../infra/bootstrap/README.md)).
+Bootstrap also creates **`AWSServiceRoleForECS`**, an account-wide prerequisite for ECS Express Gateway services. If that role already exists, import it into bootstrap state before re-applying (see [infra/bootstrap/README.md](../../infra/bootstrap/README.md)).
 
 ### 3. Enable Terraform CI / CD jobs
 

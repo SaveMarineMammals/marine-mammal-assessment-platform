@@ -56,15 +56,15 @@ Applies use `-auto-approve` via `scripts/terraform-apply.ts`. State keys are iso
 
 3. **Read the error class**
 
-   | Error pattern                                  | Likely cause                                                                                             |
-   | ---------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-   | `Error acquiring the state lock`               | Stale lock from parallel/crashed job                                                                     |
-   | `AccessDenied` on S3/DynamoDB/IAM              | OIDC role or bootstrap secrets wrong                                                                     |
-   | `kms:TagResource` on `CreateKey`               | `mmap-terraform-ci` missing `kms:*`; re-run bootstrap or patch IAM                                       |
-   | `Credentials could not be loaded` in bootstrap | Missing `AWS_BOOTSTRAP_ACCESS_KEY_ID` / `AWS_BOOTSTRAP_SECRET_ACCESS_KEY` on the `bootstrap` environment |
-   | RDS `master_user_secret` / KMS                 | Customer CMK missing RDS/Secrets Manager key policy (see database module)                                |
-   | `InvalidParameterCombination`                  | RDS/ECS Express module input drift                                                                       |
-   | Destroy actions in plan                        | Resource rename or removed block                                                                         |
+   | Error pattern                                  | Likely cause                                                              |
+   | ---------------------------------------------- | ------------------------------------------------------------------------- |
+   | `Error acquiring the state lock`               | Stale lock from parallel/crashed job                                      |
+   | `AccessDenied` on S3/DynamoDB/IAM              | OIDC role or bootstrap secrets wrong                                      |
+   | `kms:TagResource` on `CreateKey`               | `mmap-terraform-ci` missing `kms:*`; re-run bootstrap or patch IAM        |
+   | `Credentials could not be loaded` in bootstrap | Local AWS credentials missing or invalid for bootstrap apply              |
+   | RDS `master_user_secret` / KMS                 | Customer CMK missing RDS/Secrets Manager key policy (see database module) |
+   | `InvalidParameterCombination`                  | RDS/ECS Express module input drift                                        |
+   | Destroy actions in plan                        | Resource rename or removed block                                          |
 
 4. **Inspect lock table (AWS)**
 
@@ -134,14 +134,14 @@ Applies use `-auto-approve` via `scripts/terraform-apply.ts`. State keys are iso
 2. **Missing bootstrap / wrong role**
 
    - Follow [INFRA_PIPELINES.md](../INFRA_PIPELINES.md) one-time setup.
-   - Re-run **Infra bootstrap** (admin) if bucket/table missing.
+   - Re-apply `infra/bootstrap` locally if bucket/table missing.
    - Update `AWS_TERRAFORM_ROLE_ARN`, `TF_STATE_BUCKET`, `TF_LOCK_TABLE` from bootstrap outputs.
 
 3. **Terraform CI role missing KMS permissions**
 
    Merging `kms:*` into `infra/bootstrap/main.tf` does **not** update the live IAM role until bootstrap apply succeeds.
 
-   - Ensure the **`bootstrap`** environment has `AWS_BOOTSTRAP_ACCESS_KEY_ID` and `AWS_BOOTSTRAP_SECRET_ACCESS_KEY`, then re-run **Infra bootstrap**.
+   - Re-apply `infra/bootstrap` locally with admin AWS credentials.
    - **Or** manually add `kms:*` to the `ManageProjectInfrastructure` statement on IAM role `mmap-terraform-ci` in the AWS console.
    - Re-run **Release staging** or merge to `main` to trigger **CD**.
 
@@ -190,7 +190,7 @@ Applies use `-auto-approve` via `scripts/terraform-apply.ts`. State keys are iso
 
    Older stacks may still reference App Runner service / VPC connector resources removed from HCL after the ECS Express migration. The Terraform CI role includes `apprunner:*` in bootstrap so apply can destroy leftovers.
 
-   - Re-run **Infra bootstrap** so `mmap-terraform-ci` picks up the policy, **or** temporarily attach `apprunner:*` to that role in IAM.
+   - Re-apply `infra/bootstrap` locally so `mmap-terraform-ci` picks up the policy, **or** temporarily attach `apprunner:*` to that role in IAM.
    - Re-run staging apply; Terraform should destroy the old App Runner resources.
    - After state is clean, `apprunner:*` can remain for safety or be removed from bootstrap.
 
@@ -243,7 +243,7 @@ Destroying staging schedules `mmap-staging/api-admin-token` for deletion (defaul
 
     First ECS use in an account requires the AWS-managed role `AWSServiceRoleForECS`. **Bootstrap** creates and owns this role; the api module only reads it with `data.aws_iam_role.ecs_service_linked`.
 
-    - **New accounts:** re-run **Infra bootstrap** so the role is created before staging apply.
+    - **New accounts:** re-apply `infra/bootstrap` locally so the role is created before staging apply.
     - **Role already exists outside bootstrap state:** import into bootstrap, then apply:
 
       ```powershell
@@ -350,6 +350,6 @@ Destroying staging schedules `mmap-staging/api-admin-token` for deletion (defaul
 | Manual staging release      | `.github/workflows/release-staging.yml`                                                |
 | Live verify script          | `scripts/live-verify.ts`                                                               |
 | CI plan job                 | `.github/workflows/ci.yml` (`terraform-plan`)                                          |
-| Bootstrap                   | `infra/bootstrap/`, `.github/workflows/infra-bootstrap.yml`                            |
+| Bootstrap                   | `infra/bootstrap/` (local Terraform apply)                                             |
 | Operator quick start        | [infra/README.md](../../../infra/README.md)                                            |
 | Architecture                | [AWS_INFRA.md](../AWS_INFRA.md)                                                        |
