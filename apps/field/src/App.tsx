@@ -27,7 +27,7 @@ import type { AssessmentWithMeasurements } from './db/types.js';
 
 import { useSyncRefresh } from './hooks/useSyncRefresh.js';
 
-import { useOrientationLayout } from './hooks/useOrientationLayout.js';
+import { useViewportLayout } from './hooks/useViewportLayout.js';
 
 import { UpdateAvailableBanner } from './components/UpdateAvailableBanner.js';
 
@@ -37,7 +37,7 @@ import { ProtocolGuidePage } from './pages/ProtocolGuidePage.js';
 function AssessmentListPage() {
   const navigate = useNavigate();
 
-  const layout = useOrientationLayout();
+  const { shell } = useViewportLayout();
 
   const { bumpRefresh } = useNavigationRefresh();
 
@@ -74,7 +74,7 @@ function AssessmentListPage() {
   ) : (
     <AssessmentList
       assessments={assessments}
-      showCreateButton={layout === 'landscape'}
+      showCreateButton={shell === 'landscape'}
       onSelect={(id) => navigate(`/assessments/${id}`)}
       onCreate={() => navigate('/assessments/new')}
     />
@@ -105,7 +105,7 @@ function AssessmentDetailPage() {
 
   const navigate = useNavigate();
 
-  const layout = useOrientationLayout();
+  const { shell } = useViewportLayout();
 
   const { bumpRefresh } = useNavigationRefresh();
 
@@ -169,7 +169,7 @@ function AssessmentDetailPage() {
 
   return (
     <AssessmentDetail
-      className={layout === 'portrait' ? 'assessment-detail--nav-back' : undefined}
+      className={shell === 'portrait' ? 'assessment-detail--nav-back' : undefined}
       data={data}
       onBack={() => navigate('/')}
       onUpdated={loadAssessment}

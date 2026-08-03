@@ -138,7 +138,7 @@ When you add a new **shared** package, wire it with `"workspace:*"` in consumers
 ### `@mmap/field`
 
 - Offline-first: assume no network; queue writes to IndexedDB and sync later.
-- UI must work on tablets (touch targets, portrait/landscape layouts).
+- UI must work on **phones and tablets** — portrait shell for narrow/portrait viewports; landscape shell for tablet landscape; compact top bar on phones (see [BRAND_AND_UX.md](BRAND_AND_UX.md)).
 - Protocol guide markdown lives in `docs/protocols/` and is bundled for in-app help.
 - Use `@mmap/schema` form definitions for dynamic forms; avoid hardcoding field lists.
 

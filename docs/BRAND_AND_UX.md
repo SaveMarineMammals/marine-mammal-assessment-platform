@@ -36,3 +36,30 @@ Do not blur the modes (e.g. dark marketing hero that looks like the PWA). The li
 ## PWA scope
 
 The field service worker is scoped to `/field/app/` only. It must never control `/`, `/app`, or `/docs`.
+
+## Field personas and responsive layout
+
+Field biologists use two primary device classes in Belize-style workflows. Layout must work for **both** without horizontal scrolling or overlapping chrome.
+
+| Persona              | Typical device                         | Viewport                                     | Shell           | Navigation                                        |
+| -------------------- | -------------------------------------- | -------------------------------------------- | --------------- | ------------------------------------------------- |
+| **Phone field tech** | Modern phone (e.g. Galaxy S24 Ultra)   | ≤639px portrait, or any orientation ≤767px   | Portrait shell  | Top bar (two-row compact utilities) + bottom tabs |
+| **Tablet boat crew** | Rugged tablet, often landscape on deck | ≥768px landscape, or ≥1024px any orientation | Landscape shell | Header tabs + inline utilities                    |
+
+### Layout rules
+
+1. **Portrait shell** when `(orientation: portrait)` **or** `max-width: 767px` — keeps bottom navigation on phones held landscape and narrow portrait tablets.
+2. **Landscape shell** when `(orientation: landscape)` and `min-width: 768px` — horizontal tabs for boat/tablet workflows.
+3. **Compact top bar** when portrait shell and `max-width: 639px` — two-row grid: back + title on row 1; Field chip + icon utilities on row 2. Mission-site and connectivity labels collapse to icons; page titles ellipsize instead of overlapping.
+4. **No horizontal document scroll** — protocol guide markdown, tables, and panels use `max-width: 100%` with table `overflow-x: auto` inside the content column.
+5. **Touch targets** — minimum 48px (`--touch-min`); 56px in glove mode. Safe-area padding on the bottom nav.
+6. **PWA orientation** — manifest `orientation: any` so tablets can use landscape without OS fighting the install prompt.
+
+### Visual checks
+
+Post-deploy Playwright journeys (staging) exercise phone portrait, tablet portrait, and tablet landscape viewports:
+
+- Assessment list, new assessment, sync, and protocol guide load without horizontal overflow.
+- Top-bar controls do not overlap.
+
+See `e2e/field-ui/` and `scripts/field-ui-verify.ts`.

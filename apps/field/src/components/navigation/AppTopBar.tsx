@@ -2,6 +2,7 @@ import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { getMissionSiteUrl } from '../../config.js';
 import { HelpLink } from '../HelpLink.js';
 import { useOnlineStatus } from '../../hooks/useOnlineStatus.js';
+import { useViewportLayout } from '../../hooks/useViewportLayout.js';
 import { useNavigationContext } from './NavigationContext.js';
 import { NAV_ITEMS, getDefaultPageTitle } from './nav-config.js';
 import { useSyncNavBadge } from './useSyncNavBadge.js';
@@ -11,6 +12,7 @@ export function AppTopBar() {
   const navigate = useNavigate();
   const online = useOnlineStatus();
   const { pageNav } = useNavigationContext();
+  const { compact } = useViewportLayout();
 
   const title = pageNav.title ?? getDefaultPageTitle(pathname);
   const showBack =
@@ -18,7 +20,10 @@ export function AppTopBar() {
   const backTo = pageNav.backTo ?? '/';
 
   return (
-    <header className="app-top-bar" aria-label="Page header">
+    <header
+      className={`app-top-bar${compact ? ' app-top-bar--compact' : ''}`}
+      aria-label="Page header"
+    >
       <div className="app-top-bar__start">
         {showBack ? (
           <button
@@ -36,8 +41,11 @@ export function AppTopBar() {
       </div>
       <div className="app-top-bar__end">
         <div className="app-top-bar__context">
-          <a className="app-mission-link" href={getMissionSiteUrl()}>
-            Mission site
+          <a className="app-mission-link" href={getMissionSiteUrl()} aria-label="Open mission site">
+            <span className="app-mission-link__text">Mission site</span>
+            <span className="app-mission-link__icon" aria-hidden="true">
+              ↗
+            </span>
           </a>
         </div>
         <HelpLink from={pathname} className="app-top-bar__help" />
