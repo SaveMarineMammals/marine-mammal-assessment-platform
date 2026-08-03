@@ -118,6 +118,14 @@ resource "aws_cloudfront_function" "spa_router" {
   })
 }
 
+resource "aws_cloudfront_function" "openapi_rewrite" {
+  name    = "${var.name_prefix}-openapi-rewrite"
+  runtime = "cloudfront-js-2.0"
+  comment = "Rewrite /openapi* to /docs* for API Swagger UI (matches local nginx/Vite proxy)"
+  publish = true
+  code    = file("${path.module}/openapi-rewrite.js")
+}
+
 resource "aws_cloudfront_distribution" "site" {
   enabled             = true
   comment             = "${var.name_prefix} web + field PWA"
@@ -192,6 +200,11 @@ resource "aws_cloudfront_distribution" "site" {
     response_headers_policy_id = (
       local.use_custom_domain ? aws_cloudfront_response_headers_policy.security[0].id : null
     )
+
+    function_association {
+      event_type   = "viewer-request"
+      function_arn = aws_cloudfront_function.openapi_rewrite.arn
+    }
   }
 
   ordered_cache_behavior {
