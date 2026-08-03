@@ -30,6 +30,8 @@ select {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  overflow-x: clip;
+  max-width: 100%;
 }
 
 .app-shell__body {
@@ -37,6 +39,7 @@ select {
   display: flex;
   flex-direction: column;
   min-height: 0;
+  min-width: 0;
 }
 
 .app-top-bar,
@@ -72,10 +75,11 @@ select {
 .app-top-bar {
   align-items: center;
   justify-content: space-between;
-  gap: 0.75rem;
+  gap: 0.5rem;
   padding: 0.75rem 1rem;
   background: var(--surface);
   border-bottom: 2px solid var(--border);
+  min-width: 0;
 }
 
 .app-top-bar__start {
@@ -83,10 +87,13 @@ select {
   align-items: center;
   gap: 0.35rem;
   min-width: 0;
-  flex: 1;
+  flex: 1 1 auto;
 }
 
 .app-top-bar__back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
   flex-shrink: 0;
   min-height: var(--touch-min);
   padding-inline: 0.65rem;
@@ -94,6 +101,8 @@ select {
 
 .app-top-bar__title {
   margin: 0;
+  min-width: 0;
+  flex: 1 1 auto;
   font-size: 1.15rem;
   white-space: nowrap;
   overflow: hidden;
@@ -111,6 +120,7 @@ select {
 .app-context-chip {
   display: inline-flex;
   align-items: center;
+  flex-shrink: 0;
   min-height: 1.75rem;
   padding: 0 0.55rem;
   border-radius: var(--radius-md);
@@ -137,7 +147,9 @@ select {
 .connectivity-indicator {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.4rem;
+  min-width: var(--touch-min);
   min-height: var(--touch-min);
   padding: 0 0.65rem;
   border-radius: 999px;
@@ -151,6 +163,7 @@ select {
   width: 0.65rem;
   height: 0.65rem;
   border-radius: 50%;
+  flex-shrink: 0;
 }
 
 .connectivity-indicator__dot--online {
@@ -172,7 +185,8 @@ select {
   display: flex;
   align-items: center;
   gap: 0.35rem;
-  flex-shrink: 0;
+  flex: 0 0 auto;
+  min-width: 0;
 }
 
 .help-link {
@@ -263,6 +277,9 @@ select {
 }
 
 .app-landscape-nav__back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
   min-height: var(--touch-min);
   flex-shrink: 0;
 }
@@ -477,6 +494,7 @@ select {
   margin: 0 auto;
   display: grid;
   gap: 1rem;
+  min-width: 0;
 }
 
 .panel {
@@ -484,19 +502,32 @@ select {
   border: 2px solid var(--border);
   border-radius: 1rem;
   padding: 1rem;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .panel__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
   margin-bottom: 1rem;
+  min-width: 0;
 }
 
 .panel__header h2 {
   margin: 0;
   font-size: 1.25rem;
+  min-width: 0;
+}
+
+.page-header {
+  min-width: 0;
+}
+
+.page-header h2 {
+  overflow-wrap: anywhere;
 }
 
 .empty-state {
@@ -785,9 +816,17 @@ html.glove-mode .button {
   gap: 0.75rem;
 }
 
+.markdown {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
 .markdown h2,
 .markdown h3 {
   margin-top: 1.25rem;
+  overflow-wrap: anywhere;
 }
 
 .markdown p,
@@ -795,10 +834,19 @@ html.glove-mode .button {
   color: var(--text);
 }
 
-.markdown table {
+.table-wrap {
   width: 100%;
-  border-collapse: collapse;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
   margin: 1rem 0;
+}
+
+.markdown table {
+  width: max-content;
+  min-width: 100%;
+  border-collapse: collapse;
+  margin: 0;
 }
 
 .markdown th,
@@ -806,6 +854,7 @@ html.glove-mode .button {
   border: 1px solid var(--border);
   padding: 0.5rem 0.75rem;
   text-align: left;
+  white-space: nowrap;
 }
 
 .markdown blockquote {
@@ -813,6 +862,7 @@ html.glove-mode .button {
   padding-left: 1rem;
   border-left: 3px solid var(--accent);
   color: var(--text-muted);
+  min-width: 0;
 }
 
 .mermaid-diagram {
@@ -822,16 +872,22 @@ html.glove-mode .button {
   border-radius: 0.75rem;
   background: var(--surface-elevated);
   overflow-x: auto;
+  max-width: 100%;
 }
 
 .mermaid-diagram__canvas {
   display: flex;
   justify-content: center;
+  min-width: 0;
 }
 
 .mermaid-diagram__canvas svg {
   max-width: 100%;
   height: auto;
+}
+
+.protocol-guide {
+  min-width: 0;
 }
 
 .protocol-guide .page-header h2 {
@@ -978,5 +1034,119 @@ html.glove-mode .button {
 @media (min-width: 640px) {
   .field-row {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Phone portrait: progressive chrome disclosure for ~360–480px CSS widths */
+@media (orientation: portrait) and (max-width: 480px) {
+  .app-top-bar {
+    gap: 0.35rem;
+    padding: 0.6rem 0.65rem;
+  }
+
+  .app-top-bar__start {
+    gap: 0.25rem;
+  }
+
+  .app-top-bar__back {
+    padding-inline: 0.5rem;
+  }
+
+  .app-top-bar__back-label {
+    display: none;
+  }
+
+  .app-top-bar__title {
+    font-size: 1rem;
+  }
+
+  .app-top-bar__context,
+  .app-mission-link {
+    display: none;
+  }
+
+  .connectivity-indicator {
+    padding: 0;
+    gap: 0;
+  }
+
+  .connectivity-indicator__label {
+    display: none;
+  }
+
+  .app-main {
+    padding: 0.75rem 0.75rem 1.5rem;
+  }
+
+  .panel {
+    padding: 0.85rem;
+  }
+
+  .panel__header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .app-bottom-nav__item {
+    font-size: 0.8rem;
+    padding-inline: 0.15rem;
+  }
+
+  .markdown th,
+  .markdown td {
+    padding: 0.4rem 0.55rem;
+    font-size: 0.9rem;
+  }
+}
+
+/* Compact phone landscape: keep tabs usable without horizontal page scroll */
+@media (orientation: landscape) and (max-width: 900px) {
+  .app-landscape-nav {
+    flex-wrap: wrap;
+    gap: 0.5rem 0.75rem;
+    padding: 0.55rem 0.75rem;
+  }
+
+  .app-landscape-nav__back-label {
+    display: none;
+  }
+
+  .app-landscape-nav__tabs {
+    order: 3;
+    flex: 1 1 100%;
+    justify-content: flex-start;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 0.15rem;
+  }
+
+  .app-landscape-nav__tab {
+    flex: 0 0 auto;
+    padding: 0 0.7rem;
+  }
+
+  .app-landscape-nav__utilities {
+    margin-left: auto;
+  }
+
+  .app-main {
+    padding-inline: 0.75rem;
+  }
+}
+
+/* Tablet and wider portrait: restore fuller labels and breathing room */
+@media (orientation: portrait) and (min-width: 768px) {
+  .app-top-bar {
+    gap: 0.75rem;
+    padding: 0.85rem 1.25rem;
+  }
+
+  .app-top-bar__title {
+    font-size: 1.2rem;
+  }
+
+  .app-main {
+    padding: 1.25rem 1.5rem 2rem;
   }
 }

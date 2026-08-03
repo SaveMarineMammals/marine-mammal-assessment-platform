@@ -25,8 +25,10 @@ export function AppTopBar() {
             type="button"
             className="app-top-bar__back button button--ghost"
             onClick={() => navigate(backTo)}
+            aria-label="Back"
           >
-            ← Back
+            <span aria-hidden="true">←</span>
+            <span className="app-top-bar__back-label">Back</span>
           </button>
         ) : null}
         <span className="app-context-chip" title="MMAP Field">
@@ -45,6 +47,7 @@ export function AppTopBar() {
           to="/sync"
           className="app-top-bar__connectivity connectivity-indicator"
           aria-label={online ? 'Server reachable — open sync' : 'Server unreachable — open sync'}
+          title={online ? 'Online' : 'Offline'}
         >
           <span
             className={`connectivity-indicator__dot ${online ? 'connectivity-indicator__dot--online' : 'connectivity-indicator__dot--offline'}`}

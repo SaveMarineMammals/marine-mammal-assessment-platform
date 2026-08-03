@@ -7,7 +7,7 @@ description: CMARI-style Belize manatee assessment workflow for field biologists
 
 ## Overview
 
-This guide describes the CMARI-style Belize manatee assessment workflow supported by the Marine Mammal Assessment Platform (MMAP). It is written for biologists and field technicians using the offline field app on tablets during multi-boat operations.
+This guide describes the CMARI-style Belize manatee assessment workflow supported by the Marine Mammal Assessment Platform (MMAP). It is written for biologists and field technicians using the offline field app on tablets and phones during multi-boat operations.
 
 ## Pre-capture coordination
 

@@ -138,9 +138,11 @@ When you add a new **shared** package, wire it with `"workspace:*"` in consumers
 ### `@mmap/field`
 
 - Offline-first: assume no network; queue writes to IndexedDB and sync later.
-- UI must work on tablets (touch targets, portrait/landscape layouts).
-- Protocol guide markdown lives in `docs/protocols/` and is bundled for in-app help.
+- UI must work on **phones and tablets** (touch targets, portrait/landscape, progressive chrome disclosure). See [BRAND_AND_UX.md](BRAND_AND_UX.md) personas and viewport rules.
+- Top-bar and help/protocol content must not overlap or force page-level horizontal scroll on ~360–430px phone widths.
+- Protocol guide markdown lives in `docs/protocols/` and is bundled for in-app help; wrap wide tables/diagrams for local horizontal scroll only.
 - Use `@mmap/schema` form definitions for dynamic forms; avoid hardcoding field lists.
+- Staging post-deploy UI journeys (`apps/field/e2e`) cover phone + tablet smoke paths after release.
 
 ### `@mmap/web`
 
@@ -192,6 +194,7 @@ pnpm test:integration -- --database-url postgresql://mmap:mmap@localhost:5432/mm
 | New or changed validation / schema rules    | Unit tests in `@mmap/schema`; update fixtures                                        |
 | API sync or public endpoints                | Unit tests in `@mmap/api`; integration tests if persistence or HTTP contract changes |
 | Field sync, repository, or offline behavior | Unit tests in `@mmap/field`; integration test if end-to-end sync path affected       |
+| Field responsive chrome / protocol help UX  | Unit coverage where practical; update `apps/field/e2e` phone+tablet journeys         |
 | Bug fix                                     | Regression test covering the fixed behavior                                          |
 | Pure refactor (no behavior change)          | Existing tests must still pass; add tests only if coverage was missing               |
 | Docs-only change                            | No new tests; still run format/lint if markdown tooling applies                      |

@@ -86,6 +86,17 @@ jobs:
         shell: pwsh
         run: pnpm exec tsx scripts/live-verify.ts ${{ inputs.environment }} --mode ${{ inputs.mode }}
 
+      - name: Install Playwright Chromium
+        if: inputs.mode == 'full' && inputs.environment == 'staging'
+        shell: pwsh
+        working-directory: apps/field
+        run: pnpm exec playwright install chromium --with-deps
+
+      - name: Field UI journeys (phone + tablet)
+        if: inputs.mode == 'full' && inputs.environment == 'staging'
+        shell: pwsh
+        run: pnpm exec tsx scripts/field-ui-verify.ts ${{ inputs.environment }}
+
       - name: Diagnose ECS Express (on failure)
         if: failure() && inputs.environment == 'staging'
         shell: pwsh

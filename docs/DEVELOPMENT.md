@@ -161,6 +161,22 @@ pnpm --filter @mmap/api test:integration -- --database-url postgresql://mmap:mma
 pnpm --filter @mmap/field test:integration -- --database-url postgresql://mmap:mmap@localhost:5432/mmap
 ```
 
+### Field UI journeys (phone + tablet)
+
+Playwright journeys cover Galaxy-class phone and tablet viewports. They run automatically after staging deploy (`scripts/field-ui-verify.ts`). Locally:
+
+```bash
+pnpm --filter @mmap/field build
+pnpm --filter @mmap/field exec playwright install chromium
+pnpm --filter @mmap/field test:e2e
+```
+
+Against a deployed field origin:
+
+```bash
+FIELD_BASE_URL=https://staging.example.com/field/app pnpm --filter @mmap/field test:e2e
+```
+
 ### What CI runs on every PR
 
 See [.github/workflows/ci.yml](../.github/workflows/ci.yml). Full style and testing policy: [CODING_STANDARDS.md](CODING_STANDARDS.md).
@@ -171,7 +187,7 @@ See [.github/workflows/ci.yml](../.github/workflows/ci.yml). Full style and test
 4. **Integration** — API + field sync tests against PostgreSQL
 5. **Terraform plan** — Staging + production (after quality + CodeQL; skips successfully when `TF_INFRA_ENABLED` is unset)
 
-Merge to `main` triggers progressive **CD** (staging infra+app+full live-verify → production). See [ops/INFRA_PIPELINES.md](ops/INFRA_PIPELINES.md).
+Merge to `main` triggers progressive **CD** (staging infra+app+full live-verify+field UI journeys → production). See [ops/INFRA_PIPELINES.md](ops/INFRA_PIPELINES.md).
 
 Run the same checks locally before opening a PR:
 

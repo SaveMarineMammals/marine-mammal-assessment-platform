@@ -152,16 +152,17 @@ When adding or renaming packages, update pipelines as follows:
 
 ## Common tasks
 
-| Task                 | Location                                                                    |
-| -------------------- | --------------------------------------------------------------------------- |
-| Add assessment field | `packages/schema/schemas/`, form definitions, fixtures, field/API consumers |
-| Change sync payload  | `apps/api/src/services/sync-batch.ts`, `apps/field/src/sync/`               |
-| Field protocol guide | `docs/protocols/manatee-v1-field-guide.md` (bundled in field app)           |
-| Public dataset API   | `apps/api/src/services/public-dataset.ts`                                   |
-| App deploy workflow  | `.github/workflows/_deploy-app.yml`                                         |
-| CI workflow          | `.github/workflows/ci.yml`                                                  |
-| CD workflow          | `.github/workflows/cd.yml`                                                  |
-| Branch protection    | `.github/rulesets/main-branch-protection.json`                              |
+| Task                    | Location                                                                    |
+| ----------------------- | --------------------------------------------------------------------------- |
+| Add assessment field    | `packages/schema/schemas/`, form definitions, fixtures, field/API consumers |
+| Change sync payload     | `apps/api/src/services/sync-batch.ts`, `apps/field/src/sync/`               |
+| Field protocol guide    | `docs/protocols/manatee-v1-field-guide.md` (bundled in field app)           |
+| Public dataset API      | `apps/api/src/services/public-dataset.ts`                                   |
+| App deploy workflow     | `.github/workflows/_deploy-app.yml`                                         |
+| Staging field UI verify | `scripts/field-ui-verify.ts` (Playwright phone/tablet journeys)             |
+| CI workflow             | `.github/workflows/ci.yml`                                                  |
+| CD workflow             | `.github/workflows/cd.yml`                                                  |
+| Branch protection       | `.github/rulesets/main-branch-protection.json`                              |
 
 ## Git and PR expectations
 
