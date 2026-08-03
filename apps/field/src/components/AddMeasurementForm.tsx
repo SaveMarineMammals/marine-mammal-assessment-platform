@@ -163,28 +163,16 @@ export function AddMeasurementForm({
     }
     return field;
   });
+  const recordedAtField = commonFields.find((field) => field.name === 'recorded_at');
+  const optionalFields = commonFields.filter((field) => field.name !== 'recorded_at');
 
   return (
     <form className="measurement-form" onSubmit={handleSubmit} noValidate>
-      <p className="hint">
-        Recording in local time (
-        {formatLocalTimeShort(
-          datetimeLocalValueToUtc(getFieldString(values, 'recorded_at')),
-          latitude,
-          longitude,
-        )}
-        )
-      </p>
-
       <ValidationBanner
         errors={validationErrors}
         warnings={validationWarnings}
         summary="Review the measurement fields before saving."
       />
-
-      {commonFields.map((field) => (
-        <SchemaField key={field.name} field={field} values={values} onChange={setValues} />
-      ))}
 
       {measurementSection.widget === 'blood_pressure' ? (
         <div className="field-row">
@@ -235,13 +223,44 @@ export function AddMeasurementForm({
             onChange={(event) => setValues({ ...values, value: event.target.value })}
             required
             aria-required
+            autoFocus
           />
         </label>
       )}
 
+      {recordedAtField ? (
+        <SchemaField
+          key={recordedAtField.name}
+          field={recordedAtField}
+          values={values}
+          onChange={setValues}
+        />
+      ) : null}
+
+      <p className="hint">
+        Recording in local time (
+        {formatLocalTimeShort(
+          datetimeLocalValueToUtc(getFieldString(values, 'recorded_at')),
+          latitude,
+          longitude,
+        )}
+        )
+      </p>
+
+      {optionalFields.length > 0 ? (
+        <details className="optional-fields">
+          <summary>Method &amp; notes (optional)</summary>
+          <div className="optional-fields__content">
+            {optionalFields.map((field) => (
+              <SchemaField key={field.name} field={field} values={values} onChange={setValues} />
+            ))}
+          </div>
+        </details>
+      ) : null}
+
       {error ? <p className="form-error">{error}</p> : null}
 
-      <div className="form-actions">
+      <div className="form-actions form-actions--inline">
         <button type="button" className="button button--ghost" onClick={onCancel}>
           Cancel
         </button>
