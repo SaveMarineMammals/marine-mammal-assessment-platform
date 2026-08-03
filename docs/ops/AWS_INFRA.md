@@ -227,8 +227,9 @@ docs/ops/
 - One CloudFront distribution (web + field) with:
   - Default behavior → S3 web bucket (`/`, `/app`, `/docs`, …)
   - `/field/app` and `/field/app/*` → S3 field bucket (keys under `field/app/`)
-  - `/v1/*` and `/openapi*` → ECS Express API origin (HTTPS only); `/openapi*` is rewritten to
-    `/docs*` (API Swagger `routePrefix`) so it matches local nginx/Vite
+  - `/v1/*` and `/api/*` → ECS Express API origin (HTTPS only); OpenAPI Swagger UI is at
+    `/api/docs` so UI HTML and `/api/docs/static/*` assets stay on the API origin (web SPA keeps `/docs`)
+  - Legacy `/openapi*` → 301 `/api/docs*`
   - CloudFront Function SPA fallback for web and field deep links; production apex → www 301
   - Response headers policy (HSTS) when a custom domain is configured
 - Default CloudFront certificate when `domain_name` is empty

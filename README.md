@@ -65,7 +65,7 @@ flowchart TB
 | **@mmap/schema**   | JSON Schema + Zod validators, protocol registry, form definitions                           |
 | **@mmap/geo-time** | UTC storage with timezone-aware display at capture coordinates                              |
 
-Frontends proxy `/v1` (and `/openapi` on web) to the API inside Docker, so browsers use same-origin requests without extra CORS configuration.
+Frontends proxy `/v1` and `/api` to the API inside Docker, so browsers use same-origin requests without extra CORS configuration.
 
 ## Quick start
 
@@ -89,7 +89,7 @@ docker compose up -d --build
 | Field app     | http://localhost:5173/field/app/        |
 | Public web    | http://localhost:5173                   |
 | API health    | http://localhost:3001/v1/health         |
-| API OpenAPI   | http://localhost:3001/docs              |
+| API OpenAPI   | http://localhost:3001/api/docs          |
 | PostgreSQL    | `localhost:5432` (user/pass/db: `mmap`) |
 | MinIO API     | http://localhost:9000                   |
 | MinIO console | http://localhost:9001                   |

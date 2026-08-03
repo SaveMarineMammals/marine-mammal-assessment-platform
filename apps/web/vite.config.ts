@@ -9,13 +9,6 @@ const apiProxy = {
   changeOrigin: true,
 };
 
-/** Proxies OpenAPI/Swagger without colliding with web SPA routes under /docs. */
-const openApiProxy = {
-  target: apiProxyTarget,
-  changeOrigin: true,
-  rewrite: (path: string) => path.replace(/^\/openapi/, '/docs'),
-};
-
 export default defineConfig({
   plugins: [react()],
   appType: 'spa',
@@ -28,7 +21,8 @@ export default defineConfig({
     },
     proxy: {
       '/v1': apiProxy,
-      '/openapi': openApiProxy,
+      // OpenAPI/Swagger UI + static assets (API routePrefix /api/docs).
+      '/api': apiProxy,
     },
   },
   preview: {
@@ -36,7 +30,7 @@ export default defineConfig({
     strictPort: true,
     proxy: {
       '/v1': apiProxy,
-      '/openapi': openApiProxy,
+      '/api': apiProxy,
     },
   },
   build: {

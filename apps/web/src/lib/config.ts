@@ -102,6 +102,6 @@ export function getExportUrl(format: 'csv' | 'jsonl'): string {
 
 export function getOpenApiUrl(): string {
   const base = getApiBaseUrl();
-  // Dev/preview proxy exposes API Swagger at /openapi (see vite.config.ts).
-  return base ? `${base}/docs` : '/openapi';
+  // Same-origin /api/docs is proxied to the API (vite/nginx/CloudFront).
+  return base ? `${base}/api/docs` : '/api/docs';
 }

@@ -51,7 +51,7 @@ Last updated: 2026-08-02
 | APP-04 | High     | Full-precision coordinates on public API                    | Coordinate fuzzing/reduction for public export                           | open     |
 | APP-05 | High     | No rate limits or batch size caps                           | `@fastify/rate-limit`, body limits, max batch items                      | open     |
 | APP-06 | Medium   | Admin routes on public service; static `x-admin-token`      | Disable on public origin or use constant-time compare + rotation         | open     |
-| APP-07 | Medium   | OpenAPI `/docs` exposed in production                       | Disable or protect admin-only                                            | open     |
+| APP-07 | Medium   | OpenAPI `/api/docs` exposed in production                   | Disable or protect admin-only                                            | open     |
 | APP-08 | Medium   | Unbounded string fields in schema                           | Add `maxLength` to Zod + JSON Schema                                     | open     |
 | APP-09 | Low      | Field IndexedDB / backups unencrypted                       | Document device encryption expectations; optional backup encryption      | accepted |
 | APP-10 | Low      | Mermaid `securityLevel: 'loose'`                            | Keep protocol content trusted-only; sanitize if user content added       | accepted |

@@ -33,4 +33,17 @@ describe('@mmap/api', () => {
 
     await app.close();
   });
+
+  it('serves OpenAPI Swagger UI under /api/docs', async () => {
+    const app = await createApp({ enableAdminRoutes: false });
+
+    const response = await app.inject({ method: 'GET', url: '/api/docs/' });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.headers['content-type']).toMatch(/text\/html/);
+    // Relative asset URLs resolve under /api/docs/* (CDN/nginx route that prefix to the API).
+    expect(response.body).toContain('./static/swagger-ui.css');
+
+    await app.close();
+  });
 });
