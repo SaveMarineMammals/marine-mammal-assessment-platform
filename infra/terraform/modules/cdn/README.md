@@ -8,13 +8,15 @@ routing to ECS Express.
 - `aws_cloudfront_origin_access_control` — S3 origins
 - `aws_cloudfront_function.spa_router` — viewer-request SPA fallback for `/` and `/field/app/`;
   optional apex → canonical host 301 redirect
+- `aws_cloudfront_function.openapi_rewrite` — viewer-request rewrite `/openapi*` → `/docs*` so
+  same-origin Swagger UI matches local nginx/Vite (API serves docs at `/docs`)
 - `aws_cloudfront_response_headers_policy.security` — HSTS and baseline headers when a custom
   domain is configured
 - `aws_cloudfront_distribution.site`:
   - Default → S3 web bucket (`/`, `/app`, `/docs`, …)
   - `/field/app` and `/field/app/*` → S3 field bucket (object keys under `field/app/`)
   - `/v1/*` → ECS Express API origin (HTTPS)
-  - `/openapi*` → ECS Express API
+  - `/openapi*` → ECS Express API (URI rewritten to `/docs*` before origin)
 - Route 53 alias `A`/`AAAA` records when `domain_name` is set
 - S3 bucket policies granting CloudFront OAC read
 
