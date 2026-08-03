@@ -62,7 +62,9 @@ export async function createApp(options: CreateAppOptions = {}): Promise<Fastify
   });
 
   await app.register(swaggerUi, {
-    routePrefix: '/docs',
+    // Under /api/* so same-origin CDN/nginx can route docs + static assets to the API
+    // without colliding with the web SPA at /docs.
+    routePrefix: '/api/docs',
   });
 
   app.get('/v1/health', async () => ({
@@ -80,7 +82,7 @@ export async function createApp(options: CreateAppOptions = {}): Promise<Fastify
   app.get('/', async () => ({
     name: 'Marine Mammal Assessment Platform API',
     version: '0.1.0',
-    docs: '/docs',
+    docs: '/api/docs',
     health: '/v1/health',
     public: {
       stats: '/v1/public/stats',
@@ -92,7 +94,7 @@ export async function createApp(options: CreateAppOptions = {}): Promise<Fastify
   app.get('/v1/public/meta', async () => ({
     license: 'CC BY 4.0',
     pseudonymization_enabled: isPublicPseudonymizationEnabled(),
-    docs: '/docs',
+    docs: '/api/docs',
   }));
 
   app.get('/v1/public/stats', async (_request, reply) => {

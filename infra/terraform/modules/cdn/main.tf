@@ -118,12 +118,12 @@ resource "aws_cloudfront_function" "spa_router" {
   })
 }
 
-resource "aws_cloudfront_function" "openapi_rewrite" {
-  name    = "${var.name_prefix}-openapi-rewrite"
+resource "aws_cloudfront_function" "openapi_redirect" {
+  name    = "${var.name_prefix}-openapi-redirect"
   runtime = "cloudfront-js-2.0"
-  comment = "Rewrite /openapi* to /docs* for API Swagger UI (matches local nginx/Vite proxy)"
+  comment = "301 /openapi* → /api/docs* (legacy Technical API reference URL)"
   publish = true
-  code    = file("${path.module}/openapi-rewrite.js")
+  code    = file("${path.module}/openapi-redirect.js")
 }
 
 resource "aws_cloudfront_distribution" "site" {
@@ -189,7 +189,7 @@ resource "aws_cloudfront_distribution" "site" {
   }
 
   ordered_cache_behavior {
-    path_pattern             = "/openapi*"
+    path_pattern             = "/api/*"
     allowed_methods          = ["GET", "HEAD", "OPTIONS"]
     cached_methods           = ["GET", "HEAD"]
     target_origin_id         = "api"
@@ -200,10 +200,25 @@ resource "aws_cloudfront_distribution" "site" {
     response_headers_policy_id = (
       local.use_custom_domain ? aws_cloudfront_response_headers_policy.security[0].id : null
     )
+  }
+
+  ordered_cache_behavior {
+    path_pattern     = "/openapi*"
+    allowed_methods  = ["GET", "HEAD", "OPTIONS"]
+    cached_methods   = ["GET", "HEAD"]
+    # Origin unused: viewer-request function returns 301 before origin fetch.
+    target_origin_id = "api"
+    viewer_protocol_policy = "https-only"
+    compress               = true
+    cache_policy_id        = data.aws_cloudfront_cache_policy.caching_disabled.id
+    origin_request_policy_id = data.aws_cloudfront_origin_request_policy.all_viewer_except_host.id
+    response_headers_policy_id = (
+      local.use_custom_domain ? aws_cloudfront_response_headers_policy.security[0].id : null
+    )
 
     function_association {
       event_type   = "viewer-request"
-      function_arn = aws_cloudfront_function.openapi_rewrite.arn
+      function_arn = aws_cloudfront_function.openapi_redirect.arn
     }
   }
 

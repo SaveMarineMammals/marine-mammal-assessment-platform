@@ -47,7 +47,7 @@ export default defineConfig(({ command }) => {
           navigateFallback: `${base}index.html`,
           navigateFallbackDenylist: [
             /^\/v1(?:\/|$)/,
-            /^\/openapi/,
+            /^\/api(?:\/|$)/,
             /^\/docs(?:\/|$)/,
             /^\/app(?:\/|$)/,
           ],
