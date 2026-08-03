@@ -8,7 +8,7 @@ import { createId } from '../lib/ids.js';
 import { datetimeLocalValueToUtc, nowDatetimeLocalValue } from '../lib/datetime-input.js';
 import { getFormDefinition } from '../lib/protocol-registry.js';
 import { SchemaField } from './form/SchemaFormRenderer.js';
-import { getFieldString, type FormValues } from './form/form-utils.js';
+import { getFieldString, isFieldRequired, type FormValues } from './form/form-utils.js';
 import { ValidationBanner } from './ValidationMessages.js';
 
 interface AddMeasurementFormProps {
@@ -80,6 +80,7 @@ export function AddMeasurementForm({
     ReturnType<typeof validateMeasurementByProtocol>['warnings']
   >([]);
   const [isSaving, setIsSaving] = useState(false);
+  const [showOptionalFields, setShowOptionalFields] = useState(false);
 
   function buildMeasurement() {
     const recorded_at = datetimeLocalValueToUtc(getFieldString(values, 'recorded_at'));
@@ -163,6 +164,8 @@ export function AddMeasurementForm({
     }
     return field;
   });
+  const requiredCommonFields = commonFields.filter((field) => isFieldRequired(field));
+  const optionalCommonFields = commonFields.filter((field) => !isFieldRequired(field));
 
   return (
     <form className="measurement-form" onSubmit={handleSubmit} noValidate>
@@ -182,7 +185,7 @@ export function AddMeasurementForm({
         summary="Review the measurement fields before saving."
       />
 
-      {commonFields.map((field) => (
+      {requiredCommonFields.map((field) => (
         <SchemaField key={field.name} field={field} values={values} onChange={setValues} />
       ))}
 
@@ -238,6 +241,27 @@ export function AddMeasurementForm({
           />
         </label>
       )}
+
+      {optionalCommonFields.length > 0 ? (
+        <div className="optional-fields">
+          <button
+            type="button"
+            className="optional-fields__toggle"
+            onClick={() => setShowOptionalFields((open) => !open)}
+            aria-expanded={showOptionalFields}
+            aria-controls="optional-measurement-fields"
+          >
+            {showOptionalFields ? 'Hide optional fields' : 'Add method or notes (optional)'}
+          </button>
+          {showOptionalFields ? (
+            <div id="optional-measurement-fields" className="optional-fields__body">
+              {optionalCommonFields.map((field) => (
+                <SchemaField key={field.name} field={field} values={values} onChange={setValues} />
+              ))}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       {error ? <p className="form-error">{error}</p> : null}
 

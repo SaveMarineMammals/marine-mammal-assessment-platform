@@ -689,6 +689,42 @@ select {
   flex-wrap: wrap;
 }
 
+.measurement-form .form-actions {
+  flex-wrap: nowrap;
+  gap: 0.5rem;
+}
+
+.measurement-form .form-actions .button {
+  flex: 1 1 0;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.optional-fields {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.optional-fields__toggle {
+  justify-self: start;
+  min-height: var(--touch-min);
+  padding: 0.35rem 0;
+  border: none;
+  background: transparent;
+  color: var(--accent-strong);
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+  cursor: pointer;
+}
+
+.optional-fields__body {
+  display: grid;
+  gap: 0.75rem;
+}
+
 .form-error {
   margin: 0;
   color: var(--danger);
