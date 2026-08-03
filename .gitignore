@@ -12,6 +12,9 @@ Thumbs.db
 apps/field/dev-dist
 apps/field/src/generated
 apps/field/public/version.json
+apps/field/test-results
+apps/field/playwright-report
+apps/field/blob-report
 
 # Terraform
 **/.terraform/

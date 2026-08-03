@@ -71,6 +71,16 @@ CloudFront is enabled in staging and production via `enable_cdn = true` (see [Cl
 
 ALB/task readiness remains `terraform-smoke-test.ts` (retries) before live-verify.
 
+### Field UI journeys (staging, after live-verify)
+
+When CDN is enabled, staging verify also runs Playwright phone + tablet journeys against the deployed field PWA:
+
+```text
+pnpm exec tsx scripts/field-ui-verify.ts staging
+```
+
+Checks include: top-bar controls do not overlap on Galaxy-class phone widths, New Assessment is usable, and Help & Protocol does not force page-level horizontal scroll (tables may scroll inside `.table-wrap`).
+
 ## Production promotion
 
 Production promotes **automatically** after staging full live-verify succeeds on the same CD run (merge to `main`).

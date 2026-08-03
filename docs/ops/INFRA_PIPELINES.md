@@ -13,10 +13,10 @@ GitHub Actions workflows for AWS Terraform plan, progressive CD, and manual stag
 
 Reusable workflows (called by CD / release / deploy):
 
-| Workflow                                                     | Role                                                                     |
-| ------------------------------------------------------------ | ------------------------------------------------------------------------ |
-| [`_deploy-app.yml`](../../.github/workflows/_deploy-app.yml) | `turbo build --filter` web+field (and workspace deps), S3, ECR, ECS      |
-| [`_verify-env.yml`](../../.github/workflows/_verify-env.yml) | Hibernate resume (staging), readiness probe, `live-verify` full or smoke |
+| Workflow                                                     | Role                                                                                                 |
+| ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------- |
+| [`_deploy-app.yml`](../../.github/workflows/_deploy-app.yml) | `turbo build --filter` web+field (and workspace deps), S3, ECR, ECS                                  |
+| [`_verify-env.yml`](../../.github/workflows/_verify-env.yml) | Hibernate resume (staging), readiness probe, `live-verify`, staging field UI journeys (phone/tablet) |
 
 ## One-time setup
 
@@ -102,10 +102,10 @@ Production apply/deploy runs **only** when:
 
 - Trigger is `push` to `main`
 - Quality, CodeQL, build, and integration succeeded
-- Staging apply, app deploy, and **full** live-verify succeeded
+- Staging apply, app deploy, and **full** live-verify (+ field UI journeys) succeeded
 - `TF_INFRA_ENABLED=true`
 
-**Staging verify** runs `staging-hibernate.ts resume`, then `terraform-smoke-test.ts` (ALB/task readiness), then `live-verify.ts staging --mode full` (health, DB stats, sync write/readback, CSV). Production uses `--mode smoke` (read paths only — no mutating sync).
+**Staging verify** runs `staging-hibernate.ts resume`, then `terraform-smoke-test.ts` (ALB/task readiness), then `live-verify.ts staging --mode full` (health, DB stats, sync write/readback, CSV), then `field-ui-verify.ts staging` (Playwright phone + tablet journeys on the deployed PWA). Production uses `--mode smoke` (read paths only — no mutating sync; no field UI journeys).
 
 ## Plan locking and concurrency
 

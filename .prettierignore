@@ -4,6 +4,8 @@ dist
 coverage
 .github/ISSUE_TEMPLATE
 apps/field/dev-dist
+apps/field/test-results
+apps/field/playwright-report
 doc
 package-lock.json
 pnpm-lock.yaml

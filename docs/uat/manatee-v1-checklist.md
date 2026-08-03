@@ -10,6 +10,16 @@ Use this checklist during field user acceptance testing with CMARI workflow advi
 | PWA installs and launches from home screen |      |      |       |
 | Help & Protocol link opens field guide     |      |      |       |
 
+## Responsive layout (phone + tablet)
+
+| Scenario                                                            | Pass | Fail | Notes |
+| ------------------------------------------------------------------- | ---- | ---- | ----- |
+| Phone portrait: top bar controls do not overlap                     |      |      |       |
+| Phone portrait: New Assessment header title/subtitle do not collide |      |      |       |
+| Phone: Help & Protocol page has no page-level horizontal scroll     |      |      |       |
+| Tablet portrait: Mission site + Online labels remain readable       |      |      |       |
+| Tablet landscape: primary tabs usable without clipping key actions  |      |      |       |
+
 ## Offline capture
 
 | Scenario                                     | Pass | Fail | Notes |

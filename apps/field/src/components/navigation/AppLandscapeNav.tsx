@@ -25,8 +25,10 @@ export function AppLandscapeNav() {
             type="button"
             className="app-landscape-nav__back button button--ghost"
             onClick={() => navigate(backTo)}
+            aria-label="Back"
           >
-            ← Back
+            <span aria-hidden="true">←</span>
+            <span className="app-landscape-nav__back-label">Back</span>
           </button>
         ) : null}
         <div>
