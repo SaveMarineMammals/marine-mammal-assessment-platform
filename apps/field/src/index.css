@@ -967,6 +967,52 @@ html.glove-mode .button {
   border-top: 1px dashed var(--border);
 }
 
+.measurement-form .form-actions--inline {
+  flex-wrap: nowrap;
+  justify-content: stretch;
+}
+
+.measurement-form .form-actions--inline .button {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.optional-fields {
+  border: 2px solid var(--border);
+  border-radius: 0.75rem;
+  background: var(--surface-elevated);
+}
+
+.optional-fields summary {
+  min-height: var(--touch-min);
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-weight: 600;
+  list-style: none;
+}
+
+.optional-fields summary::-webkit-details-marker {
+  display: none;
+}
+
+.optional-fields summary::before {
+  content: '▸';
+  display: inline-block;
+  margin-right: 0.5rem;
+  transition: transform 0.15s ease;
+}
+
+.optional-fields[open] summary::before {
+  transform: rotate(90deg);
+}
+
+.optional-fields__content {
+  display: grid;
+  gap: 0.75rem;
+  padding: 0 0.75rem 0.75rem;
+}
+
 .field-row {
   display: grid;
   gap: 0.75rem;
