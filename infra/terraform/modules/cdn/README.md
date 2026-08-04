@@ -8,7 +8,8 @@ routing to ECS Express.
 - `aws_cloudfront_origin_access_control` — S3 origins
 - `aws_cloudfront_function.spa_router` — viewer-request SPA fallback for `/` and `/field/app/`;
   optional apex → canonical host 301 redirect
-- `aws_cloudfront_function.openapi_redirect` — 301 `/openapi*` → `/api/docs*` (legacy URL)
+- `aws_cloudfront_function.openapi_rewrite` — 301 `/openapi*` → `/api/docs*` (legacy URL;
+  AWS name kept as `*-openapi-rewrite` so CD can update code in place)
 - `aws_cloudfront_response_headers_policy.security` — HSTS and baseline headers when a custom
   domain is configured
 - `aws_cloudfront_distribution.site`:
