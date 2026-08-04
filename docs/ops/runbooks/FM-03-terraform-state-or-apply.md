@@ -64,6 +64,7 @@ Applies use `-auto-approve` via `scripts/terraform-apply.ts`. State keys are iso
    | `Credentials could not be loaded` in bootstrap | Local AWS credentials missing or invalid for bootstrap apply              |
    | RDS `master_user_secret` / KMS                 | Customer CMK missing RDS/Secrets Manager key policy (see database module) |
    | `InvalidParameterCombination`                  | RDS/ECS Express module input drift                                        |
+   | `FunctionInUse` / `DeleteFunction` 409         | CloudFront function renamed while still associated with a distribution    |
    | Destroy actions in plan                        | Resource rename or removed block                                          |
 
 4. **Inspect lock table (AWS)**
@@ -157,7 +158,19 @@ Applies use `-auto-approve` via `scripts/terraform-apply.ts`. State keys are iso
    - Use `moved` blocks or `terraform state mv` for renames instead of destroy+create when possible.
    - Production apply only runs from `main` after staging full live-verify — use that gate.
 
-6. **Smoke / live-verify failure after apply**
+6. **CloudFront `FunctionInUse` when deleting a function**
+
+   Renaming `aws_cloudfront_function` (Terraform address **or** AWS `name`) forces destroy+create.
+   CloudFront returns **409 FunctionInUse** if delete runs while a distribution still associates the
+   old ARN — Terraform does not wait for the distribution update to finish first.
+
+   - Prefer updating function **code** in place; keep the AWS `name` and resource address stable.
+   - If an orphan unused function remains in state (e.g. a failed rename left `openapi_redirect`
+     while the distribution still uses `openapi_rewrite`), remove it from config so apply can
+     destroy the unused function, and keep the in-use function with updated code.
+   - Do not `terraform state rm` the in-use function and recreate under a new name in one apply.
+
+7. **Smoke / live-verify failure after apply**
 
    CD / Release staging **verify** resumes hibernation (`staging-hibernate.ts resume`), runs `terraform-smoke-test.ts` (ALB readiness), then `live-verify.ts` (functional checks). Resume force-new-deploys when `running < desired` so stuck FAILED Express rollouts recover.
 
@@ -186,7 +199,7 @@ Applies use `-auto-approve` via `scripts/terraform-apply.ts`. State keys are iso
 
    **Double `https://https://…` / `getaddrinfo EAI_AGAIN https`:** Express `ingress_paths[].endpoint` already includes the scheme. The api module must strip it before adding `https://` (see `local.ingress_host`). Re-apply or refresh outputs after that fix; the smoke test also normalizes a double scheme defensively.
 
-7. **Legacy App Runner resources still in state (`AccessDenied` on `apprunner:Describe*`)**
+8. **Legacy App Runner resources still in state (`AccessDenied` on `apprunner:Describe*`)**
 
    Older stacks may still reference App Runner service / VPC connector resources removed from HCL after the ECS Express migration. The Terraform CI role includes `apprunner:*` in bootstrap so apply can destroy leftovers.
 
@@ -194,18 +207,18 @@ Applies use `-auto-approve` via `scripts/terraform-apply.ts`. State keys are iso
    - Re-run staging apply; Terraform should destroy the old App Runner resources.
    - After state is clean, `apprunner:*` can remain for safety or be removed from bootstrap.
 
-8. **Security group delete fails detaching RDS ENI (`AuthFailure` on `DetachNetworkInterface`)**
+9. **Security group delete fails detaching RDS ENI (`AuthFailure` on `DetachNetworkInterface`)**
 
    Changing `aws_security_group.description` forces replacement. Terraform cannot detach RDS-managed ENIs when destroying the old group — this looks like a permissions error but is not an IAM gap.
 
    - Networking module SGs use `lifecycle { ignore_changes = [description] }` to avoid accidental replacement.
    - If a failed apply left duplicate SGs, confirm RDS still uses the intended group in the AWS console, remove orphan SGs manually if needed, then re-run apply.
 
-9. **Skipped jobs**
+10. **Skipped jobs**
 
-   If Terraform jobs do not appear at all, set `TF_INFRA_ENABLED=true` and ensure PR touches `infra/**` or workflow paths for deploy triggers.
+If Terraform jobs do not appear at all, set `TF_INFRA_ENABLED=true` and ensure PR touches `infra/**` or workflow paths for deploy triggers.
 
-10. **Secrets Manager name conflict after destroy (`InvalidRequestException` / secret scheduled for deletion)**
+11. **Secrets Manager name conflict after destroy (`InvalidRequestException` / secret scheduled for deletion)**
 
 Destroying staging schedules `mmap-staging/api-admin-token` for deletion (default recovery window). Re-apply cannot recreate the same name until the window ends or the secret is force-deleted.
 
@@ -224,7 +237,7 @@ Destroying staging schedules `mmap-staging/api-admin-token` for deletion (defaul
 
 - **KMS:** customer-managed keys use a minimum 7-day deletion window and cannot be force-deleted immediately. A pending key does not block recreate if the alias was destroyed with the stack; if apply fails on `alias/mmap-staging-rds-secret`, wait for the old key to finish deletion or cancel deletion and import that key into state.
 
-11. **CloudWatch log group already exists (`ResourceAlreadyExistsException`)**
+12. **CloudWatch log group already exists (`ResourceAlreadyExistsException`)**
 
     The ECS migration moved `aws_cloudwatch_log_group.api` from the `monitoring` module to the `api` module. Staging may already have `/mmap-staging/api` in AWS while state still points at the old address (or has no entry).
 
@@ -239,7 +252,7 @@ Destroying staging schedules `mmap-staging/api-admin-token` for deletion (defaul
 
       Then re-run apply.
 
-12. **ECS Express service linked role (`Unable to assume the service linked role` / `AWSServiceRoleForECS has been taken`)**
+13. **ECS Express service linked role (`Unable to assume the service linked role` / `AWSServiceRoleForECS has been taken`)**
 
     First ECS use in an account requires the AWS-managed role `AWSServiceRoleForECS`. **Bootstrap** creates and owns this role; the api module only reads it with `data.aws_iam_role.ecs_service_linked`.
 
@@ -261,11 +274,11 @@ Destroying staging schedules `mmap-staging/api-admin-token` for deletion (defaul
 
       Then import into bootstrap state as above (or re-run bootstrap after import).
 
-13. **`service_url` null / no PUBLIC `ingress_paths`**
+14. **`service_url` null / no PUBLIC `ingress_paths`**
 
     ECS Express in **private subnets** creates an internal ALB with `PRIVATE` ingress only — CloudFront cannot use that origin. The api module uses **public subnets** for `network_configuration` so AWS exposes a `PUBLIC` endpoint. Re-apply after merging; Terraform may replace the Express service when subnets change.
 
-14. **Changing subnet types / Express service already exists**
+15. **Changing subnet types / Express service already exists**
 
     AWS cannot move an Express service from private to public subnets in place. Use a **state move**, then **replace**:
 
@@ -293,7 +306,7 @@ Destroying staging schedules `mmap-staging/api-admin-token` for deletion (defaul
 
     Future subnet changes use `replace_triggered_by` on `terraform_data.express_subnet_set`.
 
-15. **ECS Express deployment stuck / Terraform 30m timeout (`tfPENDING`, health never passes)**
+16. **ECS Express deployment stuck / Terraform 30m timeout (`tfPENDING`, health never passes)**
 
     The placeholder **nginx** image is not the problem — health checks use `/` on port **80**, which nginx serves. Common causes:
 

@@ -118,8 +118,11 @@ resource "aws_cloudfront_function" "spa_router" {
   })
 }
 
-resource "aws_cloudfront_function" "openapi_redirect" {
-  name    = "${var.name_prefix}-openapi-redirect"
+# Keep the AWS function name stable. Renaming forces destroy+create; CloudFront
+# rejects DeleteFunction while a distribution still associates the old ARN
+# (FunctionInUse 409), which broke CD after the openapi_redirect rename.
+resource "aws_cloudfront_function" "openapi_rewrite" {
+  name    = "${var.name_prefix}-openapi-rewrite"
   runtime = "cloudfront-js-2.0"
   comment = "301 /openapi* → /api/docs* (legacy Technical API reference URL)"
   publish = true
@@ -218,7 +221,7 @@ resource "aws_cloudfront_distribution" "site" {
 
     function_association {
       event_type   = "viewer-request"
-      function_arn = aws_cloudfront_function.openapi_redirect.arn
+      function_arn = aws_cloudfront_function.openapi_rewrite.arn
     }
   }
 
