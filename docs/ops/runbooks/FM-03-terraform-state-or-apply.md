@@ -61,6 +61,8 @@ Applies use `-auto-approve` via `scripts/terraform-apply.ts`. State keys are iso
    | `Error acquiring the state lock`               | Stale lock from parallel/crashed job                                      |
    | `AccessDenied` on S3/DynamoDB/IAM              | OIDC role or bootstrap secrets wrong                                      |
    | `kms:TagResource` on `CreateKey`               | `mmap-terraform-ci` missing `kms:*`; re-run bootstrap or patch IAM        |
+   | `lambda:CreateFunction` / `events:TagResource` | `mmap-terraform-ci` missing `lambda:*` / `events:*`; re-run bootstrap     |
+   | `cors.allowMethods` length ≤6 / `OPTIONS`      | Lambda Function URL CORS rejects method names >6 chars; omit `OPTIONS`    |
    | `Credentials could not be loaded` in bootstrap | Local AWS credentials missing or invalid for bootstrap apply              |
    | RDS `master_user_secret` / KMS                 | Customer CMK missing RDS/Secrets Manager key policy (see database module) |
    | `InvalidParameterCombination`                  | RDS/ECS Express module input drift                                        |

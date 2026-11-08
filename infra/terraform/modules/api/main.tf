@@ -235,7 +235,9 @@ resource "aws_lambda_function_url" "api" {
   cors {
     allow_credentials = false
     allow_origins     = length(var.cors_origins) > 0 ? var.cors_origins : ["*"]
-    allow_methods     = ["GET", "POST", "OPTIONS"]
+    # AWS Lambda Function URL CORS rejects method names longer than 6 chars
+    # (OPTIONS is 7). Preflight is handled automatically when cors is set.
+    allow_methods     = ["GET", "POST"]
     allow_headers     = ["*"]
     max_age           = 86400
   }
