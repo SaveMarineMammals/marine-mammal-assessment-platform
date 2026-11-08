@@ -36,6 +36,7 @@ variable "enable_apex_redirect" {
 }
 variable "web_bucket_id" { type = string }
 variable "field_bucket_id" { type = string }
+variable "data_bucket_id" { type = string }
 variable "api_service_url" { type = string }
 variable "tags" { type = map(string) }
 
@@ -157,7 +158,16 @@ resource "aws_cloudfront_distribution" "site" {
       https_port             = 443
       origin_protocol_policy = "https-only"
       origin_ssl_protocols   = ["TLSv1.2"]
+      # Sync may wait on cold Lambda; allow the CloudFront maximum.
+      origin_read_timeout      = 180
+      origin_keepalive_timeout = 60
     }
+  }
+
+  origin {
+    domain_name              = "${var.data_bucket_id}.s3.amazonaws.com"
+    origin_id                = "dataset-snapshots"
+    origin_access_control_id = aws_cloudfront_origin_access_control.static.id
   }
 
   default_cache_behavior {
@@ -175,6 +185,19 @@ resource "aws_cloudfront_distribution" "site" {
       event_type   = "viewer-request"
       function_arn = aws_cloudfront_function.spa_router.arn
     }
+  }
+
+  ordered_cache_behavior {
+    path_pattern           = "/dataset/latest/*"
+    allowed_methods        = ["GET", "HEAD", "OPTIONS"]
+    cached_methods         = ["GET", "HEAD"]
+    target_origin_id       = "dataset-snapshots"
+    viewer_protocol_policy = "redirect-to-https"
+    compress               = true
+    cache_policy_id        = data.aws_cloudfront_cache_policy.caching_optimized.id
+    response_headers_policy_id = (
+      local.use_custom_domain ? aws_cloudfront_response_headers_policy.security[0].id : null
+    )
   }
 
   ordered_cache_behavior {
@@ -348,6 +371,24 @@ data "aws_iam_policy_document" "field_bucket" {
   }
 }
 
+data "aws_iam_policy_document" "data_bucket" {
+  statement {
+    actions   = ["s3:GetObject"]
+    resources = ["arn:aws:s3:::${var.data_bucket_id}/dataset/latest/*"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["cloudfront.amazonaws.com"]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "AWS:SourceArn"
+      values   = [aws_cloudfront_distribution.site.arn]
+    }
+  }
+}
+
 resource "aws_s3_bucket_policy" "web" {
   bucket = var.web_bucket_id
   policy = data.aws_iam_policy_document.web_bucket.json
@@ -356,6 +397,11 @@ resource "aws_s3_bucket_policy" "web" {
 resource "aws_s3_bucket_policy" "field" {
   bucket = var.field_bucket_id
   policy = data.aws_iam_policy_document.field_bucket.json
+}
+
+resource "aws_s3_bucket_policy" "data" {
+  bucket = var.data_bucket_id
+  policy = data.aws_iam_policy_document.data_bucket.json
 }
 
 output "web_fqdn" {

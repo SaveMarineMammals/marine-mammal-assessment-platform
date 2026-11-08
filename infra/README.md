@@ -52,7 +52,7 @@ Set `enable_cdn = true` after account verification. Full details:
 
 ### Hibernate staging (keep it provisioned, cut most cost)
 
-When a full teardown is too heavy, scale the API to zero tasks and stop RDS instead. Floor is ~$25/mo (ALB + public IPv4 + RDS storage) versus ~$0/mo when destroyed. Full details and caveats: [docs/ops/AWS_INFRA.md](../docs/ops/AWS_INFRA.md#hibernate-staging-scale-to-zero).
+When a full teardown is too heavy, stop RDS instead (API is already Lambda). Floor is ~$2–5/mo versus ~$0/mo when destroyed. Full details: [docs/ops/AWS_INFRA.md](../docs/ops/AWS_INFRA.md#hibernate-staging-scale-to-zero).
 
 ```powershell
 pnpm exec tsx scripts/staging-hibernate.ts status
@@ -75,8 +75,8 @@ environments/staging|production/main.tf
 
 ## What is not in Terraform (v1)
 
-- Container image builds (GitHub Actions)
-- Application database migrations (CI job before API deploy)
+- Lambda zip builds (GitHub Actions `package:lambda` + `update-function-code`)
+- Application database migrations (run on Lambda cold start)
 - Field/web static asset uploads (CI sync to S3)
 
 ## Local development

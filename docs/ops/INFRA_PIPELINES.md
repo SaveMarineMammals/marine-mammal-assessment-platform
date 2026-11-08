@@ -29,27 +29,18 @@ Create environments in **Settings → Environments**:
 | `staging`    | Optional reviewers; deploy secrets (see below) |
 | `production` | Optional reviewers (CD promotes automatically) |
 
-After the first Terraform apply per environment, add GitHub secrets from `terraform output`:
+After the first Terraform apply per environment, add GitHub Environment secrets from `terraform output`:
 
-| Secret                        | Terraform output                 | Notes                                                                                   |
-| ----------------------------- | -------------------------------- | --------------------------------------------------------------------------------------- |
-| `AWS_DEPLOY_ROLE_ARN`         | `github_deploy_role_arn`         |                                                                                         |
-| `DATABASE_SECRET_ARN`         | `database_secret_arn`            | Injected into ECS as `DATABASE_URL`                                                     |
-| `API_ADMIN_TOKEN_SECRET_ARN`  | `admin_token_secret_arn`         | Injected into ECS as `API_ADMIN_TOKEN`                                                  |
-| `DB_HOST`                     | `db_endpoint`                    | Non-secret RDS hostname                                                                 |
-| `DB_PORT`                     | `db_port`                        | Usually `5432`                                                                          |
-| `DB_NAME`                     | `db_name`                        | Usually `mmap`                                                                          |
-| `API_SERVICE_URL`             | `api_service_url`                | Used for post-deploy `/v1/health` wait                                                  |
-| `API_CORS_ORIGIN`             | (optional)                       | Comma-separated origins; empty OK                                                       |
-| `ECS_SERVICE_NAME`            | `ecs_service_name`               |                                                                                         |
-| `ECS_EXECUTION_ROLE_ARN`      | `ecs_execution_role_arn`         |                                                                                         |
-| `ECS_INFRASTRUCTURE_ROLE_ARN` | `ecs_infrastructure_role_arn`    |                                                                                         |
-| `ECS_TASK_ROLE_ARN`           | `ecs_task_role_arn`              |                                                                                         |
-| `WEB_STATIC_BUCKET`           | `web_static_bucket`              |                                                                                         |
-| `FIELD_STATIC_BUCKET`         | `field_static_bucket`            |                                                                                         |
-| `WEB_CLOUDFRONT_ID`           | `web_cloudfront_distribution_id` | Update after CDN create/replace; CD also passes the id from terraform apply into deploy |
+| Secret                | Terraform output                 | Notes                                                                                    |
+| --------------------- | -------------------------------- | ---------------------------------------------------------------------------------------- |
+| `AWS_DEPLOY_ROLE_ARN` | `github_deploy_role_arn`         |                                                                                          |
+| `WEB_STATIC_BUCKET`   | `web_static_bucket`              |                                                                                          |
+| `FIELD_STATIC_BUCKET` | `field_static_bucket`            |                                                                                          |
+| `WEB_CLOUDFRONT_ID`   | `web_cloudfront_distribution_id` | Fallback for emergency **Deploy AWS**; CD passes the id from terraform apply into deploy |
 
-Do **not** store a plaintext `DATABASE_URL` in GitHub. After a CloudFront distribution is **replaced**, refresh `WEB_CLOUDFRONT_ID` (and drop obsolete `FIELD_CLOUDFRONT_ID` if present) or emergency **Deploy AWS** invalidation will `AccessDenied` against the old id.
+**Not required as secrets:** `api_service_url` / Function URL (deploy resolves it via `aws lambda get-function-url-config` for `mmap-{env}-api`), DB connection details (injected into Lambda by Terraform), or legacy ECS/ECR values.
+
+Do **not** store a plaintext `DATABASE_URL` in GitHub. After a CloudFront distribution is **replaced**, refresh `WEB_CLOUDFRONT_ID` (and drop obsolete `FIELD_CLOUDFRONT_ID` / `API_SERVICE_URL` if present) or emergency **Deploy AWS** invalidation will `AccessDenied` against the old id.
 
 ### 2. Bootstrap (local Terraform)
 

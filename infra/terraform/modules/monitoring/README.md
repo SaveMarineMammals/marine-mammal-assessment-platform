@@ -4,7 +4,7 @@ CloudWatch alarms and dashboard for MMAP environments.
 
 ## Resources
 
-- `aws_cloudwatch_metric_alarm.ecs_cpu` — ECS service CPU threshold
+- `aws_cloudwatch_metric_alarm.lambda_errors` — API Lambda error threshold
 - `aws_cloudwatch_metric_alarm.rds_free_storage` — RDS storage threshold
 - `aws_cloudwatch_dashboard` — environment overview
 

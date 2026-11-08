@@ -35,8 +35,16 @@ output "field_url" {
 }
 
 output "api_service_url" {
-  description = "ECS Express HTTPS URL — primary test entrypoint when enable_cdn is false"
+  description = "Lambda Function URL — primary sync/health entrypoint when enable_cdn is false"
   value       = module.api.service_url
+}
+
+output "lambda_function_name" {
+  value = module.api.lambda_function_name
+}
+
+output "data_bucket" {
+  value = module.storage.data_bucket_id
 }
 
 output "github_deploy_role_arn" {
@@ -61,24 +69,9 @@ output "field_cloudfront_distribution_id" {
   value       = var.enable_cdn ? module.cdn[0].distribution_ids[0] : ""
 }
 
-output "ecr_repository_url" {
-  value = module.api.ecr_repository_url
-}
-
 output "ecs_service_name" {
-  value = module.api.service_name
-}
-
-output "ecs_execution_role_arn" {
-  value = module.api.ecs_execution_role_arn
-}
-
-output "ecs_infrastructure_role_arn" {
-  value = module.api.ecs_infrastructure_role_arn
-}
-
-output "ecs_task_role_arn" {
-  value = module.api.ecs_task_role_arn
+  description = "Deprecated alias of lambda_function_name (API is Lambda, not ECS)"
+  value       = module.api.service_name
 }
 
 output "admin_token_secret_arn" {

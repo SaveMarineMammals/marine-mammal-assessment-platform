@@ -9,7 +9,7 @@ This file orients automated agents (Cursor, Copilot, CI bots, etc.) working in t
 | App / package       | Role                                                                           |
 | ------------------- | ------------------------------------------------------------------------------ |
 | `apps/field`        | Offline PWA for biologists — IndexedDB, background sync, in-app protocol guide |
-| `apps/api`          | Fastify API — sync batch ingestion, public dataset endpoints, PostgreSQL       |
+| `apps/api`          | Fastify API (Lambda in AWS) — sync, daily dataset snapshots, PostgreSQL        |
 | `apps/web`          | Public mission site, docs, read-only dataset portal                            |
 | `packages/brand`    | Shared brand tokens and typography (web light / field dark)                    |
 | `packages/schema`   | JSON Schema, Zod validators, form definitions, test fixtures                   |

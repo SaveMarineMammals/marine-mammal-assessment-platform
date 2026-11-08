@@ -9,6 +9,16 @@ export function getApiBaseUrl(): string {
   return '';
 }
 
+export function getDatasetBaseUrl(): string {
+  const configured = import.meta.env.VITE_DATASET_BASE_URL?.trim();
+  if (configured) {
+    return configured.replace(/\/$/, '');
+  }
+  // Production: CloudFront serves S3 snapshots at /dataset/latest/*.
+  // Local docker/dev: fall back to live API public routes when snapshots are absent.
+  return '';
+}
+
 export function getFieldAppUrl(): string {
   return import.meta.env.VITE_FIELD_APP_URL?.trim() || '/field/app/';
 }
@@ -31,6 +41,7 @@ export interface PublicDatasetStats {
   earliest_assessment: string | null;
   latest_assessment: string | null;
   protocol_versions: string[];
+  generated_at?: string;
 }
 
 export interface PublicAssessmentListResponse {
@@ -50,16 +61,24 @@ export interface PublicAssessmentListResponse {
     campaign: string | null;
     measurement_count: number;
   }>;
+  generated_at?: string;
 }
 
 export interface PublicMeta {
   license: string;
   pseudonymization_enabled: boolean;
   docs: string;
+  generated_at?: string;
+  source?: string;
 }
 
 function apiUrl(path: string): string {
   const base = getApiBaseUrl();
+  return base ? `${base}${path}` : path;
+}
+
+function datasetUrl(path: string): string {
+  const base = getDatasetBaseUrl();
   return base ? `${base}${path}` : path;
 }
 
@@ -69,35 +88,61 @@ async function assertOk(response: Response, label: string): Promise<void> {
   }
   if (response.status === 404) {
     throw new Error(
-      `${label} not found (404). Rebuild the API container: docker compose up -d --build api`,
+      `${label} not found (404). If using snapshots, wait for the daily export or trigger dataset-export on the API Lambda.`,
     );
   }
   throw new Error(`Failed to load ${label} (${response.status})`);
 }
 
+async function fetchJsonPreferSnapshot<T>(
+  snapshotPath: string,
+  livePath: string,
+  label: string,
+): Promise<T> {
+  const snapshotResponse = await fetch(datasetUrl(snapshotPath));
+  if (snapshotResponse.ok) {
+    return snapshotResponse.json() as Promise<T>;
+  }
+  const liveResponse = await fetch(apiUrl(livePath));
+  await assertOk(liveResponse, label);
+  return liveResponse.json() as Promise<T>;
+}
+
 export async function fetchPublicStats(): Promise<PublicDatasetStats> {
-  const response = await fetch(apiUrl('/v1/public/stats'));
-  await assertOk(response, 'dataset stats');
-  return response.json() as Promise<PublicDatasetStats>;
+  return fetchJsonPreferSnapshot('/dataset/latest/stats.json', '/v1/public/stats', 'dataset stats');
 }
 
 export async function fetchPublicAssessments(
   page = 1,
   limit = 10,
 ): Promise<PublicAssessmentListResponse> {
+  const snapshot = await fetch(datasetUrl('/dataset/latest/assessments.json'));
+  if (snapshot.ok) {
+    const body = (await snapshot.json()) as PublicAssessmentListResponse;
+    const safePage = Math.max(page, 1);
+    const safeLimit = Math.min(Math.max(limit, 1), 100);
+    const start = (safePage - 1) * safeLimit;
+    return {
+      page: safePage,
+      limit: safeLimit,
+      total: body.total ?? body.items?.length ?? 0,
+      items: (body.items ?? []).slice(start, start + safeLimit),
+      generated_at: body.generated_at,
+    };
+  }
+
   const response = await fetch(apiUrl(`/v1/public/assessments?page=${page}&limit=${limit}`));
   await assertOk(response, 'assessments');
   return response.json() as Promise<PublicAssessmentListResponse>;
 }
 
 export async function fetchPublicMeta(): Promise<PublicMeta> {
-  const response = await fetch(apiUrl('/v1/public/meta'));
-  await assertOk(response, 'public metadata');
-  return response.json() as Promise<PublicMeta>;
+  return fetchJsonPreferSnapshot('/dataset/latest/meta.json', '/v1/public/meta', 'public metadata');
 }
 
 export function getExportUrl(format: 'csv' | 'jsonl'): string {
-  return apiUrl(`/v1/public/assessments/export?format=${format}`);
+  const extension = format === 'csv' ? 'csv' : 'jsonl';
+  return datasetUrl(`/dataset/latest/assessments.${extension}`);
 }
 
 export function getOpenApiUrl(): string {

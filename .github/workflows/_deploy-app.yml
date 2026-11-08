@@ -1,5 +1,5 @@
-# Reusable application deploy: static sites → ECR → ECS Express.
-# Database migrations run on API container startup (private RDS is not reachable
+# Reusable application deploy: static sites → Lambda zip.
+# Database migrations run on Lambda cold start (private RDS is not reachable
 # from GitHub-hosted runners).
 #
 # Caller must grant contents:read and id-token:write. Uses GitHub Environment
@@ -15,7 +15,7 @@ on:
         required: true
         type: string
       image_tag:
-        description: Docker/ECR image tag (defaults to short SHA)
+        description: Unused (kept for caller compatibility)
         required: false
         type: string
         default: ''
@@ -43,8 +43,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     env:
-      ECR_REPOSITORY: mmap-${{ inputs.environment }}-api
-      IMAGE_TAG: ${{ inputs.image_tag != '' && inputs.image_tag || github.sha }}
+      LAMBDA_FUNCTION_NAME: mmap-${{ inputs.environment }}-api
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -64,13 +63,15 @@ jobs:
         shell: pwsh
         run: pnpm install --frozen-lockfile
 
-      # Turbo ^build compiles workspace deps (schema, geo-time, …). Add a --filter for
-      # each new static app that should ship; do not hardcode shared package names.
       - name: Build static sites
         shell: pwsh
         run: pnpm turbo build --filter=@mmap/web --filter=@mmap/field
         env:
           VITE_DOCS_URL: /docs/manatee-v1
+
+      - name: Package API Lambda
+        shell: pwsh
+        run: pnpm --filter @mmap/api package:lambda
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v6
@@ -86,10 +87,31 @@ jobs:
         shell: pwsh
         run: aws s3 sync apps/field/dist/ "s3://${{ secrets.FIELD_STATIC_BUCKET }}/field/app/" --delete
 
+      - name: Deploy API Lambda code
+        shell: pwsh
+        run: |
+          aws lambda update-function-code `
+            --function-name $env:LAMBDA_FUNCTION_NAME `
+            --zip-file "fileb://apps/api/dist/api-lambda.zip"
+
+      - name: Wait for Lambda update
+        shell: pwsh
+        run: |
+          aws lambda wait function-updated-v2 --function-name $env:LAMBDA_FUNCTION_NAME
+
+      - name: Trigger dataset snapshot export
+        shell: pwsh
+        run: |
+          aws lambda invoke `
+            --function-name $env:LAMBDA_FUNCTION_NAME `
+            --cli-binary-format raw-in-base64-out `
+            --payload '{"job":"dataset-export"}' `
+            export-out.json
+          Get-Content export-out.json
+
       - name: Invalidate CloudFront caches
         shell: pwsh
         env:
-          # Prefer id from the terraform apply job (avoids stale GitHub secrets after CDN replace).
           WEB_CLOUDFRONT_ID: ${{ inputs.web_cloudfront_id || secrets.WEB_CLOUDFRONT_ID }}
         run: |
           if ([string]::IsNullOrWhiteSpace($env:WEB_CLOUDFRONT_ID)) {
@@ -99,70 +121,25 @@ jobs:
           Write-Output "Invalidating CloudFront distribution $($env:WEB_CLOUDFRONT_ID)"
           aws cloudfront create-invalidation --distribution-id $env:WEB_CLOUDFRONT_ID --paths "/*"
 
-      - name: Login to Amazon ECR
-        id: ecr
-        uses: aws-actions/amazon-ecr-login@v2
-
-      - name: Build and push API image
-        shell: pwsh
-        env:
-          ECR_REGISTRY: ${{ steps.ecr.outputs.registry }}
-        run: |
-          docker build -f apps/api/Dockerfile -t "${env:ECR_REGISTRY}/${env:ECR_REPOSITORY}:${env:IMAGE_TAG}" .
-          docker push "${env:ECR_REGISTRY}/${env:ECR_REPOSITORY}:${env:IMAGE_TAG}"
-
-      # Migrations run in apps/api on container start (before listen / health checks).
-      # Pass full env + secrets: UpdateExpressGatewayService replaces primary-container
-      # config, so image-only updates wipe Terraform-provisioned secrets and leave nginx.
-      - name: Deploy API to ECS Express
-        uses: aws-actions/amazon-ecs-deploy-express-service@v1
-        env:
-          ECR_REGISTRY: ${{ steps.ecr.outputs.registry }}
-        with:
-          service-name: ${{ secrets.ECS_SERVICE_NAME }}
-          image: ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
-          execution-role-arn: ${{ secrets.ECS_EXECUTION_ROLE_ARN }}
-          infrastructure-role-arn: ${{ secrets.ECS_INFRASTRUCTURE_ROLE_ARN }}
-          task-role-arn: ${{ secrets.ECS_TASK_ROLE_ARN }}
-          container-port: '3001'
-          health-check-path: /v1/health
-          cpu: '1024'
-          memory: '2048'
-          log-group: /mmap-${{ inputs.environment }}/api
-          log-stream-prefix: ecs
-          min-task-count: 1
-          max-task-count: 4
-          environment-variables: |
-            [
-              {"name": "PORT", "value": "3001"},
-              {"name": "HOST", "value": "0.0.0.0"},
-              {"name": "NODE_ENV", "value": "production"},
-              {"name": "CORS_ORIGIN", "value": "${{ secrets.API_CORS_ORIGIN }}"},
-              {"name": "MINIO_ENDPOINT", "value": ""},
-              {"name": "PUBLIC_PSEUDONYMIZE_NAMES", "value": "false"},
-              {"name": "DB_HOST", "value": "${{ secrets.DB_HOST }}"},
-              {"name": "DB_PORT", "value": "${{ secrets.DB_PORT }}"},
-              {"name": "DB_NAME", "value": "${{ secrets.DB_NAME }}"}
-            ]
-          secrets: |
-            [
-              {"name": "DATABASE_URL", "valueFrom": "${{ secrets.DATABASE_SECRET_ARN }}"},
-              {"name": "API_ADMIN_TOKEN", "valueFrom": "${{ secrets.API_ADMIN_TOKEN_SECRET_ARN }}"}
-            ]
-
       - name: Wait for API health
         shell: pwsh
-        env:
-          API_SERVICE_URL: ${{ secrets.API_SERVICE_URL }}
         run: |
-          if ([string]::IsNullOrWhiteSpace($env:API_SERVICE_URL)) {
-            throw "API_SERVICE_URL secret is required (terraform output api_service_url)."
+          # Resolve Function URL from AWS (no GitHub Environment secret).
+          $apiUrl = (
+            aws lambda get-function-url-config `
+              --function-name $env:LAMBDA_FUNCTION_NAME `
+              --query FunctionUrl `
+              --output text
+          ).Trim().TrimEnd('/')
+          if ([string]::IsNullOrWhiteSpace($apiUrl) -or $apiUrl -eq 'None') {
+            throw "Could not resolve Function URL for $($env:LAMBDA_FUNCTION_NAME)."
           }
-          $healthUrl = "$($env:API_SERVICE_URL.TrimEnd('/'))/v1/health"
+          $healthUrl = "$apiUrl/v1/health"
+          Write-Output "Probing $healthUrl"
           $deadline = (Get-Date).AddMinutes(10)
           do {
             try {
-              $response = Invoke-WebRequest -Uri $healthUrl -UseBasicParsing -TimeoutSec 10
+              $response = Invoke-WebRequest -Uri $healthUrl -UseBasicParsing -TimeoutSec 30
               if ($response.StatusCode -eq 200) {
                 Write-Output "Healthy: $healthUrl"
                 exit 0

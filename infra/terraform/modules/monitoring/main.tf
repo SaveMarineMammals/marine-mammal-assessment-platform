@@ -1,25 +1,24 @@
-variable "api_service_name" { type = string }
+variable "lambda_function_name" { type = string }
 variable "name_prefix" { type = string }
 variable "db_instance_id" { type = string }
 variable "health_check_url" { type = string }
 variable "tags" { type = map(string) }
 
-resource "aws_cloudwatch_metric_alarm" "ecs_cpu" {
-  alarm_name          = "${var.name_prefix}-ecs-cpu-high"
+resource "aws_cloudwatch_metric_alarm" "lambda_errors" {
+  alarm_name          = "${var.name_prefix}-lambda-errors"
   comparison_operator = "GreaterThanThreshold"
-  evaluation_periods  = 3
-  metric_name         = "CPUUtilization"
-  namespace           = "AWS/ECS"
+  evaluation_periods  = 1
+  metric_name         = "Errors"
+  namespace           = "AWS/Lambda"
   period              = 300
-  statistic           = "Average"
-  threshold           = 80
+  statistic           = "Sum"
+  threshold           = 0
   treat_missing_data  = "notBreaching"
-  alarm_description   = "Elevated ECS API CPU utilization"
+  alarm_description   = "API Lambda reported errors"
   tags                = var.tags
 
   dimensions = {
-    ClusterName = "default"
-    ServiceName = var.api_service_name
+    FunctionName = var.lambda_function_name
   }
 }
 
@@ -52,7 +51,7 @@ resource "aws_cloudwatch_dashboard" "main" {
         width  = 24
         height = 2
         properties = {
-          markdown = "# ${var.name_prefix}\nHealth check: ${var.health_check_url}"
+          markdown = "# ${var.name_prefix}\nHealth check: ${var.health_check_url}\nAPI: Lambda `${var.lambda_function_name}`"
         }
       },
     ]
