@@ -158,8 +158,9 @@ resource "aws_cloudfront_distribution" "site" {
       https_port             = 443
       origin_protocol_policy = "https-only"
       origin_ssl_protocols   = ["TLSv1.2"]
-      # Sync may wait on cold Lambda; allow the CloudFront maximum.
-      origin_read_timeout      = 180
+      # Sync may wait on cold Lambda; use the default CloudFront origin response
+      # timeout quota max (1–120s). Values above 120 need an approved limit increase.
+      origin_read_timeout      = 120
       origin_keepalive_timeout = 60
     }
   }
