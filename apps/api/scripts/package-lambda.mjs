@@ -25,7 +25,15 @@ await esbuild.build({
   outfile: join(outDir, 'lambda.mjs'),
   sourcemap: false,
   banner: {
-    js: "import { createRequire as __createRequire } from 'module'; const require = __createRequire(import.meta.url);",
+    // Bundled CJS deps (pino, @fastify/swagger-ui) still reference __dirname/require.
+    js: [
+      "import { createRequire as __createRequire } from 'module';",
+      "import { fileURLToPath as __fileURLToPath } from 'url';",
+      "import { dirname as __dirnameOf } from 'path';",
+      'const require = __createRequire(import.meta.url);',
+      'const __filename = __fileURLToPath(import.meta.url);',
+      'const __dirname = __dirnameOf(__filename);',
+    ].join(''),
   },
   // Keep native pg optional bindings external if present; pure JS works for RDS TLS.
   external: ['pg-native'],
@@ -37,6 +45,11 @@ const migrationsDest = join(outDir, 'migrations');
 if (existsSync(migrationsSrc)) {
   cpSync(migrationsSrc, migrationsDest, { recursive: true });
 }
+
+// Swagger UI reads logo/static via __dirname; after bundling that is LAMBDA_TASK_ROOT.
+const swaggerUiPkg = require.resolve('@fastify/swagger-ui/package.json', { paths: [apiRoot] });
+const swaggerUiStatic = join(dirname(swaggerUiPkg), 'static');
+cpSync(swaggerUiStatic, join(outDir, 'static'), { recursive: true });
 
 writeFileSync(
   join(outDir, 'package.json'),
@@ -79,3 +92,36 @@ if (archiverPath) {
 
 const bytes = readFileSync(zipPath).byteLength;
 console.log(`Wrote ${zipPath} (${bytes} bytes)`);
+
+// Catch ESM/CJS bundling regressions (e.g. missing __dirname) before deploy.
+process.env.LAMBDA_TASK_ROOT = outDir;
+delete process.env.DATABASE_URL;
+const { pathToFileURL } = await import('node:url');
+const { handler } = await import(pathToFileURL(join(outDir, 'lambda.mjs')).href);
+const smoke = await handler(
+  {
+    version: '2.0',
+    routeKey: 'GET /v1/health',
+    rawPath: '/v1/health',
+    headers: { host: 'localhost' },
+    requestContext: {
+      http: {
+        method: 'GET',
+        path: '/v1/health',
+        protocol: 'HTTP/1.1',
+        sourceIp: '127.0.0.1',
+        userAgent: 'package-lambda-smoke',
+      },
+    },
+    isBase64Encoded: false,
+  },
+  {
+    awsRequestId: 'package-lambda-smoke',
+    getRemainingTimeInMillis: () => 30_000,
+    callbackWaitsForEmptyEventLoop: false,
+  },
+);
+if (!smoke || smoke.statusCode !== 200) {
+  throw new Error(`Lambda package smoke failed: ${JSON.stringify(smoke)}`);
+}
+console.log('Lambda package smoke OK (GET /v1/health)');

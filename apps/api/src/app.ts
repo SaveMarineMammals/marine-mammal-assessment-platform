@@ -2,6 +2,7 @@ import Fastify, { type FastifyInstance } from 'fastify';
 import cors from '@fastify/cors';
 import swagger from '@fastify/swagger';
 import swaggerUi from '@fastify/swagger-ui';
+import { join } from 'node:path';
 import { Readable } from 'node:stream';
 import { MANATEE_V1_PROTOCOL, getProtocolVersion } from '@mmap/schema/manatee_v1';
 import { toUtcIso } from '@mmap/geo-time';
@@ -17,6 +18,19 @@ import {
   PUBLIC_EXPORT_COLUMNS,
 } from './services/public-dataset.js';
 import { getBatchHttpStatus, processSyncBatch } from './services/sync-batch.js';
+
+/** Packaged Lambda copies swagger-ui assets to `$LAMBDA_TASK_ROOT/static`. */
+function swaggerUiBaseDir(): string | undefined {
+  const fromEnv = process.env.SWAGGER_UI_STATIC_DIR?.trim();
+  if (fromEnv) {
+    return fromEnv;
+  }
+  const taskRoot = process.env.LAMBDA_TASK_ROOT?.trim();
+  if (taskRoot) {
+    return join(taskRoot, 'static');
+  }
+  return undefined;
+}
 
 export interface ApiConfig {
   port: number;
@@ -65,6 +79,8 @@ export async function createApp(options: CreateAppOptions = {}): Promise<Fastify
     // Under /api/* so same-origin CDN/nginx can route docs + static assets to the API
     // without colliding with the web SPA at /docs.
     routePrefix: '/api/docs',
+    // Bundled Lambda loses package-relative paths; point at packaged static assets.
+    baseDir: swaggerUiBaseDir(),
   });
 
   app.get('/v1/health', async () => ({
