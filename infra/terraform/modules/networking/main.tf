@@ -79,7 +79,7 @@ resource "aws_route_table_association" "private" {
 
 resource "aws_security_group" "api_connector" {
   name        = "${var.name_prefix}-api-connector"
-  description = "ECS API tasks access to RDS"
+  description = "API Lambda ENIs access to RDS"
   vpc_id      = aws_vpc.main.id
   tags        = merge(var.tags, { Name = "${var.name_prefix}-api-connector" })
 
@@ -90,7 +90,7 @@ resource "aws_security_group" "api_connector" {
   }
 
   ingress {
-    description = "HTTP from VPC (ALB health checks and traffic to API tasks)"
+    description = "Legacy HTTP allowance (unused by Lambda Function URL)"
     from_port   = 80
     to_port     = 3001
     protocol    = "tcp"
@@ -107,7 +107,7 @@ resource "aws_security_group" "api_connector" {
 
 resource "aws_security_group" "rds" {
   name        = "${var.name_prefix}-rds"
-  description = "PostgreSQL access from ECS API tasks"
+  description = "PostgreSQL access from API Lambda"
   vpc_id      = aws_vpc.main.id
   tags        = merge(var.tags, { Name = "${var.name_prefix}-rds" })
 
@@ -116,7 +116,7 @@ resource "aws_security_group" "rds" {
   }
 
   ingress {
-    description     = "PostgreSQL from ECS API tasks"
+    description     = "PostgreSQL from API Lambda"
     from_port       = 5432
     to_port         = 5432
     protocol        = "tcp"
@@ -131,9 +131,9 @@ resource "aws_security_group" "rds" {
   }
 }
 
-# Gateway endpoint only (no hourly charge). Interface PrivateLink endpoints for
-# ECR/Logs/Secrets Manager are intentionally omitted — ECS Express tasks run in
-# public subnets and reach AWS APIs via the internet gateway (~$58/mo saved).
+# Gateway endpoint only (no hourly charge). Interface PrivateLink endpoints are
+# intentionally omitted — API Lambda reaches S3 via this gateway; DB secrets are
+# injected at deploy time so Secrets Manager VPC endpoints are not required.
 resource "aws_vpc_endpoint" "s3" {
   vpc_id            = aws_vpc.main.id
   service_name      = "com.amazonaws.${local.region}.s3"

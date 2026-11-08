@@ -45,7 +45,7 @@ Namecheap’s pricing.
 
 Staging is **ephemeral by default** for cost control: destroy when idle, re-apply when needed. See [AWS_INFRA.md — Ephemeral staging](AWS_INFRA.md#ephemeral-staging). Local Docker covers day-to-day development.
 
-CloudFront is enabled in staging and production via `enable_cdn = true` (see [CloudFront](AWS_INFRA.md#cloudfront-enable_cdn)). A **single** distribution serves the mission site at `/` and the field PWA at `/field/app/`, with same-origin `/v1`. Live API testing can also use `api_service_url` (ECS Express) directly.
+CloudFront is enabled in staging and production via `enable_cdn = true` (see [CloudFront](AWS_INFRA.md#cloudfront-enable_cdn)). A **single** distribution serves the mission site at `/` and the field PWA at `/field/app/`, with same-origin `/v1`. Live API testing can also use `terraform output -raw api_service_url` (Lambda Function URL) directly.
 
 ### Automatic (merge to `main`)
 
@@ -126,12 +126,12 @@ Actions → **Deploy AWS** → choose `staging` or `production`. Infra must alre
 
 ## Secrets rotation
 
-| Secret            | Location                                                    | Rotation                                                                 |
-| ----------------- | ----------------------------------------------------------- | ------------------------------------------------------------------------ |
-| RDS master user   | Secrets Manager (RDS-managed; wired into ECS via Terraform) | Enable RDS secret rotation in AWS; redeploy API after rotation if needed |
-| `API_ADMIN_TOKEN` | Secrets Manager                                             | Generate new token; update secret; redeploy API                          |
+| Secret            | Location                                                           | Rotation                                                             |
+| ----------------- | ------------------------------------------------------------------ | -------------------------------------------------------------------- |
+| RDS master user   | Secrets Manager (RDS-managed; wired into Lambda env via Terraform) | Enable RDS secret rotation in AWS; re-apply Terraform / redeploy API |
+| `API_ADMIN_TOKEN` | Secrets Manager                                                    | Generate new token; update secret; re-apply Terraform / redeploy API |
 
-The database password is **not** stored in Terraform state or GitHub as a plain connection string. ECS injects the RDS JSON secret plus `DB_HOST` / `DB_PORT` / `DB_NAME`; the API normalizes them to a PostgreSQL URL on startup (including migrations).
+The database password is **not** stored in GitHub. Terraform injects the RDS secret JSON plus `DB_HOST` / `DB_PORT` / `DB_NAME` into the API Lambda environment; the API normalizes them to a PostgreSQL URL on cold start (including migrations).
 
 Never store secrets in the repository or Terraform `.tfvars` committed to git.
 

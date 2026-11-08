@@ -1,8 +1,9 @@
 variable "name_prefix" { type = string }
 variable "github_repository" { type = string }
-variable "ecr_repository_arn" { type = string }
+variable "lambda_function_arn" { type = string }
 variable "web_bucket_arn" { type = string }
 variable "field_bucket_arn" { type = string }
+variable "data_bucket_arn" { type = string }
 variable "cloudfront_distribution_ids" { type = list(string) }
 variable "tags" { type = map(string) }
 
@@ -46,40 +47,13 @@ data "aws_iam_policy_document" "deploy" {
   statement {
     effect = "Allow"
     actions = [
-      "ecr:GetAuthorizationToken",
+      "lambda:UpdateFunctionCode",
+      "lambda:GetFunction",
+      "lambda:GetFunctionConfiguration",
+      "lambda:GetFunctionUrlConfig",
+      "lambda:InvokeFunction",
     ]
-    resources = ["*"]
-  }
-
-  statement {
-    effect = "Allow"
-    actions = [
-      "ecr:BatchCheckLayerAvailability",
-      "ecr:CompleteLayerUpload",
-      "ecr:InitiateLayerUpload",
-      "ecr:PutImage",
-      "ecr:UploadLayerPart",
-    ]
-    resources = [var.ecr_repository_arn]
-  }
-
-  statement {
-    effect = "Allow"
-    actions = [
-      "ecs:CreateCluster",
-      "ecs:RegisterTaskDefinition",
-      "ecs:CreateExpressGatewayService",
-      "ecs:UpdateExpressGatewayService",
-      "ecs:DescribeExpressGatewayService",
-      "ecs:DescribeClusters",
-      "ecs:DescribeServices",
-      "ecs:DescribeServiceDeployments",
-      "ecs:ListServiceDeployments",
-      "ecs:TagResource",
-      "ecs:UntagResource",
-      "iam:PassRole",
-    ]
-    resources = ["*"]
+    resources = [var.lambda_function_arn]
   }
 
   statement {
@@ -95,6 +69,8 @@ data "aws_iam_policy_document" "deploy" {
       "${var.web_bucket_arn}/*",
       var.field_bucket_arn,
       "${var.field_bucket_arn}/*",
+      var.data_bucket_arn,
+      "${var.data_bucket_arn}/*",
     ]
   }
 

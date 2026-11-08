@@ -17,7 +17,7 @@ Deploy steps:
 1. Build `@mmap/web` and `@mmap/field` static sites
 2. `aws s3 sync` to web and field buckets; CloudFront invalidation `/*`
 3. Docker build/push API image to ECR (`mmap-{env}-api`, tag = git SHA)
-4. Deploy API to **ECS Express** (`aws-actions/amazon-ecs-deploy-express-service`)
+4. Package and deploy API **Lambda** (`pnpm --filter @mmap/api package:lambda` + `update-function-code`)
 5. API container runs migrations on startup before listen / health checks
 6. Verify: readiness probe + `live-verify.ts` (`full` on staging, `smoke` on production)
 
@@ -29,7 +29,7 @@ Triggers:
 
 Required GitHub **environment** secrets (from Terraform outputs — see [INFRA_PIPELINES.md](../INFRA_PIPELINES.md)):
 
-`AWS_DEPLOY_ROLE_ARN`, `DATABASE_SECRET_ARN`, `API_ADMIN_TOKEN_SECRET_ARN`, `DB_HOST`, `DB_PORT`, `DB_NAME`, `API_SERVICE_URL`, `WEB_STATIC_BUCKET`, `FIELD_STATIC_BUCKET`, `WEB_CLOUDFRONT_ID`, `ECS_SERVICE_NAME`, `ECS_EXECUTION_ROLE_ARN`, `ECS_INFRASTRUCTURE_ROLE_ARN`, `ECS_TASK_ROLE_ARN`
+`AWS_DEPLOY_ROLE_ARN`, `WEB_STATIC_BUCKET`, `FIELD_STATIC_BUCKET`, and optionally `WEB_CLOUDFRONT_ID` (CD usually passes the id from terraform apply). API health uses the Lambda Function URL from AWS, not an `API_SERVICE_URL` secret.
 
 Optional: `API_CORS_ORIGIN` (comma-separated; empty OK).
 

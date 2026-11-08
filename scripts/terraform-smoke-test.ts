@@ -5,7 +5,7 @@ import { captureTerraform, requireArg } from './terraform-lib.js';
 const environment = requireArg(2, 'staging or production');
 const rootDir = `infra/terraform/environments/${environment}`;
 
-/** Total wait ≈ 5 minutes for task start + ALB target health (Express canary bake). */
+/** Total wait ≈ 5 minutes for Lambda cold start + RDS availability. */
 const MAX_ATTEMPTS = 30;
 const RETRY_DELAY_MS = 10_000;
 
@@ -75,19 +75,17 @@ for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
 if (!passedUrl) {
   console.error(`Health check failed after ${MAX_ATTEMPTS} attempts against ${apiUrl}`);
   console.error(
-    'ALB 503 usually means no healthy tasks (hibernated, stuck FAILED rollout, or account block).',
+    'Failures usually mean RDS is stopped/hibernated, Lambda not deployed, or a network/IAM issue.',
   );
   if (environment === 'staging') {
     console.error('  pnpm exec tsx scripts/staging-hibernate.ts status');
     console.error('  pnpm exec tsx scripts/staging-hibernate.ts resume');
   }
-  console.error(
-    '  pnpm exec tsx scripts/ecs-express-diagnose.ts mmap-staging-api ACCOUNT_ID us-east-1',
-  );
+  console.error('  aws lambda get-function --function-name mmap-staging-api');
   process.exit(1);
 }
 
-console.log(`ECS Express health check passed at ${passedUrl}`);
+console.log(`API Lambda health check passed at ${passedUrl}`);
 if (fieldUrl) {
   console.log(
     `CloudFront field URL: ${fieldUrl} (same-origin /v1 after app deploy publishes /v1/health)`,

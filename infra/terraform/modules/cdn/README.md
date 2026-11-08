@@ -1,74 +1,16 @@
-# cdn module
+# CDN module
 
-Single CloudFront distribution for the public web site and field PWA, with same-origin `/v1`
-routing to ECS Express.
+Single CloudFront distribution for web, field PWA, API, and public dataset snapshots.
 
-## Resources
+## Behaviors
 
-- `aws_cloudfront_origin_access_control` — S3 origins
-- `aws_cloudfront_function.spa_router` — viewer-request SPA fallback for `/` and `/field/app/`;
-  optional apex → canonical host 301 redirect
-- `aws_cloudfront_function.openapi_rewrite` — 301 `/openapi*` → `/api/docs*` (legacy URL;
-  AWS name kept as `*-openapi-rewrite` so CD can update code in place)
-- `aws_cloudfront_response_headers_policy.security` — HSTS and baseline headers when a custom
-  domain is configured
-- `aws_cloudfront_distribution.site`:
-  - Default → S3 web bucket (`/`, `/app`, `/docs`, …)
-  - `/field/app` and `/field/app/*` → S3 field bucket (object keys under `field/app/`)
-  - `/v1/*` → ECS Express API origin (HTTPS)
-  - `/api/*` → ECS Express API (Swagger UI at `/api/docs` + static assets)
-  - `/openapi*` → 301 to `/api/docs*`
-- Route 53 alias `A`/`AAAA` records when `domain_name` is set
-- S3 bucket policies granting CloudFront OAC read
-
-## Custom domain
-
-When `domain_name` is empty, the distribution uses the **CloudFront default certificate** and a
-`*.cloudfront.net` hostname.
-
-When `domain_name` is set (e.g. `savemarinemammals.com`):
-
-| Input                  | Role                                                      |
-| ---------------------- | --------------------------------------------------------- |
-| `web_subdomain`        | Canonical host = `{web_subdomain}.{domain_name}`          |
-| `hosted_zone_id`       | Bootstrap hosted zone (required)                          |
-| `acm_certificate_arn`  | Shared ACM cert apex + wildcard from bootstrap (required) |
-| `enable_apex_redirect` | Also alias the apex and 301 to the canonical host         |
-
-**Staging:** `staging.savemarinemammals.com` (`enable_apex_redirect = false`).
-
-**Production:** `www.savemarinemammals.com` canonical; `savemarinemammals.com` → 301 to www
-(`enable_apex_redirect = true`).
-
-Field PWA stays on the same host at `/field/app/`.
-
-Environments may set `enable_cdn = false` to skip this module entirely (account verification /
-CloudFront create blocked). See [AWS_INFRA.md](../../../../docs/ops/AWS_INFRA.md#cloudfront-enable_cdn).
-
-Preserve same-origin `/v1` routing so field PWA needs no `VITE_API_BASE_URL`. Field Vite `base`
-is `/field/app/`.
+- `/` → web static (S3 OAC)
+- `/field/app/*` → field static (S3 OAC)
+- `/dataset/latest/*` → data bucket snapshots (S3 OAC)
+- `/v1/*` → Lambda Function URL (sync/health/admin)
+- `/api/*` → Lambda Function URL (Swagger UI)
+- `/openapi*` → 301 rewrite to `/api/docs*`
 
 ## Inputs
 
-| Name                   | Type                                           |
-| ---------------------- | ---------------------------------------------- |
-| `name_prefix`          | string                                         |
-| `domain_name`          | string                                         |
-| `web_subdomain`        | string                                         |
-| `field_subdomain`      | string (unused; kept for tfvars compatibility) |
-| `hosted_zone_id`       | string                                         |
-| `acm_certificate_arn`  | string                                         |
-| `enable_apex_redirect` | bool                                           |
-| `web_bucket_id`        | string                                         |
-| `field_bucket_id`      | string                                         |
-| `api_service_url`      | string                                         |
-| `tags`                 | map(string)                                    |
-
-## Outputs
-
-| Name               | Description                                        |
-| ------------------ | -------------------------------------------------- |
-| `site_url`         | Public site origin (https)                         |
-| `web_url`          | Same as `site_url` (canonical host when custom)    |
-| `field_url`        | `{site_url}/field/app`                             |
-| `distribution_ids` | Single CloudFront distribution ID for invalidation |
+Requires `api_service_url` (Function URL), `web_bucket_id`, `field_bucket_id`, and `data_bucket_id`.

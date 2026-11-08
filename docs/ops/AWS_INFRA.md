@@ -26,8 +26,9 @@ flowchart TB
     DataBucket[dataset / attachments bucket]
   end
 
-  subgraph compute [ECS Express Mode]
-    API[Fastify API service]
+  subgraph compute [Lambda]
+    API[Fastify API Lambda]
+    Export[Daily dataset export]
   end
 
   subgraph data [Private VPC]
@@ -72,15 +73,15 @@ flowchart TB
 
 ### Design choices
 
-| Decision          | v1 (this sketch)                                                              | Upgrade path                                                    |
-| ----------------- | ----------------------------------------------------------------------------- | --------------------------------------------------------------- |
-| API compute       | **ECS Express Mode** — AWS-recommended App Runner replacement; ALB + Fargate  | **ECS Fargate + CodeDeploy** for native canary traffic shifting |
-| Database          | **RDS PostgreSQL** (`db.t4g.micro` staging, `db.t4g.small` prod) with PostGIS | Aurora Serverless v2 if sync volume grows                       |
-| Frontends         | **S3 + CloudFront** (build artifacts from CI)                                 | Same; invalidate cache on deploy                                |
-| Object storage    | **S3** (dataset exports, future attachments)                                  | Lifecycle rules to Glacier for old snapshots                    |
-| Same-origin `/v1` | CloudFront **path behavior** proxies API                                      | Keeps field PWA working without `VITE_API_BASE_URL`             |
-| Secrets           | **Secrets Manager**                                                           | Rotation for DB password via RDS integration                    |
-| IaC               | **Terraform** modules under `infra/terraform/`                                | Remote state in S3 + DynamoDB lock table                        |
+| Decision          | v1 (this sketch)                                                              | Upgrade path                                               |
+| ----------------- | ----------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| API compute       | **Lambda** (Function URL) behind CloudFront `/v1/*` — pay per request         | Provisioned concurrency if sync latency needs a warm floor |
+| Database          | **RDS PostgreSQL** (`db.t4g.micro` staging, `db.t4g.small` prod) with PostGIS | Aurora Serverless v2 if sync volume grows                  |
+| Frontends         | **S3 + CloudFront** (build artifacts from CI)                                 | Same; invalidate cache on deploy                           |
+| Object storage    | **S3** (dataset exports, future attachments)                                  | Lifecycle rules to Glacier for old snapshots               |
+| Same-origin `/v1` | CloudFront **path behavior** proxies API                                      | Keeps field PWA working without `VITE_API_BASE_URL`        |
+| Secrets           | **Secrets Manager**                                                           | Rotation for DB password via RDS integration               |
+| IaC               | **Terraform** modules under `infra/terraform/`                                | Remote state in S3 + DynamoDB lock table                   |
 
 ### Why CloudFront path routing for `/v1`
 
@@ -88,7 +89,8 @@ Docker/nginx today proxies `/v1` to the API so browsers use same-origin requests
 
 - `www.savemarinemammals.com/` (or staging host) → S3 web
 - `…/field/app/*` → S3 field PWA
-- `…/v1/*` → ECS Express API origin
+- `…/v1/*` → Lambda Function URL origin
+- `…/dataset/latest/*` → data bucket snapshots
 
 Leave `VITE_API_BASE_URL` **unset** in field/web production builds so the app continues to call relative `/v1/...` URLs.
 
@@ -96,25 +98,23 @@ Leave `VITE_API_BASE_URL` **unset** in field/web production builds so the app co
 
 ```
 VPC 10.0.0.0/16
-├── public subnets (2 AZ)     — ECS Express tasks + managed ALB (IGW egress)
-├── private subnets (2 AZ)    — RDS only
-└── S3 gateway endpoint       — free; no interface PrivateLink endpoints
+├── public subnets (2 AZ)     — unused by API (kept for future / IGW routes)
+├── private subnets (2 AZ)    — RDS + API Lambda ENIs
+└── S3 gateway endpoint       — free; Lambda writes snapshots without NAT
 ```
 
-RDS is not publicly accessible. ECS Express tasks run in **public** subnets so the
-managed ALB gets a public ingress endpoint (required for CloudFront `/v1/*`). Tasks
-reach ECR, CloudWatch Logs, and Secrets Manager via the internet gateway — interface
-VPC endpoints are omitted on purpose (they dominated the staging bill at ~$58/mo).
-
-Do **not** add NAT gateways (~$32/mo each) unless tasks move to private subnets.
+RDS is not publicly accessible. The API Lambda runs in **private** subnets with the
+RDS security group path. DB credentials are injected as Lambda environment from
+Secrets Manager at apply time (no Secrets Manager VPC endpoint / NAT required).
+Do **not** add NAT or interface PrivateLink endpoints for cost.
 
 ## Environments
 
 |                     | Staging                                   | Production                                |
 | ------------------- | ----------------------------------------- | ----------------------------------------- |
 | Terraform workspace | `staging`                                 | `production`                              |
-| API service         | `mmap-staging-api`                        | `mmap-production-api`                     |
-| RDS instance        | `db.t4g.micro`, single-AZ                 | `db.t4g.small`, multi-AZ optional         |
+| API service         | `mmap-staging-api` (Lambda)               | `mmap-production-api` (Lambda)            |
+| RDS instance        | `db.t4g.micro`, auto-stop after export    | `db.t4g.small`; auto-stop off by default  |
 | CloudFront          | off until account verified (`enable_cdn`) | off until account verified (`enable_cdn`) |
 | Deletion protection | off                                       | on                                        |
 | Backup retention    | 7 days                                    | 30 days                                   |
@@ -127,26 +127,26 @@ mission site at `/` and the field PWA at `/field/app/`, with same-origin `/v1`.
 New or unverified AWS accounts are sometimes blocked from creating CloudFront
 distributions. If apply fails on distribution create, temporarily set
 `enable_cdn = false` in that environment’s `terraform.tfvars`. Terraform still
-provisions networking, RDS, ECS Express, S3, monitoring, and the deploy role
+provisions networking, RDS, API Lambda, S3, monitoring, and the deploy role
 (skips `module.cdn`).
 
-| Capability                    | With `enable_cdn = false`                                               |
-| ----------------------------- | ----------------------------------------------------------------------- |
-| Live API + RDS + sync testing | Yes — use `terraform output -raw api_service_url`                       |
-| ECR image deploy / migrations | Yes                                                                     |
-| S3 static sync                | Yes (artifacts only; no public CloudFront URL)                          |
-| Same-origin field/web on AWS  | No — re-enable CDN after verification                                   |
-| Browser field app → live API  | Set `VITE_API_BASE_URL` to the Express URL and `cors_origins` in tfvars |
+| Capability                    | With `enable_cdn = false`                                                |
+| ----------------------------- | ------------------------------------------------------------------------ |
+| Live API + RDS + sync testing | Yes — use `terraform output -raw api_service_url`                        |
+| ECR image deploy / migrations | Yes                                                                      |
+| S3 static sync                | Yes (artifacts only; no public CloudFront URL)                           |
+| Same-origin field/web on AWS  | No — re-enable CDN after verification                                    |
+| Browser field app → live API  | Set `VITE_API_BASE_URL` to the Function URL and `cors_origins` in tfvars |
 
 After CDN is enabled (or re-enabled):
 
 1. Confirm `enable_cdn = true` in `terraform.tfvars`
 2. `terraform apply`
-3. Store `WEB_CLOUDFRONT_ID` GitHub secret from `web_cloudfront_distribution_id` (single distribution)
-4. Prefer same-origin field/web URLs (`/field/app/`); leave `VITE_API_BASE_URL` unset for production builds
+3. Prefer same-origin field/web URLs (`/field/app/`); leave `VITE_API_BASE_URL` unset for production builds
+4. Optional: store `WEB_CLOUDFRONT_ID` for emergency **Deploy AWS** (CD passes the id from terraform apply)
 
-Smoke tests always hit `api_service_url` (works with or without CDN). Deploy skips
-CloudFront invalidation when `WEB_CLOUDFRONT_ID` is empty.
+Smoke / live-verify read `api_service_url` from Terraform state. App deploy resolves the
+Function URL via `aws lambda get-function-url-config` (no `API_SERVICE_URL` secret).
 
 ## Repository layout
 
@@ -160,7 +160,7 @@ infra/
     │   ├── networking/                VPC, subnets, SGs, S3 gateway endpoint
     │   ├── database/                RDS PostgreSQL 16 + parameter group
     │   ├── storage/                 S3 buckets (web, field, dataset)
-    │   ├── api/                     ECR + ECS Express + IAM + API log group
+    │   ├── api/                     Lambda Function URL + export schedule + IAM
     │   ├── cdn/                     CloudFront (+ ACM/Route 53 when domains set)
     │   ├── monitoring/              CloudWatch alarms + dashboard
     │   └── github-oidc/             Per-env IAM deploy role (OIDC provider is bootstrap)
@@ -296,32 +296,30 @@ For canary traffic shifting on the API:
 
 Static frontends already support safe rollback: redeploy previous S3 object version + CloudFront invalidation.
 
-## Cost model (us-east-1, measured July 2026)
+## Cost model (us-east-1, Lambda + daily snapshots)
 
-Measured against a live **staging-only** stack (ECS Express + RDS + 4 interface VPC
-endpoints). Interface PrivateLink was ~60% of spend and has been removed from the
-networking module.
+The API runs as **Lambda** (no ALB/Fargate/public task IPs). Public dataset reads are
+**daily S3 snapshots** at `/dataset/latest/*` (CloudFront → data bucket). Sync remains
+`POST /v1/sync/batch` on the Function URL (also via CloudFront `/v1/*`).
 
-| Resource (per environment)                            | Approx $/mo | Notes                                                                  |
-| ----------------------------------------------------- | ----------- | ---------------------------------------------------------------------- |
-| Interface VPC endpoints (removed)                     | ~~$58~~ $0  | Do not re-add                                                          |
-| ECS Express managed ALB                               | ~$16        | Bills even with 0 tasks                                                |
-| RDS `db.t4g.micro` instance + 20 GB gp3               | ~$14        | ~$12 instance + ~$2 storage; prod uses `db.t4g.small`                  |
-| Public IPv4                                           | ~$5–7       | Follows ALB / public ENIs                                              |
-| Fargate 1 vCPU / 2 GiB (list, min 1 task)             | ~$36        | List price when a task runs; was $0 in July (no running tasks / trial) |
-| S3 + CloudFront + Secrets + KMS                       | ~$2–5       | Low at pilot traffic                                                   |
-| NAT (if added)                                        | ~$32 each   | Avoid                                                                  |
-| **Always-on, no PrivateLink, task running (list)**    | **~$70–80** | ALB + RDS + IPv4 + Fargate list + misc                                 |
-| **Always-on, no PrivateLink, measured Jul (0 tasks)** | **~$35–45** | ALB + RDS + IPv4 + misc; Fargate not billing                           |
-| **Hibernated (0 tasks + RDS stopped)**                | **~$25**    | ALB + IPv4 + RDS storage only                                          |
-| **Idle (stack destroyed)**                            | **~$0–2**   | Bootstrap state/locks only                                             |
+| Resource (per environment)                  | Approx $/mo | Notes                                               |
+| ------------------------------------------- | ----------- | --------------------------------------------------- |
+| Lambda sync + daily export (pilot traffic)  | ~$0–2       | Request-priced; cold starts OK for marina Wi‑Fi     |
+| RDS `db.t4g.micro` / `small` when running   | ~$14 / ~$25 | Stop when idle (`enable_db_auto_stop` or hibernate) |
+| RDS storage (20 GB gp3) while stopped       | ~$2         | Data retained                                       |
+| S3 + CloudFront + snapshots + Secrets + KMS | ~$1–5       | Dominates idle bill when RDS is stopped             |
+| Public IPv4 / ALB / Fargate                 | **$0**      | Removed with ECS Express                            |
+| NAT / interface VPC endpoints               | **$0**      | Do not add                                          |
+| **Prod, RDS always on, idle sync**          | **~$20–35** | RDS + edge                                          |
+| **Staging, RDS auto-stopped after export**  | **~$3–8**   | Storage + edge; start before campaigns              |
+| **Idle (stack destroyed)**                  | **~$0–2**   | Bootstrap state/locks only                          |
 
 **Operating model:** keep bootstrap (state bucket, lock table, OIDC) always on.
-Treat staging **API + RDS + VPC** as ephemeral — apply when needed, destroy when idle.
-See [Ephemeral staging](#ephemeral-staging) below and [infra/README.md](../../infra/README.md).
+Treat staging as ephemeral — apply when needed, destroy when idle.
+See [Ephemeral staging](#ephemeral-staging) and [infra/README.md](../../infra/README.md).
 
 When a full teardown is too heavy, [hibernate staging](#hibernate-staging-scale-to-zero)
-instead: scale API tasks to zero and stop RDS, leaving a ~$25/mo floor.
+stops RDS only (API is already request-priced).
 
 Apply for **AWS Activate** (nonprofit) to offset year-one cost when the stack is up.
 
@@ -330,10 +328,10 @@ Apply for **AWS Activate** (nonprofit) to offset year-one cost when the stack is
 Staging is not required 24/7 for a nonprofit pilot. Default practice:
 
 1. **Create** when you need demos, UAT, or pre-production validation (`terraform apply` or **Release staging** workflow).
-2. **Destroy** when idle so ALB + RDS + IPv4 stop billing (`terraform destroy` against the staging root only).
+2. **Destroy** when idle so RDS + VPC stop billing (`terraform destroy` against the staging root only).
 3. **Never destroy** bootstrap: S3 state bucket `mmap-terraform-state-*`, DynamoDB lock table, shared GitHub OIDC provider, Terraform CI role.
 
-Cold start is typically 10–20 minutes (Express + RDS). Local Docker remains the day-to-day development path ([DEVELOPMENT.md](../DEVELOPMENT.md)).
+Cold start is typically several minutes for RDS (Lambda is seconds). Local Docker remains the day-to-day development path ([DEVELOPMENT.md](../DEVELOPMENT.md)).
 
 Local destroy (Windows PowerShell), after `aws login`:
 
@@ -357,54 +355,47 @@ it once — see [FM-03 § soft-deleted secret](runbooks/FM-03-terraform-state-or
 ## Hibernate staging (scale to zero)
 
 `scripts/staging-hibernate.ts` reduces spend **without** destroying staging. Use it when
-you want the stack to stay provisioned (same URLs, same state) but idle for days.
+you want the stack to stay provisioned (same Function URL / CDN, same state) but idle.
 
-It scales the ECS Express API to **0 tasks** and **stops** the RDS instance. ECS Express
-cannot scale to zero on its own — its minimum task count is 1 and it is utilization-based,
-not request-driven, so the script sets the Application Auto Scaling minimum and desired
-count explicitly.
+The API is already Lambda (no ALB/Fargate). Hibernation **stops RDS** only. Staging also
+defaults `enable_db_auto_stop = true` (start before the daily export, stop afterward).
 
 ```powershell
 # Show current state and estimated monthly cost
 pnpm exec tsx scripts/staging-hibernate.ts status
 
-# Scale API to zero and stop RDS
+# Stop RDS
 pnpm exec tsx scripts/staging-hibernate.ts hibernate
 
 # Bring staging back (RDS start takes several minutes)
 pnpm exec tsx scripts/staging-hibernate.ts resume
 ```
 
-| Option            | Effect                                        |
-| ----------------- | --------------------------------------------- |
-| `--dry-run`       | Print AWS calls without executing them        |
-| `--min-tasks=<n>` | Task count to restore on `resume` (default 1) |
-| `AWS_REGION`      | Environment variable, defaults to `us-east-1` |
+| Option       | Effect                                        |
+| ------------ | --------------------------------------------- |
+| `--dry-run`  | Print AWS calls without executing them        |
+| `AWS_REGION` | Environment variable, defaults to `us-east-1` |
 
 ### What hibernation does and does not save
 
-| Component                    | Hibernated | Note                                                        |
-| ---------------------------- | ---------- | ----------------------------------------------------------- |
-| Fargate tasks (~$36/mo list) | stopped    | List price for 1 vCPU / 2 GiB; saving only when a task runs |
-| RDS instance hours (~$12/mo) | stopped    | Data preserved; storage still bills                         |
-| Express ALB (~$16/mo)        | **bills**  | Provisioned with the service                                |
-| Public IPv4 (~$7/mo)         | **bills**  | Follows the ALB                                             |
-| RDS storage (~$2/mo)         | **bills**  | 20 GB gp3 retained                                          |
+| Component                    | Hibernated | Note                                |
+| ---------------------------- | ---------- | ----------------------------------- |
+| Lambda API                   | n/a        | Already pay-per-request             |
+| RDS instance hours (~$12/mo) | stopped    | Data preserved; storage still bills |
+| RDS storage (~$2/mo)         | **bills**  | 20 GB gp3 retained                  |
+| S3 snapshots + CloudFront    | **bills**  | Near-zero at pilot traffic          |
 
-**Hibernated floor: ~$25/mo.** For ~$0/mo use [Ephemeral staging](#ephemeral-staging) and
+**Hibernated floor: ~$2–5/mo.** For ~$0/mo use [Ephemeral staging](#ephemeral-staging) and
 destroy the stack instead.
 
 ### Caveats
 
 - **RDS auto-starts after 7 days.** AWS restarts stopped instances automatically; re-run
   `hibernate` or destroy the stack for longer idle periods.
-- **Terraform drift / stuck rollouts.** The api module pins `min_task_count = 1`, but hibernate
-  mutates Application Auto Scaling outside Terraform, and a FAILED Express rollout can leave
-  `desired=1 running=0` until a new deployment is forced. CD / Release staging **verify** runs
-  `staging-hibernate.ts resume`, which restores scale, force-new-deploys when needed, and waits
-  for a running task. Re-run `hibernate` after a successful deploy if you want the cost floor again.
+- **Sync needs a running DB.** If RDS is stopped, `POST /v1/sync/batch` fails until you
+  `resume` (or wait for the scheduled pre-export start when `enable_db_auto_stop` is on).
 - **The script is safe to re-run.** It reads current state first and skips resources that
-  are already scaled down, stopped, or absent (for example after a destroy).
+  are already stopped or absent (for example after a destroy).
 
 ## Related docs
 

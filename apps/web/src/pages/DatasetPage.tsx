@@ -68,6 +68,9 @@ export function DatasetPage() {
         <p className="lede">
           Browse and download published assessments from field teams. License:{' '}
           {meta?.license ?? 'CC BY 4.0'}.
+          {meta?.generated_at
+            ? ` Snapshot generated ${formatDate(meta.generated_at)}.`
+            : ' Data is served from a daily static snapshot when available.'}
         </p>
       </header>
 

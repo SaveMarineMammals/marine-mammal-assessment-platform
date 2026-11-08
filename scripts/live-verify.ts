@@ -89,6 +89,25 @@ async function verifyReadPaths(): Promise<void> {
   assertOkStatus(health.status, 'GET /v1/health');
   assertHealthBody(health.body);
 
+  const siteOrigin = webUrl?.trim() ? normalizeHttpsUrl(webUrl) : '';
+  if (enableCdn === 'true' && siteOrigin) {
+    console.log('Checking /dataset/latest/stats.json (static snapshot) …');
+    const snapshotStats = await fetch(`${siteOrigin}/dataset/latest/stats.json`);
+    if (snapshotStats.ok) {
+      assertStatsBody(await snapshotStats.json());
+      console.log('Checking /dataset/latest/meta.json …');
+      const snapshotMeta = await fetch(`${siteOrigin}/dataset/latest/meta.json`);
+      assertOkStatus(snapshotMeta.status, 'GET /dataset/latest/meta.json');
+      assertMetaBody(await snapshotMeta.json());
+      console.log('Checking /dataset/latest/assessments.csv …');
+      const snapshotCsv = await fetch(`${siteOrigin}/dataset/latest/assessments.csv`);
+      assertOkStatus(snapshotCsv.status, 'GET /dataset/latest/assessments.csv');
+      assertCsvExportHeaders(await snapshotCsv.text());
+      return;
+    }
+    console.log('Snapshot missing — falling back to live /v1/public/* (pre-export)');
+  }
+
   console.log('Checking /v1/public/stats …');
   const stats = await fetchJson('/v1/public/stats');
   assertOkStatus(stats.status, 'GET /v1/public/stats');

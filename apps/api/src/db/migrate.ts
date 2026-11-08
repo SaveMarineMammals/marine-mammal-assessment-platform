@@ -3,7 +3,16 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { getPool } from './pool.js';
 
-const migrationsDir = join(dirname(fileURLToPath(import.meta.url)), '../../migrations');
+function resolveMigrationsDir(): string {
+  const fromEnv = process.env.MIGRATIONS_DIR?.trim();
+  if (fromEnv) {
+    return fromEnv;
+  }
+  if (process.env.LAMBDA_TASK_ROOT?.trim()) {
+    return join(process.env.LAMBDA_TASK_ROOT.trim(), 'migrations');
+  }
+  return join(dirname(fileURLToPath(import.meta.url)), '../../migrations');
+}
 
 export async function runMigrations(): Promise<void> {
   const pool = getPool();
@@ -14,7 +23,7 @@ export async function runMigrations(): Promise<void> {
     )
   `);
 
-  const files = readdirSync(migrationsDir)
+  const files = readdirSync(resolveMigrationsDir())
     .filter((file) => file.endsWith('.sql'))
     .sort();
 
@@ -26,7 +35,7 @@ export async function runMigrations(): Promise<void> {
       continue;
     }
 
-    const sql = readFileSync(join(migrationsDir, filename), 'utf8');
+    const sql = readFileSync(join(resolveMigrationsDir(), filename), 'utf8');
     await pool.query(sql);
     await pool.query('INSERT INTO schema_migrations (filename) VALUES ($1)', [filename]);
   }

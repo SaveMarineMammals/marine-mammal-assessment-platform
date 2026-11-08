@@ -60,16 +60,6 @@ variable "db_backup_retention_days" {
   default = 7
 }
 
-variable "api_cpu" {
-  type    = string
-  default = "1024"
-}
-
-variable "api_memory" {
-  type    = string
-  default = "2048"
-}
-
 variable "cors_origins" {
   description = "Optional explicit CORS origins for the API"
   type        = list(string)
@@ -78,6 +68,12 @@ variable "cors_origins" {
 
 variable "enable_cdn" {
   description = "Provision CloudFront for web/field. Set false until the AWS account can create distributions (e.g. unverified account)."
+  type        = bool
+  default     = true
+}
+
+variable "enable_db_auto_stop" {
+  description = "Stop RDS after the daily snapshot export (start again before export). Default on for ephemeral staging cost control."
   type        = bool
   default     = true
 }

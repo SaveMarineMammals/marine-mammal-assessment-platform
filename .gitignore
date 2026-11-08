@@ -1,5 +1,10 @@
 node_modules
 dist
+dist-lambda
+apps/api/dist-lambda
+apps/api/dist/api-lambda.zip
+infra/terraform/modules/api/placeholder-lambda.zip
+infra/terraform/modules/api/db-control-lambda.zip
 .turbo
 *.tsbuildinfo
 coverage

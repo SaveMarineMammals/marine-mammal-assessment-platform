@@ -167,14 +167,14 @@ Each measurement is an independent reading that may occur at different times dur
 
 ### 5.5 Public Dataset
 
-| ID     | Requirement                                                                              | Priority |
-| ------ | ---------------------------------------------------------------------------------------- | -------- |
-| PUB-01 | Published dataset with open license (recommend CC BY 4.0)                                | Must     |
-| PUB-02 | Bulk download: JSON Lines, CSV, Parquet                                                  | Must     |
-| PUB-03 | Read-only REST API with pagination and filters (date range, location bbox, species/type) | Must     |
-| PUB-04 | Schema documentation and version changelog                                               | Must     |
-| PUB-05 | PII review workflow before publication (names may be pseudonymized)                      | Should   |
-| PUB-06 | DOI or persistent identifier for dataset snapshots                                       | Could    |
+| ID     | Requirement                                                                                                                                    | Priority |
+| ------ | ---------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| PUB-01 | Published dataset with open license (recommend CC BY 4.0)                                                                                      | Must     |
+| PUB-02 | Bulk download: JSON Lines, CSV, Parquet                                                                                                        | Must     |
+| PUB-03 | Public dataset access via daily static snapshots (JSON/CSV/JSONL) with client-side pagination/filter at pilot scale; optional live query later | Must     |
+| PUB-04 | Schema documentation and version changelog                                                                                                     | Must     |
+| PUB-05 | PII review workflow before publication (names may be pseudonymized)                                                                            | Should   |
+| PUB-06 | DOI or persistent identifier for dataset snapshots                                                                                             | Could    |
 
 ### 5.6 Extensibility
 
